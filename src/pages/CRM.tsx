@@ -1,80 +1,108 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageSquare, MoreVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Phone, MessageCircle, Plus } from "lucide-react";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { LeadForm } from "@/components/crm/LeadForm";
+import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
+import { LeadImport } from "@/components/crm/LeadImport";
 
-type LeadStatus = 
-  | "novo_lead" 
-  | "1_contato" 
-  | "2_contato" 
-  | "3_contato" 
-  | "agendado" 
-  | "nao_respondeu"
-  | "sem_interesse";
+type LeadStatus =
+  | "novo_lead"
+  | "primeira_tentativa"
+  | "segunda_tentativa"
+  | "terceira_tentativa"
+  | "agendado"
+  | "compareceu"
+  | "nao_compareceu"
+  | "orcamento_enviado"
+  | "fechado"
+  | "perdido";
 
-const columns = [
+const columns: {
+  id: LeadStatus;
+  title: string;
+  color: string;
+}[] = [
   { id: "novo_lead", title: "Novo Lead", color: "bg-blue-500" },
-  { id: "1_contato", title: "1º Contato", color: "bg-purple-500" },
-  { id: "2_contato", title: "2º Contato", color: "bg-orange-500" },
-  { id: "3_contato", title: "3º Contato", color: "bg-yellow-500" },
-  { id: "agendado", title: "Agendado", color: "bg-green-500" },
-  { id: "nao_respondeu", title: "Não Respondeu", color: "bg-gray-500" },
-  { id: "sem_interesse", title: "Sem Interesse", color: "bg-red-500" },
+  { id: "primeira_tentativa", title: "1ª Tentativa", color: "bg-yellow-500" },
+  { id: "segunda_tentativa", title: "2ª Tentativa", color: "bg-orange-500" },
+  { id: "terceira_tentativa", title: "3ª Tentativa", color: "bg-red-500" },
+  { id: "agendado", title: "Agendado", color: "bg-purple-500" },
+  { id: "compareceu", title: "Compareceu", color: "bg-green-500" },
+  { id: "orcamento_enviado", title: "Orçamento Enviado", color: "bg-indigo-500" },
+  { id: "fechado", title: "Fechado", color: "bg-emerald-500" },
 ];
 
-function LeadCard({ lead, onStatusChange }: { lead: Lead; onStatusChange: (id: string, status: string) => void }) {
-  const openWhatsApp = () => {
-    const phone = lead.phone.replace(/\D/g, '');
-    window.open(`https://wa.me/${phone}`, '_blank');
+interface SortableLeadCardProps {
+  lead: Lead;
+  onClick: () => void;
+}
+
+function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lead.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const openWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phone = lead.phone.replace(/\D/g, "");
+    const formattedPhone = phone.startsWith("55") ? phone : `55${phone}`;
+    window.open(`https://wa.me/${formattedPhone}`, "_blank");
+  };
+
+  const makeCall = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.location.href = `tel:${lead.phone}`;
   };
 
   return (
-    <Card className="mb-3 cursor-move hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm">{lead.name}</h4>
-              <p className="text-xs text-muted-foreground">{lead.phone}</p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap gap-1">
-            {lead.procedures?.name && (
-              <Badge variant="secondary" className="text-xs">
-                {lead.procedures.name}
-              </Badge>
-            )}
-            {lead.sources?.name && (
-              <Badge variant="outline" className="text-xs">
-                {lead.sources.name}
-              </Badge>
-            )}
-          </div>
-
-          {lead.appointment_date && (
-            <p className="text-xs text-muted-foreground">
-              Agendamento: {new Date(lead.appointment_date).toLocaleDateString('pt-BR')}
-            </p>
-          )}
-
-          <div className="flex gap-1">
-            <Button size="sm" variant="outline" className="h-8 flex-1" onClick={() => {
-              // TODO: Implementar ligação
-            }}>
-              <Phone className="h-3 w-3 mr-1" />
-              Ligar
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 flex-1" onClick={openWhatsApp}>
-              <MessageSquare className="h-3 w-3 mr-1" />
-              WhatsApp
-            </Button>
-          </div>
+    <Card
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="cursor-move hover:shadow-md transition-shadow"
+      onClick={onClick}
+    >
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{lead.name}</CardTitle>
+        <p className="text-sm text-muted-foreground">{lead.phone}</p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {lead.procedures && (
+          <Badge variant="secondary" className="text-xs">
+            {lead.procedures.name}
+          </Badge>
+        )}
+        {lead.sources && (
+          <p className="text-xs text-muted-foreground">{lead.sources.name}</p>
+        )}
+        {lead.appointment_date && (
+          <p className="text-xs text-muted-foreground">
+            Consulta: {new Date(lead.appointment_date).toLocaleDateString("pt-BR")}
+          </p>
+        )}
+        <div className="flex gap-2 mt-2">
+          <Button size="sm" variant="outline" onClick={makeCall}>
+            <Phone className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={openWhatsApp}>
+            <MessageCircle className="h-3 w-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -83,24 +111,53 @@ function LeadCard({ lead, onStatusChange }: { lead: Lead; onStatusChange: (id: s
 
 export default function CRM() {
   const { data: leads, isLoading } = useLeads();
-  const updateStatus = useUpdateLeadStatus();
+  const updateLeadStatus = useUpdateLeadStatus();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
+  const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
 
-  const handleStatusChange = (id: string, status: string) => {
-    updateStatus.mutate({ id, status });
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragEndEvent) => {
+    setActiveId(event.active.id as string);
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const leadId = active.id as string;
+    const newStatus = over.id as LeadStatus;
+
+    updateLeadStatus.mutate({ id: leadId, status: newStatus });
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsDetailPanelOpen(true);
+  };
+
+  const activeLead = activeId ? leads?.find((lead) => lead.id === activeId) : null;
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">CRM / Leads</h1>
-            <p className="text-muted-foreground">Carregando dados...</p>
-          </div>
+      <div className="p-6">
+        <div className="mb-6">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-96" />
         </div>
-        <div className="grid gap-4 md:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
       </div>
@@ -108,92 +165,113 @@ export default function CRM() {
   }
 
   const totalLeads = leads?.length || 0;
-  const agendados = leads?.filter(l => l.scheduled).length || 0;
+  const scheduledLeads = leads?.filter((l) => l.scheduled).length || 0;
+  const closedLeads = leads?.filter((l) => l.status === "fechado").length || 0;
+  const conversionRate = totalLeads > 0 ? ((closedLeads / totalLeads) * 100).toFixed(1) : "0";
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">CRM / Leads</h1>
-          <p className="text-muted-foreground">Funil de vendas e acompanhamento de leads</p>
+          <h1 className="text-3xl font-bold">CRM - Funil de Vendas</h1>
+          <p className="text-muted-foreground">Gerencie seus leads e acompanhe o funil</p>
         </div>
-        <Button className="bg-gold hover:bg-gold/90 text-gold-foreground">
-          <Phone className="h-4 w-4 mr-2" />
-          Novo Lead
-        </Button>
+        <div className="flex gap-2">
+          <LeadImport />
+          <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Lead
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Novo Lead</DialogTitle>
+              </DialogHeader>
+              <LeadForm onSuccess={() => setIsNewLeadDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">{totalLeads}</div>
-            <p className="text-xs text-muted-foreground">Leads Ativos</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{agendados}</div>
-            <p className="text-xs text-muted-foreground">Agendados</p>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Agendados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{scheduledLeads}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {totalLeads > 0 ? Math.round((agendados / totalLeads) * 100) : 0}%
-            </div>
-            <p className="text-xs text-muted-foreground">Taxa de Agendamento</p>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Fechados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{closedLeads}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {leads?.filter(l => l.evaluation_result === 'Fechou').length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Fechamentos</p>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Taxa de Conversão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{conversionRate}%</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Kanban Board */}
-      <div className="overflow-x-auto pb-4">
-        <div className="inline-flex gap-4 min-w-full">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {columns.map((column) => {
-            const columnLeads = leads?.filter(lead => lead.status === column.id) || [];
+            const columnLeads = leads?.filter((lead) => lead.status === column.id) || [];
+
             return (
-              <div key={column.id} className="flex-shrink-0 w-80">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <div className={`w-3 h-3 rounded-full ${column.color}`} />
-                      {column.title}
-                      <Badge variant="secondary" className="ml-auto">
-                        {columnLeads.length}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {columnLeads.length > 0 ? (
-                      columnLeads.map(lead => (
-                        <LeadCard 
-                          key={lead.id} 
-                          lead={lead}
-                          onStatusChange={handleStatusChange}
-                        />
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-sm text-muted-foreground">
-                        Nenhum lead nesta etapa
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <SortableContext key={column.id} items={columnLeads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${column.color}`} />
+                    <h2 className="font-semibold">{column.title}</h2>
+                    <Badge variant="secondary">{columnLeads.length}</Badge>
+                  </div>
+                  <div className="space-y-2 min-h-[200px]" id={column.id}>
+                    {columnLeads.map((lead) => (
+                      <SortableLeadCard key={lead.id} lead={lead} onClick={() => handleLeadClick(lead)} />
+                    ))}
+                  </div>
+                </div>
+              </SortableContext>
             );
           })}
         </div>
-      </div>
+
+        <DragOverlay>
+          {activeLead ? (
+            <Card className="cursor-grabbing opacity-80">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{activeLead.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">{activeLead.phone}</p>
+              </CardHeader>
+            </Card>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      <LeadDetailPanel lead={selectedLead} open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen} />
     </div>
   );
 }

@@ -127,3 +127,48 @@ export function useCreateLead() {
     },
   });
 }
+
+export interface UpdateLeadInput {
+  id: string;
+  name?: string;
+  phone?: string;
+  source_id?: string;
+  interest_id?: string;
+  notes?: string;
+  status?: string;
+  first_contact_channel?: string;
+  first_contact_date?: string;
+  second_contact_channel?: string;
+  second_contact_date?: string;
+  third_contact_channel?: string;
+  third_contact_date?: string;
+  scheduled?: boolean;
+  scheduled_on_attempt?: string;
+  appointment_date?: string;
+  evaluation_result?: string;
+  budget_total?: number;
+  budget_paid?: number;
+}
+
+export function useUpdateLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: UpdateLeadInput) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+      toast.success("Lead atualizado com sucesso");
+    },
+    onError: () => {
+      toast.error("Erro ao atualizar lead");
+    },
+  });
+}
