@@ -34,8 +34,8 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg flex flex-col">
       {/* Logo */}
-      <div className="h-20 flex items-center justify-center px-4 border-b border-sidebar-border">
-        <img src={logo} alt="Sorri Já" className="h-16 w-auto object-contain" />
+      <div className="h-24 flex items-center justify-center px-4 border-b border-sidebar-border">
+        <img src={logo} alt="Sorri Já" className="h-20 w-auto object-contain" />
       </div>
 
       {/* Navigation */}

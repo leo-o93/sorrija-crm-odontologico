@@ -1,8 +1,9 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, MessageSquare, Calendar, MoreVertical } from "lucide-react";
+import { Phone, MessageSquare, MoreVertical } from "lucide-react";
+import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type LeadStatus = 
   | "novo_lead" 
@@ -12,50 +13,6 @@ type LeadStatus =
   | "agendado" 
   | "nao_respondeu"
   | "sem_interesse";
-
-interface Lead {
-  id: string;
-  name: string;
-  phone: string;
-  interest: string;
-  source: string;
-  status: LeadStatus;
-  responsible: string;
-  nextContact?: string;
-}
-
-const mockLeads: Lead[] = [
-  {
-    id: "1",
-    name: "Carlos Mendes",
-    phone: "(11) 98765-4321",
-    interest: "Implante",
-    source: "Facebook Ads",
-    status: "novo_lead",
-    responsible: "Recepção",
-    nextContact: "Hoje, 15:00"
-  },
-  {
-    id: "2",
-    name: "Juliana Oliveira",
-    phone: "(11) 91234-5678",
-    interest: "Clareamento",
-    source: "Instagram",
-    status: "1_contato",
-    responsible: "Recepção",
-    nextContact: "Amanhã, 10:00"
-  },
-  {
-    id: "3",
-    name: "Roberto Alves",
-    phone: "(11) 99876-5432",
-    interest: "Prótese Flexível",
-    source: "Indicação",
-    status: "agendado",
-    responsible: "Recepção",
-    nextContact: "15/11 às 14:00"
-  },
-];
 
 const columns = [
   { id: "novo_lead", title: "Novo Lead", color: "bg-blue-500" },
@@ -67,7 +24,12 @@ const columns = [
   { id: "sem_interesse", title: "Sem Interesse", color: "bg-red-500" },
 ];
 
-function LeadCard({ lead }: { lead: Lead }) {
+function LeadCard({ lead, onStatusChange }: { lead: Lead; onStatusChange: (id: string, status: string) => void }) {
+  const openWhatsApp = () => {
+    const phone = lead.phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${phone}`, '_blank');
+  };
+
   return (
     <Card className="mb-3 cursor-move hover:shadow-md transition-shadow">
       <CardContent className="p-4">
@@ -83,26 +45,32 @@ function LeadCard({ lead }: { lead: Lead }) {
           </div>
 
           <div className="flex flex-wrap gap-1">
-            <Badge variant="secondary" className="text-xs">
-              {lead.interest}
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {lead.source}
-            </Badge>
+            {lead.procedures?.name && (
+              <Badge variant="secondary" className="text-xs">
+                {lead.procedures.name}
+              </Badge>
+            )}
+            {lead.sources?.name && (
+              <Badge variant="outline" className="text-xs">
+                {lead.sources.name}
+              </Badge>
+            )}
           </div>
 
-          {lead.nextContact && (
+          {lead.appointment_date && (
             <p className="text-xs text-muted-foreground">
-              Próximo contato: {lead.nextContact}
+              Agendamento: {new Date(lead.appointment_date).toLocaleDateString('pt-BR')}
             </p>
           )}
 
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" className="h-8 flex-1">
+            <Button size="sm" variant="outline" className="h-8 flex-1" onClick={() => {
+              // TODO: Implementar ligação
+            }}>
               <Phone className="h-3 w-3 mr-1" />
               Ligar
             </Button>
-            <Button size="sm" variant="outline" className="h-8 flex-1">
+            <Button size="sm" variant="outline" className="h-8 flex-1" onClick={openWhatsApp}>
               <MessageSquare className="h-3 w-3 mr-1" />
               WhatsApp
             </Button>
@@ -114,7 +82,33 @@ function LeadCard({ lead }: { lead: Lead }) {
 }
 
 export default function CRM() {
-  const [leads] = useState<Lead[]>(mockLeads);
+  const { data: leads, isLoading } = useLeads();
+  const updateStatus = useUpdateLeadStatus();
+
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatus.mutate({ id, status });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">CRM / Leads</h1>
+            <p className="text-muted-foreground">Carregando dados...</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const totalLeads = leads?.length || 0;
+  const agendados = leads?.filter(l => l.scheduled).length || 0;
 
   return (
     <div className="space-y-6">
@@ -134,28 +128,30 @@ export default function CRM() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{leads.length}</div>
+            <div className="text-2xl font-bold">{totalLeads}</div>
             <p className="text-xs text-muted-foreground">Leads Ativos</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {leads.filter(l => l.status === "agendado").length}
-            </div>
+            <div className="text-2xl font-bold">{agendados}</div>
             <p className="text-xs text-muted-foreground">Agendados</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">67%</div>
-            <p className="text-xs text-muted-foreground">Taxa de Contato</p>
+            <div className="text-2xl font-bold">
+              {totalLeads > 0 ? Math.round((agendados / totalLeads) * 100) : 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">Taxa de Agendamento</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">42%</div>
-            <p className="text-xs text-muted-foreground">Taxa de Agendamento</p>
+            <div className="text-2xl font-bold">
+              {leads?.filter(l => l.evaluation_result === 'Fechou').length || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Fechamentos</p>
           </CardContent>
         </Card>
       </div>
@@ -164,7 +160,7 @@ export default function CRM() {
       <div className="overflow-x-auto pb-4">
         <div className="inline-flex gap-4 min-w-full">
           {columns.map((column) => {
-            const columnLeads = leads.filter(lead => lead.status === column.id);
+            const columnLeads = leads?.filter(lead => lead.status === column.id) || [];
             return (
               <div key={column.id} className="flex-shrink-0 w-80">
                 <Card>
@@ -180,7 +176,11 @@ export default function CRM() {
                   <CardContent className="space-y-2">
                     {columnLeads.length > 0 ? (
                       columnLeads.map(lead => (
-                        <LeadCard key={lead.id} lead={lead} />
+                        <LeadCard 
+                          key={lead.id} 
+                          lead={lead}
+                          onStatusChange={handleStatusChange}
+                        />
                       ))
                     ) : (
                       <div className="text-center py-8 text-sm text-muted-foreground">
