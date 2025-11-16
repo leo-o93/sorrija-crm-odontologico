@@ -17,6 +17,7 @@ import Indicadores from "./pages/Indicadores";
 import Marketing from "./pages/Marketing";
 import Cadastros from "./pages/Cadastros";
 import Configuracoes from "./pages/Configuracoes";
+import Webhooks from "./pages/Webhooks";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -171,6 +172,16 @@ const App = () => (
                 <ProtectedRoute>
                   <ProtectedLayout>
                     <Configuracoes />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/webhooks"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Webhooks />
                   </ProtectedLayout>
                 </ProtectedRoute>
               }
