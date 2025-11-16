@@ -12,7 +12,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
-import { LeadImport } from "@/components/crm/LeadImport";
 
 type LeadStatus =
   | "novo_lead"
@@ -177,7 +176,6 @@ export default function CRM() {
           <p className="text-muted-foreground">Gerencie seus leads e acompanhe o funil</p>
         </div>
         <div className="flex gap-2">
-          <LeadImport />
           <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
             <DialogTrigger asChild>
               <Button>
