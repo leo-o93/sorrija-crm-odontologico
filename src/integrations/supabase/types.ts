@@ -151,6 +151,83 @@ export type Database = {
           },
         ]
       }
+      patients: {
+        Row: {
+          active: boolean
+          address: string | null
+          allergies: string | null
+          birth_date: string | null
+          city: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          id: string
+          lead_id: string | null
+          medical_history: string | null
+          medications: string | null
+          name: string
+          notes: string | null
+          phone: string
+          state: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          allergies?: string | null
+          birth_date?: string | null
+          city?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          id?: string
+          lead_id?: string | null
+          medical_history?: string | null
+          medications?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          allergies?: string | null
+          birth_date?: string | null
+          city?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          id?: string
+          lead_id?: string | null
+          medical_history?: string | null
+          medications?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procedures: {
         Row: {
           active: boolean

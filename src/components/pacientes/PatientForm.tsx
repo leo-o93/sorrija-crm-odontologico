@@ -1,0 +1,313 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Patient, useCreatePatient, useUpdatePatient } from "@/hooks/usePatients";
+import { Loader2 } from "lucide-react";
+
+const patientFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  phone: z.string().min(1, "Telefone é obrigatório"),
+  birth_date: z.string().optional(),
+  cpf: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip_code: z.string().optional(),
+  medical_history: z.string().optional(),
+  allergies: z.string().optional(),
+  medications: z.string().optional(),
+  emergency_contact_name: z.string().optional(),
+  emergency_contact_phone: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type PatientFormValues = z.infer<typeof patientFormSchema>;
+
+interface PatientFormProps {
+  patient?: Patient;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) {
+  const createPatient = useCreatePatient();
+  const updatePatient = useUpdatePatient();
+
+  const form = useForm<PatientFormValues>({
+    resolver: zodResolver(patientFormSchema),
+    defaultValues: {
+      name: patient?.name || "",
+      email: patient?.email || "",
+      phone: patient?.phone || "",
+      birth_date: patient?.birth_date || "",
+      cpf: patient?.cpf || "",
+      address: patient?.address || "",
+      city: patient?.city || "",
+      state: patient?.state || "",
+      zip_code: patient?.zip_code || "",
+      medical_history: patient?.medical_history || "",
+      allergies: patient?.allergies || "",
+      medications: patient?.medications || "",
+      emergency_contact_name: patient?.emergency_contact_name || "",
+      emergency_contact_phone: patient?.emergency_contact_phone || "",
+      notes: patient?.notes || "",
+    },
+  });
+
+  const onSubmit = async (data: PatientFormValues) => {
+    try {
+      // Ensure required fields are present
+      const patientData = {
+        ...data,
+        name: data.name || "",
+        phone: data.phone || "",
+      };
+
+      if (patient) {
+        await updatePatient.mutateAsync({ id: patient.id, ...patientData });
+      } else {
+        await createPatient.mutateAsync(patientData);
+      }
+      onSuccess?.();
+    } catch (error) {
+      console.error("Error saving patient:", error);
+    }
+  };
+
+  const isLoading = createPatient.isPending || updatePatient.isPending;
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Nome Completo *</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone *</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="birth_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de Nascimento</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="cpf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Endereço</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cidade</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estado</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="zip_code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CEP</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="emergency_contact_name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contato de Emergência</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="emergency_contact_phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone de Emergência</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="medical_history"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Histórico Médico</FormLabel>
+                <FormControl>
+                  <Textarea {...field} rows={3} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="allergies"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Alergias</FormLabel>
+                <FormControl>
+                  <Textarea {...field} rows={2} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="medications"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Medicamentos em Uso</FormLabel>
+                <FormControl>
+                  <Textarea {...field} rows={2} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Observações</FormLabel>
+                <FormControl>
+                  <Textarea {...field} rows={3} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {patient ? "Salvar Alterações" : "Criar Paciente"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}

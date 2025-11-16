@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
@@ -16,9 +17,43 @@ import Indicadores from "./pages/Indicadores";
 import Marketing from "./pages/Marketing";
 import Cadastros from "./pages/Cadastros";
 import Configuracoes from "./pages/Configuracoes";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar />
+      <div className="flex-1 flex flex-col ml-64">
+        <Header />
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto p-6">{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,30 +61,123 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar />
-          <div className="flex-1 flex flex-col ml-64">
-            <Header />
-            <main className="flex-1 overflow-y-auto">
-              <div className="container mx-auto p-6">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/crm" element={<CRM />} />
-                  <Route path="/pacientes" element={<Pacientes />} />
-                  <Route path="/agenda" element={<Agenda />} />
-                  <Route path="/orcamentos" element={<Orcamentos />} />
-                  <Route path="/financeiro" element={<Financeiro />} />
-                  <Route path="/relatorios" element={<Relatorios />} />
-                  <Route path="/indicadores" element={<Indicadores />} />
-                  <Route path="/marketing" element={<Marketing />} />
-                  <Route path="/cadastros" element={<Cadastros />} />
-                  <Route path="/configuracoes" element={<Configuracoes />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </main>
-          </div>
-        </div>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Dashboard />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <CRM />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pacientes"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Pacientes />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agenda"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Agenda />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orcamentos"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Orcamentos />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/financeiro"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Financeiro />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Relatorios />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/indicadores"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Indicadores />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/marketing"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Marketing />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cadastros"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Cadastros />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configuracoes"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <Configuracoes />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
