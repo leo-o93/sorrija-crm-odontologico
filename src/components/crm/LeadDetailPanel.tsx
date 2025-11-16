@@ -2,12 +2,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { LeadForm } from "./LeadForm";
+import { ConvertToPatientDialog } from "@/components/pacientes/ConvertToPatientDialog";
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -30,6 +31,7 @@ const statusLabels: Record<string, string> = {
 
 export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
 
   if (!lead) return null;
 
@@ -78,6 +80,22 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 <Button onClick={openWhatsApp} variant="outline" className="flex-1">
                   <MessageCircle className="h-4 w-4 mr-2" />
                   WhatsApp
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsConvertDialogOpen(true)}
+                  disabled={lead.status === "em_tratamento" || lead.status === "concluido"}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Converter em Paciente
                 </Button>
               </div>
 
@@ -230,14 +248,18 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
 
               <Separator />
 
-              {/* Botão de editar */}
-              <Button className="w-full" onClick={() => setIsEditing(true)}>
-                Editar Lead
-              </Button>
+              {/* Botões estão agora no topo, após as ações rápidas */}
             </>
           )}
         </div>
       </SheetContent>
+
+      <ConvertToPatientDialog
+        open={isConvertDialogOpen}
+        onOpenChange={setIsConvertDialogOpen}
+        leadId={lead.id}
+        leadName={lead.name}
+      />
     </Sheet>
   );
 }
