@@ -16,7 +16,6 @@ import Indicadores from "./pages/Indicadores";
 import Marketing from "./pages/Marketing";
 import Cadastros from "./pages/Cadastros";
 import Configuracoes from "./pages/Configuracoes";
-import ExecuteImport from "./pages/ExecuteImport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,7 +44,6 @@ const App = () => (
                   <Route path="/marketing" element={<Marketing />} />
                   <Route path="/cadastros" element={<Cadastros />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
-                  <Route path="/execute-import" element={<ExecuteImport />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
