@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, MessageCircle, Plus } from "lucide-react";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -106,6 +106,39 @@ function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+interface DroppableColumnProps {
+  column: {
+    id: LeadStatus;
+    title: string;
+    color: string;
+  };
+  leads: Lead[];
+  onLeadClick: (lead: Lead) => void;
+}
+
+function DroppableColumn({ column, leads, onLeadClick }: DroppableColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div ref={setNodeRef} className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className={`w-3 h-3 rounded-full ${column.color}`} />
+        <h2 className="font-semibold">{column.title}</h2>
+        <Badge variant="secondary">{leads.length}</Badge>
+      </div>
+      <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2 min-h-[200px]">
+          {leads.map((lead) => (
+            <SortableLeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
+          ))}
+        </div>
+      </SortableContext>
+    </div>
   );
 }
 
@@ -239,22 +272,13 @@ export default function CRM() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {columns.map((column) => {
             const columnLeads = leads?.filter((lead) => lead.status === column.id) || [];
-
             return (
-              <SortableContext key={column.id} items={columnLeads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${column.color}`} />
-                    <h2 className="font-semibold">{column.title}</h2>
-                    <Badge variant="secondary">{columnLeads.length}</Badge>
-                  </div>
-                  <div className="space-y-2 min-h-[200px]" id={column.id}>
-                    {columnLeads.map((lead) => (
-                      <SortableLeadCard key={lead.id} lead={lead} onClick={() => handleLeadClick(lead)} />
-                    ))}
-                  </div>
-                </div>
-              </SortableContext>
+              <DroppableColumn
+                key={column.id}
+                column={column}
+                leads={columnLeads}
+                onLeadClick={handleLeadClick}
+              />
             );
           })}
         </div>
