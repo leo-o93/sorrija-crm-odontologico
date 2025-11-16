@@ -22,6 +22,23 @@ export function LeadImport() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validar extensão
+    if (!file.name.match(/\.(xlsx|xls)$/)) {
+      toast.error("Arquivo deve ser .xlsx ou .xls");
+      return;
+    }
+
+    // Validar que sources e procedures foram carregados
+    if (!sources || sources.length === 0) {
+      toast.error("Aguarde o carregamento das fontes...");
+      return;
+    }
+
+    if (!procedures || procedures.length === 0) {
+      toast.error("Aguarde o carregamento dos procedimentos...");
+      return;
+    }
+
     setIsImporting(true);
     setResult(null);
 
@@ -31,11 +48,20 @@ export function LeadImport() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+      if (jsonData.length === 0) {
+        toast.error("Planilha está vazia");
+        setIsImporting(false);
+        return;
+      }
+
       let successCount = 0;
       let errorCount = 0;
+      const errors: string[] = [];
+      const leadsToInsert: any[] = [];
 
       setProgress({ current: 0, total: jsonData.length });
 
+      // Processar todas as linhas primeiro (sem await)
       for (let i = 0; i < jsonData.length; i++) {
         const row: any = jsonData[i];
         
@@ -93,27 +119,51 @@ export function LeadImport() {
           // Validação básica
           if (!leadData.name || !leadData.phone) {
             errorCount++;
+            errors.push(`Linha ${i + 2}: Nome ou telefone ausente`);
             continue;
           }
 
-          const { error } = await supabase.from("leads").insert([leadData]);
-
-          if (error) {
-            console.error("Error inserting lead:", error);
-            errorCount++;
-          } else {
-            successCount++;
-          }
-        } catch (error) {
-          console.error("Error processing row:", error);
+          leadsToInsert.push(leadData);
+          setProgress({ current: i + 1, total: jsonData.length });
+        } catch (error: any) {
           errorCount++;
+          errors.push(`Linha ${i + 2}: ${error.message}`);
         }
-
-        setProgress({ current: i + 1, total: jsonData.length });
       }
 
-      setResult({ success: successCount, errors: errorCount });
-      toast.success(`Importação concluída! ${successCount} leads importados.`);
+      // Inserir tudo de uma vez (batch insert)
+      if (leadsToInsert.length > 0) {
+        const { error } = await supabase.from("leads").insert(leadsToInsert);
+
+        if (error) {
+          console.error("Error inserting leads:", error);
+          toast.error(`Erro ao inserir leads: ${error.message}`);
+          setResult({ success: 0, errors: jsonData.length });
+        } else {
+          successCount = leadsToInsert.length;
+          setResult({ success: successCount, errors: errorCount });
+          toast.success(`${successCount} leads importados com sucesso!`);
+          
+          // Limpar input e fechar diálogo após 2s
+          event.target.value = "";
+          setTimeout(() => {
+            setIsOpen(false);
+            setResult(null);
+          }, 2000);
+        }
+      } else {
+        toast.error("Nenhum lead válido para importar");
+        setResult({ success: 0, errors: errorCount });
+      }
+
+      // Mostrar erros se houver
+      if (errors.length > 0 && errors.length <= 5) {
+        errors.forEach(err => toast.error(err));
+      } else if (errors.length > 5) {
+        toast.error(`${errorCount} linhas com erro. Verifique o console.`);
+        console.error("Erros de importação:", errors);
+      }
+
     } catch (error) {
       console.error("Error reading file:", error);
       toast.error("Erro ao ler arquivo Excel");
@@ -143,8 +193,14 @@ export function LeadImport() {
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileUpload}
-            disabled={isImporting}
+            disabled={isImporting || !sources || !procedures}
           />
+
+          {(!sources || !procedures) && (
+            <p className="text-sm text-yellow-600">
+              Aguardando carregamento de fontes e procedimentos...
+            </p>
+          )}
 
           {isImporting && (
             <div className="space-y-2">
