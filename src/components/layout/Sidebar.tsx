@@ -11,7 +11,8 @@ import {
   Settings,
   UserPlus,
   Briefcase,
-  Target
+  Target,
+  Webhook
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Indicadores", href: "/indicadores", icon: PieChart },
   { name: "Marketing", href: "/marketing", icon: MessageSquare },
+  { name: "Webhooks", href: "/webhooks", icon: Webhook },
   { name: "Cadastros", href: "/cadastros", icon: Briefcase },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];

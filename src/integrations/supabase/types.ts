@@ -330,11 +330,63 @@ export type Database = {
         }
         Relationships: []
       }
+      webhooks: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          headers: Json | null
+          id: string
+          ip_address: string | null
+          method: string
+          origin: string | null
+          path: string | null
+          payload: Json
+          processed_at: string | null
+          query_params: Json | null
+          search_vector: unknown
+          status: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          headers?: Json | null
+          id?: string
+          ip_address?: string | null
+          method?: string
+          origin?: string | null
+          path?: string | null
+          payload: Json
+          processed_at?: string | null
+          query_params?: Json | null
+          search_vector?: unknown
+          status?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          headers?: Json | null
+          id?: string
+          ip_address?: string | null
+          method?: string
+          origin?: string | null
+          path?: string | null
+          payload?: Json
+          processed_at?: string | null
+          query_params?: Json | null
+          search_vector?: unknown
+          status?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_webhooks: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
