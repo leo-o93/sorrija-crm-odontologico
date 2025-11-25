@@ -21,6 +21,7 @@ export type Database = {
           id: string
           lead_id: string | null
           notes: string | null
+          organization_id: string | null
           patient_id: string | null
           procedure_id: string | null
           status: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           patient_id?: string | null
           procedure_id?: string | null
           status?: string
@@ -43,6 +45,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           patient_id?: string | null
           procedure_id?: string | null
           status?: string
@@ -57,6 +60,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -68,6 +78,117 @@ export type Database = {
             columns: ["procedure_id"]
             isOneToOne: false
             referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          assigned_user_id: string | null
+          channel: string
+          contact_type: string
+          created_at: string | null
+          evolution_instance: string | null
+          id: string
+          last_message_at: string | null
+          lead_id: string | null
+          organization_id: string
+          patient_id: string | null
+          phone: string
+          status: string | null
+          unread_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          channel?: string
+          contact_type: string
+          created_at?: string | null
+          evolution_instance?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          organization_id: string
+          patient_id?: string | null
+          phone: string
+          status?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_user_id?: string | null
+          channel?: string
+          contact_type?: string
+          created_at?: string | null
+          evolution_instance?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          organization_id?: string
+          patient_id?: string | null
+          phone?: string
+          status?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_settings: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          integration_type: string
+          organization_id: string
+          settings: Json
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          integration_type: string
+          organization_id: string
+          settings?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          integration_type?: string
+          organization_id?: string
+          settings?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -129,6 +250,7 @@ export type Database = {
           interest_id: string | null
           name: string
           notes: string | null
+          organization_id: string | null
           phone: string
           registration_date: string
           responsible_user_id: string | null
@@ -154,6 +276,7 @@ export type Database = {
           interest_id?: string | null
           name: string
           notes?: string | null
+          organization_id?: string | null
           phone: string
           registration_date?: string
           responsible_user_id?: string | null
@@ -179,6 +302,7 @@ export type Database = {
           interest_id?: string | null
           name?: string
           notes?: string | null
+          organization_id?: string | null
           phone?: string
           registration_date?: string
           responsible_user_id?: string | null
@@ -201,6 +325,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
@@ -208,6 +339,148 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      messages: {
+        Row: {
+          content_text: string | null
+          conversation_id: string
+          created_at: string | null
+          created_by_user_id: string | null
+          delivered_at: string | null
+          direction: string
+          id: string
+          media_url: string | null
+          provider_message_id: string | null
+          raw_payload: Json | null
+          read_at: string | null
+          sent_at: string | null
+          status: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_text?: string | null
+          conversation_id: string
+          created_at?: string | null
+          created_by_user_id?: string | null
+          delivered_at?: string | null
+          direction: string
+          id?: string
+          media_url?: string | null
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_text?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          created_by_user_id?: string | null
+          delivered_at?: string | null
+          direction?: string
+          id?: string
+          media_url?: string | null
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          is_owner: boolean | null
+          organization_id: string
+          role_in_org: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          is_owner?: boolean | null
+          organization_id: string
+          role_in_org?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          is_owner?: boolean | null
+          organization_id?: string
+          role_in_org?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          active: boolean | null
+          address: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       patients: {
         Row: {
@@ -227,6 +500,7 @@ export type Database = {
           medications: string | null
           name: string
           notes: string | null
+          organization_id: string | null
           phone: string
           state: string | null
           updated_at: string
@@ -249,6 +523,7 @@ export type Database = {
           medications?: string | null
           name: string
           notes?: string | null
+          organization_id?: string | null
           phone: string
           state?: string | null
           updated_at?: string
@@ -271,6 +546,7 @@ export type Database = {
           medications?: string | null
           name?: string
           notes?: string | null
+          organization_id?: string | null
           phone?: string
           state?: string | null
           updated_at?: string
@@ -282,6 +558,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -350,6 +633,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          organization_id: string | null
         }
         Insert: {
           active?: boolean
@@ -357,6 +641,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organization_id?: string | null
         }
         Update: {
           active?: boolean
@@ -364,8 +649,17 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sources_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
