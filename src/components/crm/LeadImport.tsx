@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle, AlertCircle, Download, Info } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase, formatPhone, parseDate, parseCurrency } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useSources } from "@/hooks/useSources";
 import { useProcedures } from "@/hooks/useProcedures";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function LeadImport() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,84 @@ export function LeadImport() {
   
   const { data: sources } = useSources();
   const { data: procedures } = useProcedures();
+
+  const downloadTemplate = () => {
+    // Criar dados de exemplo
+    const templateData = [
+      {
+        "NOME": "João Silva",
+        "TELEFONE": "(11) 98765-4321",
+        "DATA": "15/01/2024",
+        "FONTE": sources?.[0]?.name || "Instagram",
+        "INTERESSE": procedures?.[0]?.name || "Clareamento",
+        "1º CONTATO": "WhatsApp",
+        "DATA 1º CONTATO": "15/01/2024",
+        "2º CONTATO": "",
+        "DATA 2º CONTATO": "",
+        "3º CONTATO": "",
+        "DATA 3º CONTATO": "",
+        "AGENDOU?": "Sim",
+        "AGENDOU EM QUAL TENTATIVA?": "1ª tentativa",
+        "DATA CONSULTA": "20/01/2024",
+        "RESULTADO AVALIAÇÃO": "Aprovado",
+        "STATUS": "agendado",
+        "ORÇAMENTO": "R$ 1.500,00",
+        "OBS": "Cliente interessado em clareamento"
+      },
+      {
+        "NOME": "Maria Santos",
+        "TELEFONE": "11987654321",
+        "DATA": "16/01/2024",
+        "FONTE": sources?.[1]?.name || "Google",
+        "INTERESSE": procedures?.[1]?.name || "Implante",
+        "1º CONTATO": "Telefone",
+        "DATA 1º CONTATO": "16/01/2024",
+        "2º CONTATO": "",
+        "DATA 2º CONTATO": "",
+        "3º CONTATO": "",
+        "DATA 3º CONTATO": "",
+        "AGENDOU?": "Não",
+        "AGENDOU EM QUAL TENTATIVA?": "",
+        "DATA CONSULTA": "",
+        "RESULTADO AVALIAÇÃO": "",
+        "STATUS": "1ª tentativa",
+        "ORÇAMENTO": "",
+        "OBS": ""
+      }
+    ];
+
+    // Criar workbook e worksheet
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+
+    // Ajustar largura das colunas
+    const colWidths = [
+      { wch: 20 }, // NOME
+      { wch: 18 }, // TELEFONE
+      { wch: 12 }, // DATA
+      { wch: 15 }, // FONTE
+      { wch: 15 }, // INTERESSE
+      { wch: 12 }, // 1º CONTATO
+      { wch: 18 }, // DATA 1º CONTATO
+      { wch: 12 }, // 2º CONTATO
+      { wch: 18 }, // DATA 2º CONTATO
+      { wch: 12 }, // 3º CONTATO
+      { wch: 18 }, // DATA 3º CONTATO
+      { wch: 12 }, // AGENDOU?
+      { wch: 25 }, // AGENDOU EM QUAL TENTATIVA?
+      { wch: 15 }, // DATA CONSULTA
+      { wch: 20 }, // RESULTADO AVALIAÇÃO
+      { wch: 15 }, // STATUS
+      { wch: 15 }, // ORÇAMENTO
+      { wch: 30 }  // OBS
+    ];
+    ws['!cols'] = colWidths;
+
+    // Fazer download
+    XLSX.writeFile(wb, "modelo_importacao_leads.xlsx");
+    toast.success("Modelo Excel baixado com sucesso!");
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -189,6 +268,40 @@ export function LeadImport() {
         </DialogHeader>
 
         <div className="space-y-4">
+          <Button
+            variant="outline"
+            onClick={downloadTemplate}
+            className="w-full"
+            disabled={!sources || !procedures}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Baixar Modelo Excel
+          </Button>
+
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-sm space-y-2">
+              <p className="font-medium">Colunas obrigatórias:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><strong>NOME</strong>: Nome completo do lead</li>
+                <li><strong>TELEFONE</strong>: Número com DDD (formato livre)</li>
+              </ul>
+              
+              <p className="font-medium mt-3">Formato de datas:</p>
+              <p className="ml-2">DD/MM/AAAA (ex: 15/01/2024)</p>
+              
+              <p className="font-medium mt-3">Valores válidos para STATUS:</p>
+              <p className="ml-2 text-xs">
+                novo lead, 1ª tentativa, 2ª tentativa, 3ª tentativa, agendado, 
+                compareceu, não compareceu, orçamento enviado, fechado, perdido
+              </p>
+              
+              <p className="font-medium mt-3">Fontes disponíveis:</p>
+              <p className="ml-2 text-xs">
+                {sources?.map(s => s.name).join(", ") || "Carregando..."}
+              </p>
+            </AlertDescription>
+          </Alert>
           <Input
             type="file"
             accept=".xlsx,.xls"
