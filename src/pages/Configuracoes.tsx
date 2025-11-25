@@ -1,16 +1,33 @@
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WhatsAppConfig } from "@/components/settings/WhatsAppConfig";
 
 export default function Configuracoes() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Usuários, permissões e configurações do sistema</p>
+        <p className="text-muted-foreground">Configurações da organização e integrações</p>
       </div>
 
-      <Card className="p-8 text-center">
-        <p className="text-muted-foreground">Módulo de configurações em construção</p>
-      </Card>
+      <Tabs defaultValue="integrations" className="w-full">
+        <TabsList>
+          <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="integrations">Integrações</TabsTrigger>
+          <TabsTrigger value="users">Usuários</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general" className="space-y-4">
+          <p className="text-muted-foreground">Configurações gerais em breve</p>
+        </TabsContent>
+        
+        <TabsContent value="integrations" className="space-y-4">
+          <WhatsAppConfig />
+        </TabsContent>
+        
+        <TabsContent value="users" className="space-y-4">
+          <p className="text-muted-foreground">Gerenciamento de usuários em breve</p>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
