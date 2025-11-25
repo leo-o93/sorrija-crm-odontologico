@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { OrganizationProvider, useOrganization } from "@/contexts/OrganizationContext";
+import { OnboardingOrganization } from "@/components/onboarding/OnboardingOrganization";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
@@ -45,6 +46,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { needsOnboarding, loading, refetch } = useOrganization();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (needsOnboarding) {
+    return <OnboardingOrganization onComplete={refetch} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
