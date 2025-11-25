@@ -30,6 +30,7 @@ interface OrganizationContextType {
   isOwner: boolean;
   isAdmin: boolean;
   loading: boolean;
+  needsOnboarding: boolean;
   switchOrganization: (orgId: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -42,6 +43,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [membership, setMembership] = useState<OrganizationMember | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const fetchOrganizations = async () => {
     if (!user) {
@@ -67,6 +69,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       if (memberships && memberships.length > 0) {
         const orgs = memberships.map((m: any) => m.organizations);
         setOrganizations(orgs);
+        setNeedsOnboarding(false);
 
         // Get saved organization from localStorage or use first
         const savedOrgId = localStorage.getItem('currentOrganizationId');
@@ -78,6 +81,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
           setMembership(currentMembership as OrganizationMember);
           setCurrentOrganization((currentMembership as any).organizations);
         }
+      } else {
+        // User has no organizations - needs onboarding
+        setNeedsOnboarding(true);
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -122,6 +128,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         isOwner,
         isAdmin,
         loading,
+        needsOnboarding,
         switchOrganization,
         refetch: fetchOrganizations,
       }}

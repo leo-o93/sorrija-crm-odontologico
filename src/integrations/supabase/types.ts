@@ -739,6 +739,10 @@ export type Database = {
     }
     Functions: {
       cleanup_old_webhooks: { Args: never; Returns: undefined }
+      get_user_organization_ids: {
+        Args: { _user_id?: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
