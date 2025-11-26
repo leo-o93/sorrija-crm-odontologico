@@ -154,21 +154,45 @@ export function useUpdateLead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: UpdateLeadInput) => {
+    mutationFn: async ({ id, ...input }: UpdateLeadInput) => {
+      const { data, error } = await supabase
+        .from("leads")
+        .update(input)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Lead atualizado com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar lead");
+    },
+  });
+}
+
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("leads")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .delete()
         .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-      toast.success("Lead atualizado com sucesso");
+      toast.success("Lead excluído com sucesso!");
     },
-    onError: () => {
-      toast.error("Erro ao atualizar lead");
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao excluir lead");
     },
   });
 }
