@@ -16,9 +16,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -37,21 +34,6 @@ const navigation = [
 ];
 
 export function Sidebar() {
-  const { user } = useAuth();
-  
-  const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-      return data;
-    },
-    enabled: !!user?.id,
-  });
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg flex flex-col">
@@ -84,21 +66,11 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* User section */}
+      {/* Brand section */}
       <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gold/20 flex items-center justify-center">
-            <User className="h-5 w-5 text-gold" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {profile?.full_name || "Usuário"}
-            </p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">
-              {user?.email || ""}
-            </p>
-          </div>
-        </div>
+        <p className="text-xs text-sidebar-foreground/60 text-center">
+          CRM Evolution WhatsApp
+        </p>
       </div>
     </aside>
   );

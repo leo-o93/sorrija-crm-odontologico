@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Patient {
   id: string;
@@ -50,19 +49,12 @@ export interface UpdatePatientInput extends Partial<CreatePatientInput> {
 }
 
 export function usePatients(filters?: { search?: string; active?: boolean }) {
-  const { currentOrganization } = useOrganization();
-  
   return useQuery({
-    queryKey: ["patients", filters, currentOrganization?.id],
+    queryKey: ["patients", filters],
     queryFn: async () => {
-      if (!currentOrganization?.id) {
-        return [];
-      }
-
       let query = supabase
         .from("patients")
         .select("*")
-        .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
       if (filters?.active !== undefined) {
@@ -85,14 +77,10 @@ export function usePatients(filters?: { search?: string; active?: boolean }) {
 
 export function useCreatePatient() {
   const queryClient = useQueryClient();
-  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreatePatientInput) => {
-      const { data, error } = await supabase.from("patients").insert([{
-        ...input,
-        organization_id: currentOrganization?.id,
-      }]).select().single();
+      const { data, error } = await supabase.from("patients").insert([input]).select().single();
 
       if (error) throw error;
       return data;

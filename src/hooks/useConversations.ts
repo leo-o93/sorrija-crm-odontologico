@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useOrganization } from '@/contexts/OrganizationContext';
 import { useEffect } from 'react';
 
 export interface Conversation {
   id: string;
-  organization_id: string;
   contact_type: 'lead' | 'patient';
   lead_id: string | null;
   patient_id: string | null;
@@ -32,14 +30,11 @@ export interface Conversation {
 }
 
 export function useConversations(status: string = 'open', search: string = '') {
-  const { currentOrganization } = useOrganization();
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['conversations', currentOrganization?.id, status, search],
+    queryKey: ['conversations', status, search],
     queryFn: async () => {
-      if (!currentOrganization) return [];
-
       let query = supabase
         .from('conversations')
         .select(`
@@ -47,7 +42,6 @@ export function useConversations(status: string = 'open', search: string = '') {
           leads(id, name, interest_id, status),
           patients(id, name, email)
         `)
-        .eq('organization_id', currentOrganization.id)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (status !== 'all') {
@@ -62,13 +56,10 @@ export function useConversations(status: string = 'open', search: string = '') {
       if (error) throw error;
       return data as Conversation[];
     },
-    enabled: !!currentOrganization,
   });
 
   // Realtime subscription
   useEffect(() => {
-    if (!currentOrganization) return;
-
     const channel = supabase
       .channel('conversations-changes')
       .on(
@@ -77,7 +68,6 @@ export function useConversations(status: string = 'open', search: string = '') {
           event: '*',
           schema: 'public',
           table: 'conversations',
-          filter: `organization_id=eq.${currentOrganization.id}`,
         },
         () => {
           refetch();
@@ -88,7 +78,7 @@ export function useConversations(status: string = 'open', search: string = '') {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentOrganization, refetch]);
+  }, [refetch]);
 
   return {
     conversations: data || [],
