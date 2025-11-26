@@ -56,9 +56,20 @@ Deno.serve(async (req) => {
       .eq('active', true)
       .single();
 
-    if (!integrationSettings || !integrationSettings.settings?.n8n_outgoing_url) {
+    if (!integrationSettings) {
       return new Response(
         JSON.stringify({ error: 'WhatsApp integration not configured' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const evolutionBaseUrl = integrationSettings.settings?.evolution_base_url;
+    const evolutionApiKey = integrationSettings.settings?.evolution_api_key;
+    const evolutionInstance = integrationSettings.settings?.evolution_instance;
+
+    if (!evolutionBaseUrl || !evolutionApiKey || !evolutionInstance) {
+      return new Response(
+        JSON.stringify({ error: 'Evolution API not configured properly' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -127,47 +138,95 @@ Deno.serve(async (req) => {
       throw messageError;
     }
 
-    // Send to n8n webhook
-    const n8nWebhookUrl = integrationSettings.settings.n8n_outgoing_url;
-    const n8nPayload = {
-      conversation_id: conversationId,
-      local_message_id: newMessage.id,
-      phone: phoneWithCountry,
-      type: payload.type,
-      text: payload.text,
-      media: payload.media,
-      instance: integrationSettings.settings?.evolution_instance,
-      metadata: payload.metadata,
-    };
-
-    console.log('Sending to n8n:', n8nWebhookUrl);
+    // Choose between n8n webhook or direct Evolution API call
+    const n8nWebhookUrl = integrationSettings.settings?.n8n_outgoing_url;
+    let providerMessageId: string | null = null;
     
-    const n8nResponse = await fetch(n8nWebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(n8nPayload),
-    });
-
-    if (!n8nResponse.ok) {
-      console.error('n8n webhook failed:', await n8nResponse.text());
+    if (n8nWebhookUrl) {
+      // Send via n8n webhook
+      console.log('Sending via n8n webhook:', n8nWebhookUrl);
       
-      // Update message status to failed
-      await supabase
-        .from('messages')
-        .update({ status: 'failed' })
-        .eq('id', newMessage.id);
+      const n8nPayload = {
+        conversation_id: conversationId,
+        local_message_id: newMessage.id,
+        phone: phoneWithCountry,
+        type: payload.type,
+        text: payload.text,
+        media: payload.media,
+        instance: evolutionInstance,
+        metadata: payload.metadata,
+      };
 
-      throw new Error('Failed to send message via n8n');
+      const n8nResponse = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n8nPayload),
+      });
+
+      if (!n8nResponse.ok) {
+        console.error('n8n webhook failed:', await n8nResponse.text());
+        
+        await supabase
+          .from('messages')
+          .update({ status: 'failed' })
+          .eq('id', newMessage.id);
+
+        throw new Error('Failed to send message via n8n');
+      }
+
+      const n8nResult = await n8nResponse.json();
+      console.log('n8n response:', n8nResult);
+      providerMessageId = n8nResult.message_id || n8nResult.id;
+      
+    } else {
+      // Send directly to Evolution API
+      console.log('Sending directly to Evolution API');
+      
+      const evolutionPayload = {
+        number: phoneWithCountry,
+        text: payload.text,
+        ...(payload.media && { 
+          mediaMessage: {
+            mediatype: payload.type === 'image' ? 'image' : 'document',
+            media: payload.media,
+          }
+        }),
+      };
+
+      const evolutionUrl = `${evolutionBaseUrl}/message/sendText/${evolutionInstance}`;
+      console.log('Evolution URL:', evolutionUrl);
+      
+      const evolutionResponse = await fetch(evolutionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evolutionApiKey,
+        },
+        body: JSON.stringify(evolutionPayload),
+      });
+
+      if (!evolutionResponse.ok) {
+        const errorText = await evolutionResponse.text();
+        console.error('Evolution API failed:', errorText);
+        
+        await supabase
+          .from('messages')
+          .update({ status: 'failed' })
+          .eq('id', newMessage.id);
+
+        throw new Error(`Failed to send message via Evolution API: ${errorText}`);
+      }
+
+      const evolutionResult = await evolutionResponse.json();
+      console.log('Evolution response:', evolutionResult);
+      providerMessageId = evolutionResult.key?.id || evolutionResult.message?.key?.id;
     }
-
-    const n8nResult = await n8nResponse.json();
-    console.log('n8n response:', n8nResult);
 
     // Update message with provider ID and status
     const { data: updatedMessage } = await supabase
       .from('messages')
       .update({
-        provider_message_id: n8nResult.message_id || n8nResult.id,
+        provider_message_id: providerMessageId,
         status: 'sent',
         sent_at: new Date().toISOString(),
       })
