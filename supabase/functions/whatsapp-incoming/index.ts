@@ -92,14 +92,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Only process incoming messages (not from us)
-    if (payload.data.key.fromMe) {
-      console.log('Ignoring message from self');
-      return new Response(
-        JSON.stringify({ success: true, message: 'Ignored message from self' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Determine message direction
+    const isFromMe = payload.data.key.fromMe;
+    const direction = isFromMe ? 'out' : 'in';
+    console.log('Message direction:', direction);
 
     // Extract phone number (remove @s.whatsapp.net suffix)
     const remoteJid = payload.data.key.remoteJid;
@@ -206,12 +202,14 @@ Deno.serve(async (req) => {
       conversationId = existingConversation.id;
       console.log('Found existing conversation:', conversationId);
       
-      // Update conversation
+      // Update conversation (only increment unread_count for incoming messages)
       const { error: updateError } = await supabase
         .from('conversations')
         .update({
           last_message_at: new Date().toISOString(),
-          unread_count: (existingConversation.unread_count || 0) + 1,
+          unread_count: direction === 'in' 
+            ? (existingConversation.unread_count || 0) + 1 
+            : existingConversation.unread_count,
         })
         .eq('id', conversationId);
 
@@ -219,7 +217,7 @@ Deno.serve(async (req) => {
         console.error('Error updating conversation:', updateError);
       }
     } else {
-      // Create new conversation
+      // Create new conversation (only set unread_count for incoming messages)
       const { data: newConversation, error: convError } = await supabase
         .from('conversations')
         .insert({
@@ -231,7 +229,7 @@ Deno.serve(async (req) => {
           phone: phoneWithCountry,
           status: 'open',
           last_message_at: new Date().toISOString(),
-          unread_count: 1,
+          unread_count: direction === 'in' ? 1 : 0,
         })
         .select()
         .single();
@@ -250,11 +248,11 @@ Deno.serve(async (req) => {
       .from('messages')
       .insert({
         conversation_id: conversationId,
-        direction: 'in',
+        direction: direction,
         type: messageType,
         content_text: messageText || null,
         media_url: mediaUrl,
-        status: 'received',
+        status: direction === 'in' ? 'received' : 'sent',
         provider_message_id: payload.data.key.id,
         raw_payload: payload,
       })
