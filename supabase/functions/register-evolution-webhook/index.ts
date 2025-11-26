@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
       .eq('integration_type', 'whatsapp_evolution')
       .eq('active', true)
       .order('created_at', { ascending: false })
-      .maybeSingle();
+      .limit(1)
+      .single();
 
     if (settingsError || !settings) {
       console.error('Settings not found:', settingsError);
@@ -37,9 +38,9 @@ Deno.serve(async (req) => {
     const evolutionInstance = settings.settings.evolution_instance;
     const webhookSecret = settings.settings.webhook_secret;
 
-    if (!evolutionBaseUrl || !evolutionApiKey || !evolutionInstance || !webhookSecret) {
+    if (!evolutionBaseUrl || !evolutionApiKey || !evolutionInstance) {
       return new Response(
-        JSON.stringify({ error: 'Missing required configuration fields' }),
+        JSON.stringify({ error: 'Missing required configuration fields (URL, API Key, Instance)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -71,9 +72,11 @@ Deno.serve(async (req) => {
           ],
           webhook_by_events: false,
           webhook_base64: false,
-          headers: {
-            'x-webhook-token': webhookSecret,
-          },
+          ...(webhookSecret && {
+            headers: {
+              'x-webhook-token': webhookSecret,
+            },
+          }),
         }),
       }
     );
