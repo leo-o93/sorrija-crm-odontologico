@@ -70,7 +70,9 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
       .eq('active', true)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     if (integrationError || !integrationSettings) {
       console.error('Integration not found:', integrationError);
