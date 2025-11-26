@@ -8,3 +8,18 @@ verify_jwt = false
 
 [functions.whatsapp-status]
 verify_jwt = false
+
+[functions.check-whatsapp-status]
+verify_jwt = true
+
+[functions.sync-whatsapp-contacts]
+verify_jwt = true
+
+[functions.sync-message-history]
+verify_jwt = true
+
+[functions.conversations-api]
+verify_jwt = true
+
+[functions.messages-send]
+verify_jwt = true
