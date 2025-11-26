@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useState, useMemo } from 'react';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -25,6 +26,8 @@ export function ConversationList({
   statusFilter,
   onStatusFilterChange,
 }: ConversationListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const getContactName = (conv: Conversation) => {
     if (conv.contact_type === 'lead' && conv.leads) {
       return conv.leads.name;
@@ -34,6 +37,17 @@ export function ConversationList({
     }
     return conv.phone;
   };
+
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery) return conversations;
+    
+    const query = searchQuery.toLowerCase();
+    return conversations.filter((conv) => {
+      const name = getContactName(conv).toLowerCase();
+      const phone = conv.phone.toLowerCase();
+      return name.includes(query) || phone.includes(query);
+    });
+  }, [conversations, searchQuery]);
 
   return (
     <div className="flex flex-col h-full">
@@ -45,7 +59,12 @@ export function ConversationList({
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar conversas..." className="pl-9" />
+          <Input 
+            placeholder="Buscar conversas..." 
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         <Tabs value={statusFilter} onValueChange={onStatusFilterChange}>
@@ -62,10 +81,10 @@ export function ConversationList({
         <div className="divide-y divide-border">
           {isLoading ? (
             <div className="p-4 text-center text-muted-foreground">Carregando...</div>
-          ) : conversations.length === 0 ? (
+          ) : filteredConversations.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">Nenhuma conversa encontrada</div>
           ) : (
-            conversations.map((conv) => (
+            filteredConversations.map((conv) => (
               <button
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}

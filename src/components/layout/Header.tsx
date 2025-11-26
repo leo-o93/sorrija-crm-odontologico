@@ -1,7 +1,8 @@
-import { Bell, Search, LogOut, Settings } from "lucide-react";
+import { Bell, Search, LogOut, Settings, Building2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
   const { user, signOut } = useAuth();
+  const { currentOrganization, organizations, switchOrganization } = useOrganization();
 
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
@@ -33,6 +35,32 @@ export function Header() {
             />
           </div>
         </div>
+
+        {/* Organization Selector */}
+        {organizations.length > 1 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="max-w-[150px] truncate">{currentOrganization?.name}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Organizações</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {organizations.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => switchOrganization(org.id)}
+                  className={currentOrganization?.id === org.id ? "bg-accent" : ""}
+                >
+                  {org.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Actions */}
         <div className="flex items-center gap-2">

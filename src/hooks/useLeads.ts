@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Lead {
   id: string;
@@ -36,9 +37,15 @@ export function useLeads(filters?: {
   interest_id?: string;
   search?: string;
 }) {
+  const { currentOrganization } = useOrganization();
+  
   return useQuery({
-    queryKey: ["leads", filters],
+    queryKey: ["leads", filters, currentOrganization?.id],
     queryFn: async () => {
+      if (!currentOrganization?.id) {
+        return [];
+      }
+
       let query = supabase
         .from("leads")
         .select(`
@@ -46,6 +53,7 @@ export function useLeads(filters?: {
           sources (name),
           procedures (name)
         `)
+        .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
       if (filters?.status) {
@@ -110,10 +118,14 @@ export interface CreateLeadInput {
 
 export function useCreateLead() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (lead: CreateLeadInput) => {
-      const { error } = await supabase.from("leads").insert([lead]);
+      const { error } = await supabase.from("leads").insert([{
+        ...lead,
+        organization_id: currentOrganization?.id,
+      }]);
 
       if (error) throw error;
     },

@@ -2,3 +2,9 @@ project_id = "yvdaslrmxzgpqgkphtun"
 
 [functions.webhook-receiver]
 verify_jwt = false
+
+[functions.whatsapp-incoming]
+verify_jwt = false
+
+[functions.whatsapp-status]
+verify_jwt = false
