@@ -19,13 +19,35 @@ export interface Conversation {
   leads?: {
     id: string;
     name: string;
+    phone: string;
     interest_id: string | null;
+    source_id: string | null;
     status: string;
+    notes: string | null;
+    budget_total: number | null;
+    budget_paid: number | null;
+    registration_date: string;
+    procedures?: {
+      id: string;
+      name: string;
+      category: string;
+    };
+    sources?: {
+      id: string;
+      name: string;
+      channel: string;
+    };
   };
   patients?: {
     id: string;
     name: string;
     email: string | null;
+    phone: string;
+    birth_date: string | null;
+    medical_history: string | null;
+    allergies: string | null;
+    medications: string | null;
+    notes: string | null;
   };
 }
 
@@ -39,8 +61,16 @@ export function useConversations(status: string = 'open', search: string = '') {
         .from('conversations')
         .select(`
           *,
-          leads(id, name, interest_id, status),
-          patients(id, name, email)
+          leads(
+            id, name, phone, interest_id, source_id, status, notes, 
+            budget_total, budget_paid, registration_date,
+            procedures:interest_id(id, name, category),
+            sources:source_id(id, name, channel)
+          ),
+          patients(
+            id, name, email, phone, birth_date, 
+            medical_history, allergies, medications, notes
+          )
         `)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
@@ -98,8 +128,16 @@ export function useConversation(conversationId: string | null) {
         .from('conversations')
         .select(`
           *,
-          leads(id, name, phone, interest_id, status, notes),
-          patients(id, name, phone, email)
+          leads(
+            id, name, phone, interest_id, source_id, status, notes,
+            budget_total, budget_paid, registration_date,
+            procedures:interest_id(id, name, category),
+            sources:source_id(id, name, channel)
+          ),
+          patients(
+            id, name, email, phone, birth_date,
+            medical_history, allergies, medications, notes
+          )
         `)
         .eq('id', conversationId)
         .single();
