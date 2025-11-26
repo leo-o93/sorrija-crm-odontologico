@@ -17,15 +17,31 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Buscar configuração da Evolution API
+    // Buscar configuração da Evolution API (mais recente)
     const { data: config, error: configError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
       .eq('active', true)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (configError || !config) {
+    if (configError) {
+      console.error('Error fetching config:', configError);
+      return new Response(
+        JSON.stringify({ 
+          status: 'error',
+          message: `Erro ao buscar configuração: ${configError.message}` 
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (!config) {
       return new Response(
         JSON.stringify({ 
           status: 'not_configured',
