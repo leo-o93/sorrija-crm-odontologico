@@ -19,8 +19,10 @@ serve(async (req) => {
 
     // Buscar configuração da Evolution API
     const { data: config, error: configError } = await supabase
-      .from('evolution_config')
+      .from('integration_settings')
       .select('*')
+      .eq('integration_type', 'whatsapp_evolution')
+      .eq('active', true)
       .single();
 
     if (configError || !config) {
@@ -35,14 +37,17 @@ serve(async (req) => {
       );
     }
 
+    const settings = config.settings as any;
+    const cleanUrl = settings.evolution_base_url.replace(/\/manager\/?$/, '');
+
     console.log('Checking WhatsApp connection status...');
 
     // Verificar status da instância
     const response = await fetch(
-      `${config.evolution_base_url}/instance/connectionState/${config.evolution_instance}`,
+      `${cleanUrl}/instance/connectionState/${settings.evolution_instance}`,
       {
         headers: {
-          'apikey': config.evolution_api_key,
+          'apikey': settings.evolution_api_key,
         },
       }
     );
@@ -57,8 +62,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: connectionState.state || 'unknown',
-        instance: config.evolution_instance,
-        last_sync: config.last_sync_at,
+        instance: settings.evolution_instance,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

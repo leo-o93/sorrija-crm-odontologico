@@ -25,13 +25,18 @@ serve(async (req) => {
 
     // Buscar configuração da Evolution API
     const { data: config, error: configError } = await supabase
-      .from('evolution_config')
+      .from('integration_settings')
       .select('*')
+      .eq('integration_type', 'whatsapp_evolution')
+      .eq('active', true)
       .single();
 
     if (configError || !config) {
       throw new Error('Evolution API não configurada');
     }
+
+    const settings = config.settings as any;
+    const cleanUrl = settings.evolution_base_url.replace(/\/manager\/?$/, '');
 
     console.log(`Fetching message history for ${phone}...`);
 
@@ -39,11 +44,11 @@ serve(async (req) => {
     const remotePhone = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
     
     const response = await fetch(
-      `${config.evolution_base_url}/chat/findMessages/${config.evolution_instance}`,
+      `${cleanUrl}/chat/findMessages/${settings.evolution_instance}`,
       {
         method: 'POST',
         headers: {
-          'apikey': config.evolution_api_key,
+          'apikey': settings.evolution_api_key,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -81,7 +86,7 @@ serve(async (req) => {
           phone: phone,
           channel: 'whatsapp',
           contact_type: 'lead',
-          evolution_instance: config.evolution_instance,
+          evolution_instance: settings.evolution_instance,
           status: 'open',
         })
         .select('id')

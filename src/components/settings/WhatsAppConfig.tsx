@@ -4,12 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useIntegrationSettings, useSaveIntegrationSettings } from '@/hooks/useIntegrationSettings';
-import { Loader2, Copy, Check } from 'lucide-react';
+import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
+import { ConnectionStatus } from '@/components/whatsapp/ConnectionStatus';
+import { Loader2, Copy, Check, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function WhatsAppConfig() {
   const { settings, isLoading } = useIntegrationSettings('whatsapp_evolution');
   const saveSettings = useSaveIntegrationSettings();
+  const { syncContacts, testConnection, isConfigured } = useEvolutionAPI();
 
   const [formData, setFormData] = useState({
     evolution_base_url: '',
@@ -39,9 +42,15 @@ export function WhatsAppConfig() {
   };
 
   const handleSave = async () => {
+    // Clean URL before saving (remove /manager/ if present)
+    const cleanedData = {
+      ...formData,
+      evolution_base_url: formData.evolution_base_url.replace(/\/manager\/?$/, '')
+    };
+    
     await saveSettings.mutateAsync({
       integrationType: 'whatsapp_evolution',
-      settings: formData,
+      settings: cleanedData,
     });
   };
 
@@ -64,6 +73,8 @@ export function WhatsAppConfig() {
 
   return (
     <div className="space-y-6">
+      <ConnectionStatus />
+      
       <Card>
         <CardHeader>
           <CardTitle>Configuração WhatsApp / Evolution API</CardTitle>
@@ -129,10 +140,38 @@ export function WhatsAppConfig() {
             />
           </div>
 
-          <Button onClick={handleSave} disabled={saveSettings.isPending}>
-            {saveSettings.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar Configurações
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleSave} disabled={saveSettings.isPending}>
+              {saveSettings.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar Configurações
+            </Button>
+            
+            {isConfigured && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => testConnection.mutate()}
+                  disabled={testConnection.isPending}
+                >
+                  {testConnection.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Testar Conexão
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => syncContacts.mutate()}
+                  disabled={syncContacts.isPending}
+                >
+                  {syncContacts.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Sincronizar Contatos
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
