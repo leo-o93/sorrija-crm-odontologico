@@ -17,15 +17,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar configuração da Evolution API
+    // Buscar configuração da Evolution API (mais recente)
     const { data: config, error: configError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
       .eq('active', true)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (configError || !config) {
+    if (configError) {
+      console.error('Error fetching config:', configError);
+      throw new Error(`Erro ao buscar configuração: ${configError.message}`);
+    }
+
+    if (!config) {
       throw new Error('Evolution API não configurada');
     }
 
