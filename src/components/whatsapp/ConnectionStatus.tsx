@@ -51,9 +51,9 @@ export function ConnectionStatus() {
     );
   }
 
-  const isConnected = connectionState?.state === 'open';
-  const isConnecting = connectionState?.state === 'connecting';
-  const isDisconnected = connectionState?.state === 'close' || !connectionState;
+  const isConnected = connectionState?.instance?.state === 'open';
+  const isConnecting = connectionState?.instance?.state === 'connecting';
+  const isDisconnected = connectionState?.instance?.state === 'close' || !connectionState;
 
   return (
     <Card className="p-6">

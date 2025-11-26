@@ -4,7 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ConnectionState {
-  state: 'open' | 'close' | 'connecting';
+  instance: {
+    instanceName: string;
+    state: 'open' | 'close' | 'connecting';
+  };
 }
 
 interface Contact {
