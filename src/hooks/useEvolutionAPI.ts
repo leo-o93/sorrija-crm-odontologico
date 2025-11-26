@@ -1,5 +1,6 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEvolution } from '@/contexts/EvolutionContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ConnectionState {
@@ -13,14 +14,21 @@ interface Contact {
   profilePicUrl?: string;
 }
 
+// Clean Evolution API URL (remove /manager/ if present)
+const cleanEvolutionUrl = (url: string): string => {
+  return url.replace(/\/manager\/?$/, '');
+};
+
 export function useEvolutionAPI() {
   const { config } = useEvolution();
+  const queryClient = useQueryClient();
 
   const fetchConnectionState = async (): Promise<ConnectionState> => {
     if (!config) throw new Error('Evolution API not configured');
 
+    const cleanUrl = cleanEvolutionUrl(config.evolution_base_url);
     const response = await fetch(
-      `${config.evolution_base_url}/instance/connectionState/${config.evolution_instance}`,
+      `${cleanUrl}/instance/connectionState/${config.evolution_instance}`,
       {
         headers: {
           'apikey': config.evolution_api_key,
@@ -38,8 +46,9 @@ export function useEvolutionAPI() {
   const fetchQRCode = async (): Promise<{ code: string; base64: string }> => {
     if (!config) throw new Error('Evolution API not configured');
 
+    const cleanUrl = cleanEvolutionUrl(config.evolution_base_url);
     const response = await fetch(
-      `${config.evolution_base_url}/instance/connect/${config.evolution_instance}`,
+      `${cleanUrl}/instance/connect/${config.evolution_instance}`,
       {
         method: 'GET',
         headers: {
@@ -58,8 +67,9 @@ export function useEvolutionAPI() {
   const fetchContacts = async (): Promise<Contact[]> => {
     if (!config) throw new Error('Evolution API not configured');
 
+    const cleanUrl = cleanEvolutionUrl(config.evolution_base_url);
     const response = await fetch(
-      `${config.evolution_base_url}/chat/findContacts/${config.evolution_instance}`,
+      `${cleanUrl}/chat/findContacts/${config.evolution_instance}`,
       {
         headers: {
           'apikey': config.evolution_api_key,
@@ -76,18 +86,58 @@ export function useEvolutionAPI() {
 
   const syncContacts = useMutation({
     mutationFn: async () => {
-      const contacts = await fetchContacts();
+      const { data, error } = await supabase.functions.invoke('sync-whatsapp-contacts');
       
-      // Aqui você pode chamar a edge function para sincronizar os contatos
-      // com o banco de dados, criando/atualizando leads automaticamente
-      
-      return contacts;
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      toast.success('Contatos sincronizados com sucesso!');
+    onSuccess: (data) => {
+      toast.success(`${data.synced} contatos sincronizados com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
     onError: (error: Error) => {
       toast.error(`Erro ao sincronizar contatos: ${error.message}`);
+    },
+  });
+
+  const syncMessages = useMutation({
+    mutationFn: async (phone: string) => {
+      const { data, error } = await supabase.functions.invoke('sync-message-history', {
+        body: { phone, limit: 100 }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.synced} mensagens sincronizadas com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao sincronizar mensagens: ${error.message}`);
+    },
+  });
+
+  const testConnection = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('check-whatsapp-status');
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.status === 'open') {
+        toast.success('✅ Conexão com WhatsApp estabelecida!');
+      } else if (data.status === 'close') {
+        toast.warning('⚠️ WhatsApp desconectado. Gere um QR Code para conectar.');
+      } else {
+        toast.info(`Status: ${data.status}`);
+      }
+      refetchConnectionState();
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao testar conexão: ${error.message}`);
     },
   });
 
@@ -104,6 +154,8 @@ export function useEvolutionAPI() {
     fetchQRCode,
     fetchContacts,
     syncContacts,
+    syncMessages,
+    testConnection,
     isConfigured: !!config,
   };
 }

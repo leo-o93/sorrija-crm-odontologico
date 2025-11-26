@@ -19,22 +19,27 @@ serve(async (req) => {
 
     // Buscar configuração da Evolution API
     const { data: config, error: configError } = await supabase
-      .from('evolution_config')
+      .from('integration_settings')
       .select('*')
+      .eq('integration_type', 'whatsapp_evolution')
+      .eq('active', true)
       .single();
 
     if (configError || !config) {
       throw new Error('Evolution API não configurada');
     }
 
+    const settings = config.settings as any;
+    const cleanUrl = settings.evolution_base_url.replace(/\/manager\/?$/, '');
+
     console.log('Fetching contacts from Evolution API...');
 
     // Buscar contatos da Evolution API
     const response = await fetch(
-      `${config.evolution_base_url}/chat/findContacts/${config.evolution_instance}`,
+      `${cleanUrl}/chat/findContacts/${settings.evolution_instance}`,
       {
         headers: {
-          'apikey': config.evolution_api_key,
+          'apikey': settings.evolution_api_key,
         },
       }
     );
@@ -71,10 +76,10 @@ serve(async (req) => {
       }
     }
 
-    // Atualizar última sincronização
+    // Atualizar última sincronização (opcional, pode remover se não precisar)
     await supabase
-      .from('evolution_config')
-      .update({ last_sync_at: new Date().toISOString() })
+      .from('integration_settings')
+      .update({ updated_at: new Date().toISOString() })
       .eq('id', config.id);
 
     console.log(`Successfully synced ${leadsToUpsert.length} contacts`);
