@@ -162,6 +162,8 @@ export default function CRM() {
     setActiveId(event.active.id as string);
   };
 
+  const validStatuses = columns.map(c => c.id);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
@@ -169,9 +171,29 @@ export default function CRM() {
     if (!over) return;
 
     const leadId = active.id as string;
-    const newStatus = over.id as LeadStatus;
+    const overId = over.id as string;
 
-    updateLeadStatus.mutate({ id: leadId, status: newStatus });
+    // Verifica se o drop foi sobre uma coluna válida
+    if (validStatuses.includes(overId as LeadStatus)) {
+      const currentLead = leads?.find(l => l.id === leadId);
+      if (currentLead?.status !== overId) {
+        updateLeadStatus.mutate({ id: leadId, status: overId as LeadStatus });
+      }
+      return;
+    }
+
+    // Se não for um status válido, é um drop sobre outro lead
+    // Encontrar a coluna (status) do lead sobre o qual foi dropado
+    const targetLead = leads?.find(l => l.id === overId);
+    if (targetLead) {
+      const newStatus = targetLead.status as LeadStatus;
+      const currentLead = leads?.find(l => l.id === leadId);
+      
+      // Só atualiza se o status for diferente
+      if (currentLead?.status !== newStatus) {
+        updateLeadStatus.mutate({ id: leadId, status: newStatus });
+      }
+    }
   };
 
   const handleLeadClick = (lead: Lead) => {
