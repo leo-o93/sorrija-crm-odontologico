@@ -48,29 +48,12 @@ Deno.serve(async (req) => {
     const payload: SendMessagePayload = await req.json();
     console.log('Send message request:', payload);
 
-    // Get user's organization
-    const { data: membership } = await supabase
-      .from('organization_members')
-      .select('organization_id, organizations!inner(*)')
-      .eq('user_id', user.id)
-      .eq('active', true)
-      .single();
-
-    if (!membership) {
-      return new Response(
-        JSON.stringify({ error: 'User not associated with any organization' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const organizationId = membership.organization_id;
-
-    // Get integration settings
+    // Get integration settings (single clinic setup - no organizations)
     const { data: integrationSettings } = await supabase
       .from('integration_settings')
       .select('*')
-      .eq('organization_id', organizationId)
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('active', true)
       .single();
 
     if (!integrationSettings || !integrationSettings.settings?.n8n_outgoing_url) {
@@ -91,7 +74,6 @@ Deno.serve(async (req) => {
       const { data: existingConversation } = await supabase
         .from('conversations')
         .select('id')
-        .eq('organization_id', organizationId)
         .eq('phone', phoneWithCountry)
         .eq('channel', 'whatsapp')
         .maybeSingle();
@@ -103,7 +85,6 @@ Deno.serve(async (req) => {
         const { data: newConversation, error: convError } = await supabase
           .from('conversations')
           .insert({
-            organization_id: organizationId,
             contact_type: payload.lead_id ? 'lead' : 'patient',
             lead_id: payload.lead_id || null,
             patient_id: payload.patient_id || null,
