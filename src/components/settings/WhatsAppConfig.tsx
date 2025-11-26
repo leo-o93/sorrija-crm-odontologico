@@ -4,12 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useIntegrationSettings, useSaveIntegrationSettings } from '@/hooks/useIntegrationSettings';
-import { useOrganization } from '@/contexts/OrganizationContext';
 import { Loader2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function WhatsAppConfig() {
-  const { currentOrganization } = useOrganization();
   const { settings, isLoading } = useIntegrationSettings('whatsapp_evolution');
   const saveSettings = useSaveIntegrationSettings();
 
@@ -47,9 +45,7 @@ export function WhatsAppConfig() {
     });
   };
 
-  const webhookUrl = currentOrganization
-    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-incoming`
-    : '';
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-incoming`;
 
   const handleCopyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);

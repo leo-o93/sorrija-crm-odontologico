@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useOrganization } from '@/contexts/OrganizationContext';
 import { toast } from 'sonner';
 
 export interface IntegrationSettings {
   id: string;
-  organization_id: string;
   integration_type: string;
   settings: {
     evolution_base_url?: string;
@@ -20,24 +18,18 @@ export interface IntegrationSettings {
 }
 
 export function useIntegrationSettings(integrationType: string = 'whatsapp_evolution') {
-  const { currentOrganization } = useOrganization();
-
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['integration-settings', currentOrganization?.id, integrationType],
+    queryKey: ['integration-settings', integrationType],
     queryFn: async () => {
-      if (!currentOrganization) return null;
-
       const { data, error } = await supabase
         .from('integration_settings')
         .select('*')
-        .eq('organization_id', currentOrganization.id)
         .eq('integration_type', integrationType)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data as IntegrationSettings | null;
     },
-    enabled: !!currentOrganization,
   });
 
   return {
@@ -50,7 +42,6 @@ export function useIntegrationSettings(integrationType: string = 'whatsapp_evolu
 
 export function useSaveIntegrationSettings() {
   const queryClient = useQueryClient();
-  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async ({
@@ -60,12 +51,9 @@ export function useSaveIntegrationSettings() {
       integrationType: string;
       settings: Record<string, any>;
     }) => {
-      if (!currentOrganization) throw new Error('No organization selected');
-
       const { data, error } = await supabase
         .from('integration_settings')
         .upsert({
-          organization_id: currentOrganization.id,
           integration_type: integrationType,
           settings,
           active: true,

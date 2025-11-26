@@ -1,25 +1,11 @@
-import { Bell, Search, LogOut, Settings, Building2, ChevronDown } from "lucide-react";
+import { Bell, Search, Settings, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
-import { useOrganization } from "@/contexts/OrganizationContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useEvolutionAPI } from "@/hooks/useEvolutionAPI";
+import { Badge } from "@/components/ui/badge";
 
 export function Header() {
-  const { user, signOut } = useAuth();
-  const { currentOrganization, organizations, switchOrganization } = useOrganization();
-
-  const getInitials = (email: string) => {
-    return email.substring(0, 2).toUpperCase();
-  };
+  const { connectionState } = useEvolutionAPI();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -36,31 +22,17 @@ export function Header() {
           </div>
         </div>
 
-        {/* Organization Selector */}
-        {organizations.length > 1 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                <span className="max-w-[150px] truncate">{currentOrganization?.name}</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuLabel>Organizações</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {organizations.map((org) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => switchOrganization(org.id)}
-                  className={currentOrganization?.id === org.id ? "bg-accent" : ""}
-                >
-                  {org.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        {/* WhatsApp Status */}
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <Badge
+            variant={connectionState?.state === 'open' ? 'default' : 'destructive'}
+            className="gap-1"
+          >
+            <span className={`h-2 w-2 rounded-full ${connectionState?.state === 'open' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+            {connectionState?.state === 'open' ? 'Conectado' : 'Desconectado'}
+          </Badge>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
@@ -72,29 +44,6 @@ export function Header() {
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
           </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>{user?.email ? getInitials(user.email) : "US"}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Minha Conta</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Sair</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </header>
