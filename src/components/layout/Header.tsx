@@ -26,11 +26,11 @@ export function Header() {
         <div className="flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           <Badge
-            variant={connectionState?.state === 'open' ? 'default' : 'destructive'}
+            variant={connectionState?.instance?.state === 'open' ? 'default' : 'destructive'}
             className="gap-1"
           >
-            <span className={`h-2 w-2 rounded-full ${connectionState?.state === 'open' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-            {connectionState?.state === 'open' ? 'Conectado' : 'Desconectado'}
+            <span className={`h-2 w-2 rounded-full ${connectionState?.instance?.state === 'open' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+            {connectionState?.instance?.state === 'open' ? 'Conectado' : 'Desconectado'}
           </Badge>
         </div>
 

@@ -77,7 +77,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        status: connectionState.state || 'unknown',
+        status: connectionState.instance?.state || 'unknown',
         instance: settings.evolution_instance,
       }),
       {
