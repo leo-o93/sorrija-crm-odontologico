@@ -1,14 +1,15 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Lead } from "@/hooks/useLeads";
+import { Lead, useDeleteLead } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { LeadForm } from "./LeadForm";
 import { ConvertToPatientDialog } from "@/components/pacientes/ConvertToPatientDialog";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -32,6 +33,8 @@ const statusLabels: Record<string, string> = {
 export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const deleteLead = useDeleteLead();
 
   if (!lead) return null;
 
@@ -47,6 +50,15 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
 
   const handleFormSuccess = () => {
     setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    deleteLead.mutate(lead.id, {
+      onSuccess: () => {
+        onOpenChange(false);
+        setIsDeleteDialogOpen(false);
+      },
+    });
   };
 
   return (
@@ -83,7 +95,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 </Button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
@@ -96,6 +108,15 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
                   Converter em Paciente
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
                 </Button>
               </div>
 
@@ -259,6 +280,14 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
         onOpenChange={setIsConvertDialogOpen}
         leadId={lead.id}
         leadName={lead.name}
+      />
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDelete}
+        itemName={lead.name}
+        title="Excluir Lead"
       />
     </Sheet>
   );
