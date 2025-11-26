@@ -54,6 +54,27 @@ Deno.serve(async (req) => {
     });
 
     // Register webhook with Evolution API
+    const webhookPayload: any = {
+      webhook: {
+        enabled: true,
+        url: webhookUrl,
+        byEvents: false,
+        base64: false,
+        events: [
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
+          'CONNECTION_UPDATE',
+        ],
+      },
+    };
+
+    // Add custom headers if webhook secret exists
+    if (webhookSecret) {
+      webhookPayload.webhook.headers = {
+        'x-webhook-token': webhookSecret,
+      };
+    }
+
     const response = await fetch(
       `${evolutionBaseUrl}/webhook/set/${evolutionInstance}`,
       {
@@ -62,22 +83,7 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
           'apikey': evolutionApiKey,
         },
-        body: JSON.stringify({
-          enabled: true,
-          url: webhookUrl,
-          events: [
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'CONNECTION_UPDATE',
-          ],
-          webhook_by_events: false,
-          webhook_base64: false,
-          ...(webhookSecret && {
-            headers: {
-              'x-webhook-token': webhookSecret,
-            },
-          }),
-        }),
+        body: JSON.stringify(webhookPayload),
       }
     );
 
