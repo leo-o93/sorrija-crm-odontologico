@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export function WhatsAppConfig() {
   const { settings, isLoading } = useIntegrationSettings('whatsapp_evolution');
   const saveSettings = useSaveIntegrationSettings();
-  const { syncContacts, testConnection, isConfigured } = useEvolutionAPI();
+  const { syncContacts, testConnection, registerWebhook, isConfigured } = useEvolutionAPI();
 
   const [formData, setFormData] = useState({
     evolution_base_url: '',
@@ -155,6 +155,15 @@ export function WhatsAppConfig() {
                 >
                   {testConnection.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Testar Conexão
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => registerWebhook.mutate()}
+                  disabled={registerWebhook.isPending}
+                >
+                  {registerWebhook.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Registrar Webhook
                 </Button>
                 
                 <Button

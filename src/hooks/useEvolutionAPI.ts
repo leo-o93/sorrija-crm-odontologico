@@ -144,6 +144,22 @@ export function useEvolutionAPI() {
     },
   });
 
+  const registerWebhook = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('register-evolution-webhook');
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success('✅ Webhook registrado com sucesso na Evolution API!');
+      console.log('Webhook registration result:', data);
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao registrar webhook: ${error.message}`);
+    },
+  });
+
   const { data: connectionState, refetch: refetchConnectionState } = useQuery({
     queryKey: ['evolution-connection-state', config?.evolution_instance],
     queryFn: fetchConnectionState,
@@ -159,6 +175,7 @@ export function useEvolutionAPI() {
     syncContacts,
     syncMessages,
     testConnection,
+    registerWebhook,
     isConfigured: !!config,
   };
 }
