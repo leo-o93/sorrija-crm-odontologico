@@ -155,45 +155,6 @@ export type Database = {
           },
         ]
       }
-      evolution_config: {
-        Row: {
-          active: boolean | null
-          created_at: string | null
-          evolution_api_key: string
-          evolution_base_url: string
-          evolution_instance: string
-          id: string
-          last_sync_at: string | null
-          n8n_outgoing_url: string | null
-          updated_at: string | null
-          webhook_secret: string | null
-        }
-        Insert: {
-          active?: boolean | null
-          created_at?: string | null
-          evolution_api_key: string
-          evolution_base_url: string
-          evolution_instance: string
-          id?: string
-          last_sync_at?: string | null
-          n8n_outgoing_url?: string | null
-          updated_at?: string | null
-          webhook_secret?: string | null
-        }
-        Update: {
-          active?: boolean | null
-          created_at?: string | null
-          evolution_api_key?: string
-          evolution_base_url?: string
-          evolution_instance?: string
-          id?: string
-          last_sync_at?: string | null
-          n8n_outgoing_url?: string | null
-          updated_at?: string | null
-          webhook_secret?: string | null
-        }
-        Relationships: []
-      }
       expense_categories: {
         Row: {
           active: boolean
