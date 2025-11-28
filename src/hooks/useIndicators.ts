@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, subMonths, format, eachMonthOfInterval, subDays } from 'date-fns';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface IndicatorMetrics {
   // Current period
@@ -34,6 +35,7 @@ export interface IndicatorMetrics {
 }
 
 export function useIndicators(startDate?: Date, endDate?: Date) {
+  const { currentOrganization } = useOrganization();
   const start = startDate || startOfMonth(new Date());
   const end = endDate || endOfMonth(new Date());
   
@@ -41,12 +43,14 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
   const previousEnd = subMonths(end, 1);
 
   return useQuery({
-    queryKey: ['indicators', format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd')],
+    queryKey: ['indicators', currentOrganization?.id, format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd')],
     queryFn: async (): Promise<IndicatorMetrics> => {
+      if (!currentOrganization?.id) return null as any;
       // Fetch current period leads
       const { data: currentLeads, error: leadsError } = await supabase
         .from('leads')
         .select('id, status, evaluation_result, budget_total, source_id, sources(name)')
+        .eq('organization_id', currentOrganization.id)
         .gte('registration_date', format(start, 'yyyy-MM-dd'))
         .lte('registration_date', format(end, 'yyyy-MM-dd'));
 
@@ -56,6 +60,7 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
       const { data: previousLeads, error: prevLeadsError } = await supabase
         .from('leads')
         .select('id')
+        .eq('organization_id', currentOrganization.id)
         .gte('registration_date', format(previousStart, 'yyyy-MM-dd'))
         .lte('registration_date', format(previousEnd, 'yyyy-MM-dd'));
 
@@ -65,6 +70,7 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
       const { data: currentTransactions, error: transError } = await supabase
         .from('financial_transactions')
         .select('amount, type, status')
+        .eq('organization_id', currentOrganization.id)
         .eq('type', 'receita')
         .eq('status', 'paid')
         .gte('transaction_date', format(start, 'yyyy-MM-dd'))
@@ -76,6 +82,7 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
       const { data: previousTransactions, error: prevTransError } = await supabase
         .from('financial_transactions')
         .select('amount')
+        .eq('organization_id', currentOrganization.id)
         .eq('type', 'receita')
         .eq('status', 'paid')
         .gte('transaction_date', format(previousStart, 'yyyy-MM-dd'))
@@ -88,6 +95,7 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
       const { data: evolutionLeads, error: evolutionError } = await supabase
         .from('leads')
         .select('registration_date, budget_total, status')
+        .eq('organization_id', currentOrganization.id)
         .gte('registration_date', format(sixMonthsAgo, 'yyyy-MM-dd'))
         .lte('registration_date', format(end, 'yyyy-MM-dd'));
 
@@ -187,6 +195,7 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
         leadsBySource,
         monthlyEvolution
       };
-    }
+    },
+    enabled: !!currentOrganization?.id,
   });
 }

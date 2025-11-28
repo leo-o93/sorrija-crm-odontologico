@@ -51,7 +51,7 @@ serve(async (req) => {
       
       const { data: conversations, error: convListError } = await supabase
         .from('conversations')
-        .select('phone, id, evolution_instance')
+        .select('phone, id, evolution_instance, organization_id')
         .eq('evolution_instance', settings.evolution_instance);
 
       if (convListError) throw convListError;
@@ -114,6 +114,7 @@ serve(async (req) => {
               status: 'received',
               created_at: new Date(msg.messageTimestamp * 1000).toISOString(),
               raw_payload: msg,
+              organization_id: conv.organization_id,
             }));
 
             const { error: insertError } = await supabase
@@ -185,11 +186,21 @@ serve(async (req) => {
     const messages = await response.json();
     console.log(`Found ${messages.length} messages`);
 
+    // Find organization for this instance
+    const { data: organization } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('evolution_instance', settings.evolution_instance)
+      .single();
+
+    const organizationId = organization?.id;
+
     // Buscar ou criar conversa
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, organization_id')
       .eq('phone', phone)
+      .eq('organization_id', organizationId || '')
       .maybeSingle();
 
     let conversationId = conversation?.id;
@@ -204,8 +215,9 @@ serve(async (req) => {
           contact_type: 'lead',
           evolution_instance: settings.evolution_instance,
           status: 'open',
+          organization_id: organizationId,
         })
-        .select('id')
+        .select('id, organization_id')
         .single();
 
       if (createError) throw createError;
@@ -223,6 +235,7 @@ serve(async (req) => {
         status: 'received',
         created_at: new Date(msg.messageTimestamp * 1000).toISOString(),
         raw_payload: msg,
+        organization_id: conversation?.organization_id || organizationId,
       }));
 
       const { error: insertError } = await supabase
