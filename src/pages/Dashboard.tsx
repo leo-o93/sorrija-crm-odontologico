@@ -11,12 +11,15 @@ import {
 import { StatCard } from "@/components/dashboard/StatCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { AlertsList } from "@/components/dashboard/AlertsList";
+import { MultiOrgComparison } from "@/components/dashboard/MultiOrgComparison";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLeadStats } from "@/hooks/useLeadStats";
+import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useLeadStats();
+  const { userRole } = useAuth();
 
   if (isLoading) {
     return (
@@ -138,6 +141,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Multi-Organization Comparison (só para admins) */}
+      {(userRole?.role === 'admin' || userRole?.role === 'gerente') && (
+        <MultiOrgComparison />
+      )}
 
       {/* Alerts */}
       <AlertsList />
