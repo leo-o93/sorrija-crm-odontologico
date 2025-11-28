@@ -109,8 +109,8 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.id || "unknown"}>
+                  {categories?.filter(cat => cat.id && cat.id.trim() !== "").map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
                   ))}
@@ -167,8 +167,8 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {paymentMethods?.map((method) => (
-                    <SelectItem key={method.id} value={method.id || "unknown"}>
+                  {paymentMethods?.filter(method => method.id && method.id.trim() !== "").map((method) => (
+                    <SelectItem key={method.id} value={method.id}>
                       {method.name}
                     </SelectItem>
                   ))}
