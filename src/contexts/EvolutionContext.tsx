@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "./OrganizationContext";
 
 interface EvolutionConfig {
   evolution_base_url?: string;
@@ -21,13 +22,21 @@ const EvolutionContext = createContext<EvolutionContextType | undefined>(undefin
 export function EvolutionProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<EvolutionConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const { currentOrganization } = useOrganization();
 
   const fetchConfig = async () => {
     try {
+      if (!currentOrganization?.id) {
+        setConfig(null);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('integration_settings')
         .select('*')
         .eq('integration_type', 'whatsapp_evolution')
+        .eq('organization_id', currentOrganization.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -45,7 +54,7 @@ export function EvolutionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [currentOrganization?.id]);
 
   const refetchConfig = async () => {
     await fetchConfig();

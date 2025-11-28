@@ -17,19 +17,28 @@ export interface IntegrationSettings {
   updated_at: string;
 }
 
-export function useIntegrationSettings(integrationType: string = 'whatsapp_evolution') {
+export function useIntegrationSettings(
+  integrationType: string = 'whatsapp_evolution',
+  organizationId?: string
+) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['integration-settings', integrationType],
+    queryKey: ['integration-settings', integrationType, organizationId],
     queryFn: async () => {
+      if (!organizationId) {
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('integration_settings')
         .select('*')
         .eq('integration_type', integrationType)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data as IntegrationSettings | null;
     },
+    enabled: !!organizationId,
   });
 
   return {
@@ -47,9 +56,11 @@ export function useSaveIntegrationSettings() {
     mutationFn: async ({
       integrationType,
       settings,
+      organizationId,
     }: {
       integrationType: string;
       settings: Record<string, any>;
+      organizationId: string;
     }) => {
       const { data, error } = await supabase
         .from('integration_settings')
@@ -57,6 +68,9 @@ export function useSaveIntegrationSettings() {
           integration_type: integrationType,
           settings,
           active: true,
+          organization_id: organizationId,
+        }, {
+          onConflict: 'organization_id,integration_type'
         })
         .select()
         .single();

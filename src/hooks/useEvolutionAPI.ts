@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEvolution } from '@/contexts/EvolutionContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,6 +25,7 @@ const cleanEvolutionUrl = (url: string): string => {
 
 export function useEvolutionAPI() {
   const { config } = useEvolution();
+  const { currentOrganization } = useOrganization();
   const queryClient = useQueryClient();
 
   const fetchConnectionState = async (): Promise<ConnectionState> => {
@@ -143,18 +145,24 @@ export function useEvolutionAPI() {
 
   const testConnection = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('check-whatsapp-status');
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
+      const { data, error } = await supabase.functions.invoke('check-whatsapp-status', {
+        body: { organizationId: currentOrganization.id }
+      });
       
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      if (data.status === 'open') {
+      if (data.state === 'open') {
         toast.success('✅ Conexão com WhatsApp estabelecida!');
-      } else if (data.status === 'close') {
+      } else if (data.state === 'close') {
         toast.warning('⚠️ WhatsApp desconectado. Gere um QR Code para conectar.');
       } else {
-        toast.info(`Status: ${data.status}`);
+        toast.info(`Status: ${data.state}`);
       }
       refetchConnectionState();
     },
@@ -165,7 +173,13 @@ export function useEvolutionAPI() {
 
   const registerWebhook = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('register-evolution-webhook');
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
+      const { data, error } = await supabase.functions.invoke('register-evolution-webhook', {
+        body: { organizationId: currentOrganization.id }
+      });
       
       if (error) throw error;
       return data;
