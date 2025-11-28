@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfDay, endOfDay, subMonths } from "date-fns";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Alert {
   id: string;
@@ -13,9 +14,12 @@ export interface Alert {
 }
 
 export function useAlerts() {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["alerts"],
+    queryKey: ["alerts", currentOrganization?.id],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
       const today = new Date();
       const todayStart = startOfDay(today);
       const todayEnd = endOfDay(today);
@@ -25,6 +29,7 @@ export function useAlerts() {
       const { data: noShows, error: noShowError } = await supabase
         .from("appointments")
         .select("id")
+        .eq("organization_id", currentOrganization.id)
         .eq("status", "no_show")
         .gte("appointment_date", todayStart.toISOString())
         .lte("appointment_date", todayEnd.toISOString());
@@ -35,6 +40,7 @@ export function useAlerts() {
       const { data: patients, error: patientsError } = await supabase
         .from("patients")
         .select("id, birth_date")
+        .eq("organization_id", currentOrganization.id)
         .eq("active", true);
 
       if (patientsError) throw patientsError;
@@ -52,6 +58,7 @@ export function useAlerts() {
       const { data: recentAppointments, error: appointmentsError } = await supabase
         .from("appointments")
         .select("patient_id, appointment_date, status")
+        .eq("organization_id", currentOrganization.id)
         .eq("status", "attended")
         .gte("appointment_date", sixMonthsAgo.toISOString());
 
@@ -60,6 +67,7 @@ export function useAlerts() {
       const { data: allPatients, error: allPatientsError } = await supabase
         .from("patients")
         .select("id")
+        .eq("organization_id", currentOrganization.id)
         .eq("active", true);
 
       if (allPatientsError) throw allPatientsError;
@@ -111,6 +119,7 @@ export function useAlerts() {
 
       return alerts;
     },
+    enabled: !!currentOrganization?.id,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 }

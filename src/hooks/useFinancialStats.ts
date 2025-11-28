@@ -1,17 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function useFinancialStats(startDate?: Date, endDate?: Date) {
+  const { currentOrganization } = useOrganization();
   const start = startDate || startOfMonth(new Date());
   const end = endDate || endOfMonth(new Date());
 
   return useQuery({
-    queryKey: ['financial-stats', format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd')],
+    queryKey: ['financial-stats', currentOrganization?.id, format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd')],
     queryFn: async () => {
+      if (!currentOrganization?.id) return null;
       const { data, error } = await supabase
         .from('financial_transactions')
         .select('type, amount, status, transaction_date')
+        .eq('organization_id', currentOrganization.id)
         .gte('transaction_date', format(start, 'yyyy-MM-dd'))
         .lte('transaction_date', format(end, 'yyyy-MM-dd'));
 
@@ -45,5 +49,6 @@ export function useFinancialStats(startDate?: Date, endDate?: Date) {
         lucroProjetado,
       };
     },
+    enabled: !!currentOrganization?.id,
   });
 }

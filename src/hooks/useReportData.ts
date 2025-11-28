@@ -1,14 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function useLeadsReport(startDate: Date, endDate: Date) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['leads-report', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: ['leads-report', currentOrganization?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
     queryFn: async () => {
+      if (!currentOrganization?.id) return null;
+
       const { data: leads, error } = await supabase
         .from('leads')
         .select('*, sources(name), procedures(name)')
+        .eq('organization_id', currentOrganization.id)
         .gte('registration_date', format(startDate, 'yyyy-MM-dd'))
         .lte('registration_date', format(endDate, 'yyyy-MM-dd'));
 
@@ -50,16 +56,22 @@ export function useLeadsReport(startDate: Date, endDate: Date) {
         rawData: leads,
       };
     },
+    enabled: !!currentOrganization?.id,
   });
 }
 
 export function useFinancialReport(startDate: Date, endDate: Date) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['financial-report', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: ['financial-report', currentOrganization?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
     queryFn: async () => {
+      if (!currentOrganization?.id) return null;
+
       const { data: transactions, error } = await supabase
         .from('financial_transactions')
         .select('*, expense_categories(name), payment_methods(name)')
+        .eq('organization_id', currentOrganization.id)
         .gte('transaction_date', format(startDate, 'yyyy-MM-dd'))
         .lte('transaction_date', format(endDate, 'yyyy-MM-dd'));
 
@@ -122,16 +134,22 @@ export function useFinancialReport(startDate: Date, endDate: Date) {
         rawData: transactions,
       };
     },
+    enabled: !!currentOrganization?.id,
   });
 }
 
 export function useAppointmentsReport(startDate: Date, endDate: Date) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['appointments-report', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: ['appointments-report', currentOrganization?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
     queryFn: async () => {
+      if (!currentOrganization?.id) return null;
+
       const { data: appointments, error } = await supabase
         .from('appointments')
         .select('*, procedures(name), patients(name), leads(name)')
+        .eq('organization_id', currentOrganization.id)
         .gte('appointment_date', format(startDate, 'yyyy-MM-dd'))
         .lte('appointment_date', format(endDate, 'yyyy-MM-dd'));
 
@@ -172,5 +190,6 @@ export function useAppointmentsReport(startDate: Date, endDate: Date) {
         rawData: appointments,
       };
     },
+    enabled: !!currentOrganization?.id,
   });
 }

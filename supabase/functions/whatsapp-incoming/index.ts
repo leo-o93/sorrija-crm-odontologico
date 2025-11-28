@@ -82,6 +82,37 @@ Deno.serve(async (req) => {
       );
     }
 
+    const evolutionInstance = integrationSettings.settings?.evolution_instance;
+
+    // Find or create organization for this instance
+    let organizationId: string;
+    const { data: existingOrg } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('evolution_instance', evolutionInstance)
+      .single();
+
+    if (existingOrg) {
+      organizationId = existingOrg.id;
+    } else {
+      const { data: newOrg, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          evolution_instance: evolutionInstance,
+          name: `Organização ${evolutionInstance}`,
+        })
+        .select('id')
+        .single();
+
+      if (orgError) {
+        console.error('Error creating organization:', orgError);
+        throw orgError;
+      }
+      organizationId = newOrg.id;
+    }
+
+    console.log('Using organization:', organizationId);
+
     // Validate webhook token
     const storedToken = integrationSettings.settings?.webhook_secret;
     if (storedToken !== webhookToken) {
@@ -144,6 +175,7 @@ Deno.serve(async (req) => {
       .from('leads')
       .select('id')
       .eq('phone', phoneWithCountry)
+      .eq('organization_id', organizationId)
       .maybeSingle();
 
     if (existingLead) {
@@ -156,6 +188,7 @@ Deno.serve(async (req) => {
         .from('patients')
         .select('id')
         .eq('phone', phoneWithCountry)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (existingPatient) {
@@ -173,6 +206,7 @@ Deno.serve(async (req) => {
             source_id: null,
             status: 'novo_lead',
             notes: 'Contato iniciado via WhatsApp',
+            organization_id: organizationId,
           })
           .select()
           .single();
@@ -194,6 +228,7 @@ Deno.serve(async (req) => {
       .select('id, unread_count')
       .eq('phone', phoneWithCountry)
       .eq('channel', 'whatsapp')
+      .eq('organization_id', organizationId)
       .maybeSingle();
 
     let conversationId: string;
@@ -230,6 +265,7 @@ Deno.serve(async (req) => {
           status: 'open',
           last_message_at: new Date().toISOString(),
           unread_count: direction === 'in' ? 1 : 0,
+          organization_id: organizationId,
         })
         .select()
         .single();
@@ -255,6 +291,7 @@ Deno.serve(async (req) => {
         status: direction === 'in' ? 'received' : 'sent',
         provider_message_id: payload.data.key.id,
         raw_payload: payload,
+        organization_id: organizationId,
       })
       .select()
       .single();

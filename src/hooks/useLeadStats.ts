@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface LeadStats {
   totalLeads: number;
@@ -13,9 +14,12 @@ export interface LeadStats {
 }
 
 export function useLeadStats() {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["leadStats"],
+    queryKey: ["leadStats", currentOrganization?.id],
     queryFn: async () => {
+      if (!currentOrganization?.id) return null;
       const today = new Date().toISOString().split('T')[0];
       const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
         .toISOString()
@@ -25,12 +29,14 @@ export function useLeadStats() {
       const { count: totalLeads } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .gte("registration_date", firstDayOfMonth);
 
       // Agendamentos para hoje
       const { count: scheduledToday } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .eq("appointment_date", today)
         .eq("status", "agendado");
 
@@ -38,6 +44,7 @@ export function useLeadStats() {
       const { data: revenueData } = await supabase
         .from("leads")
         .select("budget_total")
+        .eq("organization_id", currentOrganization.id)
         .gte("registration_date", firstDayOfMonth)
         .eq("status", "fechado");
 
@@ -54,6 +61,7 @@ export function useLeadStats() {
       const { count: attended } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .eq("evaluation_result", "Fechou")
         .gte("registration_date", firstDayOfMonth);
 
@@ -61,6 +69,7 @@ export function useLeadStats() {
       const { count: noShow } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .eq("status", "nao_compareceu")
         .gte("registration_date", firstDayOfMonth);
 
@@ -68,12 +77,14 @@ export function useLeadStats() {
       const { count: inTreatment } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .in("status", ["compareceu", "orcamento_enviado"]);
 
       // Finalizados (fechado)
       const { count: completed } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
         .eq("status", "fechado");
 
       return {
@@ -87,5 +98,6 @@ export function useLeadStats() {
         completed: completed || 0,
       } as LeadStats;
     },
+    enabled: !!currentOrganization?.id,
   });
 }

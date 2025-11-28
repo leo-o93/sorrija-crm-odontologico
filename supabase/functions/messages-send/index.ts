@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     const payload: SendMessagePayload = await req.json();
     console.log('Send message request:', payload);
 
-    // Get integration settings (single clinic setup - no organizations)
+    // Get integration settings
     const { data: integrationSettings } = await supabase
       .from('integration_settings')
       .select('*')
@@ -63,9 +63,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    const evolutionInstance = integrationSettings.settings?.evolution_instance;
+
+    // Find organization for this instance
+    const { data: organization } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('evolution_instance', evolutionInstance)
+      .single();
+
+    if (!organization) {
+      return new Response(
+        JSON.stringify({ error: 'Organization not found' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const organizationId = organization.id;
+
     const evolutionBaseUrl = integrationSettings.settings?.evolution_base_url;
     const evolutionApiKey = integrationSettings.settings?.evolution_api_key;
-    const evolutionInstance = integrationSettings.settings?.evolution_instance;
 
     if (!evolutionBaseUrl || !evolutionApiKey || !evolutionInstance) {
       return new Response(
@@ -87,6 +104,7 @@ Deno.serve(async (req) => {
         .select('id')
         .eq('phone', phoneWithCountry)
         .eq('channel', 'whatsapp')
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (existingConversation) {
@@ -105,6 +123,7 @@ Deno.serve(async (req) => {
             status: 'open',
             assigned_user_id: user.id,
             last_message_at: new Date().toISOString(),
+            organization_id: organizationId,
           })
           .select()
           .single();
@@ -129,6 +148,7 @@ Deno.serve(async (req) => {
         media_url: payload.media || null,
         status: 'queued',
         created_by_user_id: user.id,
+        organization_id: organizationId,
       })
       .select()
       .single();
