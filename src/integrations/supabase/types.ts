@@ -534,6 +534,176 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          procedure_id: string | null
+          procedure_name: string
+          quantity: number
+          quote_id: string
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          procedure_id?: string | null
+          procedure_name: string
+          quantity?: number
+          quote_id: string
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          procedure_id?: string | null
+          procedure_name?: string
+          quantity?: number
+          quote_id?: string
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          installment_number: number
+          paid_at: string | null
+          payment_method: string | null
+          quote_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          installment_number: number
+          paid_at?: string | null
+          payment_method?: string | null
+          quote_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          installment_number?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          quote_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_payments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          created_by: string | null
+          discount_amount: number | null
+          discount_percentage: number | null
+          final_amount: number
+          id: string
+          lead_id: string | null
+          notes: string | null
+          patient_id: string | null
+          quote_number: string
+          status: string
+          total_amount: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_percentage?: number | null
+          final_amount?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          patient_id?: string | null
+          quote_number: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_percentage?: number | null
+          final_amount?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          patient_id?: string | null
+          quote_number?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           active: boolean
@@ -636,6 +806,7 @@ export type Database = {
     }
     Functions: {
       cleanup_old_webhooks: { Args: never; Returns: undefined }
+      generate_quote_number: { Args: never; Returns: string }
       get_user_organization_ids: {
         Args: { _user_id?: string }
         Returns: string[]
