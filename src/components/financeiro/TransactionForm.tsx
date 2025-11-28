@@ -102,7 +102,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a categoria" />
@@ -110,7 +110,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                 </FormControl>
                 <SelectContent>
                   {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
+                    <SelectItem key={category.id} value={category.id || "unknown"}>
                       {category.name}
                     </SelectItem>
                   ))}
@@ -159,8 +159,8 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
           name="payment_method_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Forma de Pagamento</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <FormLabel>Forma de Pagamento (Opcional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
@@ -168,7 +168,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                 </FormControl>
                 <SelectContent>
                   {paymentMethods?.map((method) => (
-                    <SelectItem key={method.id} value={method.id}>
+                    <SelectItem key={method.id} value={method.id || "unknown"}>
                       {method.name}
                     </SelectItem>
                   ))}
