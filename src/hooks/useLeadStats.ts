@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface LeadStats {
   totalLeads: number;
@@ -39,7 +39,7 @@ export function useLeadStats() {
         .from("leads")
         .select("budget_total")
         .gte("registration_date", firstDayOfMonth)
-        .in("status", ["fechado", "pos_venda", "em_tratamento"]);
+        .eq("status", "fechado");
 
       const monthlyRevenue = revenueData?.reduce(
         (sum, lead) => sum + (lead.budget_total || 0),
@@ -61,20 +61,20 @@ export function useLeadStats() {
       const { count: noShow } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
-        .eq("evaluation_result", "Faltou")
+        .eq("status", "nao_compareceu")
         .gte("registration_date", firstDayOfMonth);
 
-      // Em tratamento
+      // Em tratamento (compareceu + orçamento enviado)
       const { count: inTreatment } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
-        .eq("status", "em_tratamento");
+        .in("status", ["compareceu", "orcamento_enviado"]);
 
-      // Finalizados
+      // Finalizados (fechado)
       const { count: completed } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
-        .eq("status", "pos_venda");
+        .eq("status", "fechado");
 
       return {
         totalLeads: totalLeads || 0,

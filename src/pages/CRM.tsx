@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MessageCircle, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Phone, MessageCircle, Plus, Search, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from "@dnd-kit/core";
@@ -37,16 +39,19 @@ const columns: {
   { id: "terceira_tentativa", title: "3ª Tentativa", color: "bg-red-500" },
   { id: "agendado", title: "Agendado", color: "bg-purple-500" },
   { id: "compareceu", title: "Compareceu", color: "bg-green-500" },
+  { id: "nao_compareceu", title: "Não Compareceu", color: "bg-red-600" },
   { id: "orcamento_enviado", title: "Orçamento Enviado", color: "bg-indigo-500" },
   { id: "fechado", title: "Fechado", color: "bg-emerald-500" },
+  { id: "perdido", title: "Perdido", color: "bg-gray-500" },
 ];
 
 interface SortableLeadCardProps {
   lead: Lead;
-  onClick: () => void;
+  onViewDetails: () => void;
+  onOpenConversation: () => void;
 }
 
-function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
+function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableLeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   });
@@ -57,16 +62,19 @@ function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const openWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const phone = lead.phone.replace(/\D/g, "");
-    const formattedPhone = phone.startsWith("55") ? phone : `55${phone}`;
-    window.open(`https://wa.me/${formattedPhone}`, "_blank");
-  };
-
   const makeCall = (e: React.MouseEvent) => {
     e.stopPropagation();
     window.location.href = `tel:${lead.phone}`;
+  };
+
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onViewDetails();
+  };
+
+  const handleOpenConversation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenConversation();
   };
 
   return (
@@ -76,32 +84,39 @@ function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
       {...attributes}
       {...listeners}
       className="cursor-move hover:shadow-md transition-shadow"
-      onClick={onClick}
     >
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{lead.name}</CardTitle>
-        <p className="text-sm text-muted-foreground">{lead.phone}</p>
+      <CardHeader className="pb-2 pt-3 px-3">
+        <CardTitle className="text-sm font-medium">{lead.name}</CardTitle>
+        <p className="text-xs text-muted-foreground">{lead.phone}</p>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="px-3 pb-3 pt-0 space-y-2">
         {lead.procedures && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs py-0 px-2">
             {lead.procedures.name}
           </Badge>
         )}
-        {lead.sources && (
-          <p className="text-xs text-muted-foreground">{lead.sources.name}</p>
-        )}
-        {lead.appointment_date && (
-          <p className="text-xs text-muted-foreground">
-            Consulta: {new Date(lead.appointment_date).toLocaleDateString("pt-BR")}
-          </p>
-        )}
-        <div className="flex gap-2 mt-2">
-          <Button size="sm" variant="outline" onClick={makeCall}>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" className="h-7 px-2" onClick={makeCall} title="Ligar">
             <Phone className="h-3 w-3" />
           </Button>
-          <Button size="sm" variant="outline" onClick={openWhatsApp}>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-7 px-2" 
+            onClick={handleOpenConversation}
+            title="Abrir conversa no WhatsApp"
+          >
             <MessageCircle className="h-3 w-3" />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-7 px-2 flex-1" 
+            onClick={handleViewDetails}
+            title="Ver detalhes"
+          >
+            <Eye className="h-3 w-3 mr-1" />
+            Detalhes
           </Button>
         </div>
       </CardContent>
@@ -117,25 +132,53 @@ interface DroppableColumnProps {
   };
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  onOpenConversation: (lead: Lead) => void;
 }
 
-function DroppableColumn({ column, leads, onLeadClick }: DroppableColumnProps) {
+function DroppableColumn({ column, leads, onLeadClick, onOpenConversation }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({
     id: column.id,
   });
 
+  const [showAll, setShowAll] = useState(false);
+  const visibleLeads = showAll ? leads : leads.slice(0, 5);
+  const hasMore = leads.length > 5;
+
   return (
-    <div ref={setNodeRef} className="space-y-4">
+    <div ref={setNodeRef} className="space-y-3">
       <div className="flex items-center gap-2">
         <div className={`w-3 h-3 rounded-full ${column.color}`} />
-        <h2 className="font-semibold">{column.title}</h2>
-        <Badge variant="secondary">{leads.length}</Badge>
+        <h2 className="font-semibold text-sm">{column.title}</h2>
+        <Badge variant="secondary" className="text-xs">{leads.length}</Badge>
       </div>
-      <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2 min-h-[200px]">
-          {leads.map((lead) => (
-            <SortableLeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
+      <SortableContext items={visibleLeads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2 min-h-[100px]">
+          {visibleLeads.map((lead) => (
+            <SortableLeadCard 
+              key={lead.id} 
+              lead={lead} 
+              onViewDetails={() => onLeadClick(lead)}
+              onOpenConversation={() => onOpenConversation(lead)}
+            />
           ))}
+          {hasMore && !showAll && (
+            <Button 
+              variant="ghost" 
+              className="w-full h-8 text-xs" 
+              onClick={() => setShowAll(true)}
+            >
+              Ver mais {leads.length - 5} lead{leads.length - 5 !== 1 ? 's' : ''}
+            </Button>
+          )}
+          {showAll && hasMore && (
+            <Button 
+              variant="ghost" 
+              className="w-full h-8 text-xs" 
+              onClick={() => setShowAll(false)}
+            >
+              Ver menos
+            </Button>
+          )}
         </div>
       </SortableContext>
     </div>
@@ -143,12 +186,14 @@ function DroppableColumn({ column, leads, onLeadClick }: DroppableColumnProps) {
 }
 
 export default function CRM() {
+  const navigate = useNavigate();
   const { data: leads, isLoading } = useLeads();
   const updateLeadStatus = useUpdateLeadStatus();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -201,6 +246,22 @@ export default function CRM() {
     setIsDetailPanelOpen(true);
   };
 
+  const handleOpenConversation = (lead: Lead) => {
+    navigate('/conversas');
+  };
+
+  // Filtrar leads pela busca
+  const filteredLeads = useMemo(() => {
+    if (!searchQuery.trim()) return leads;
+    
+    const query = searchQuery.toLowerCase();
+    return leads?.filter((lead) => {
+      const matchName = lead.name.toLowerCase().includes(query);
+      const matchPhone = lead.phone.replace(/\D/g, '').includes(query.replace(/\D/g, ''));
+      return matchName || matchPhone;
+    });
+  }, [leads, searchQuery]);
+
   const activeLead = activeId ? leads?.find((lead) => lead.id === activeId) : null;
 
   if (isLoading) {
@@ -219,34 +280,47 @@ export default function CRM() {
     );
   }
 
-  const totalLeads = leads?.length || 0;
-  const scheduledLeads = leads?.filter((l) => l.scheduled).length || 0;
-  const closedLeads = leads?.filter((l) => l.status === "fechado").length || 0;
+  const totalLeads = filteredLeads?.length || 0;
+  const scheduledLeads = filteredLeads?.filter((l) => l.scheduled).length || 0;
+  const closedLeads = filteredLeads?.filter((l) => l.status === "fechado").length || 0;
   const conversionRate = totalLeads > 0 ? ((closedLeads / totalLeads) * 100).toFixed(1) : "0";
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">CRM - Funil de Vendas</h1>
-          <p className="text-muted-foreground">Gerencie seus leads e acompanhe o funil</p>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">CRM - Funil de Vendas</h1>
+            <p className="text-muted-foreground">Gerencie seus leads e acompanhe o funil</p>
+          </div>
+          <div className="flex gap-2">
+            <LeadImport />
+            <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Lead
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Lead</DialogTitle>
+                </DialogHeader>
+                <LeadForm onSuccess={() => setIsNewLeadDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <LeadImport />
-          <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Lead
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo Lead</DialogTitle>
-              </DialogHeader>
-              <LeadForm onSuccess={() => setIsNewLeadDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar por nome ou telefone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
       </div>
 
@@ -291,15 +365,16 @@ export default function CRM() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {columns.map((column) => {
-            const columnLeads = leads?.filter((lead) => lead.status === column.id) || [];
+            const columnLeads = filteredLeads?.filter((lead) => lead.status === column.id) || [];
             return (
               <DroppableColumn
                 key={column.id}
                 column={column}
                 leads={columnLeads}
                 onLeadClick={handleLeadClick}
+                onOpenConversation={handleOpenConversation}
               />
             );
           })}
