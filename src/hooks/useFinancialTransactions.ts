@@ -49,10 +49,10 @@ export function useFinancialTransactions(filters?: {
       if (filters?.endDate) {
         query = query.lte('transaction_date', filters.endDate);
       }
-      if (filters?.type) {
+      if (filters?.type && filters.type !== 'all') {
         query = query.eq('type', filters.type);
       }
-      if (filters?.status) {
+      if (filters?.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
       }
 
