@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEvolutionAPI } from "@/hooks/useEvolutionAPI";
 import { Badge } from "@/components/ui/badge";
+import { UserMenu } from "./UserMenu";
 
 export function Header() {
   const { connectionState } = useEvolutionAPI();
@@ -44,6 +45,8 @@ export function Header() {
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
           </Button>
+
+          <UserMenu />
         </div>
       </div>
     </header>

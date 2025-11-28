@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { EvolutionProvider, useEvolution } from "@/contexts/EvolutionContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
@@ -20,6 +22,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Webhooks from "./pages/Webhooks";
 import Conversas from "./pages/Conversas";
 import EvolutionSetup from "./pages/EvolutionSetup";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -59,109 +62,140 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/setup" element={<EvolutionSetup />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/setup" element={
+        <ProtectedRoute>
+          <EvolutionSetup />
+        </ProtectedRoute>
+      } />
       <Route
         path="/"
         element={
-          <AppLayout>
-            <Dashboard />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Dashboard />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/crm"
         element={
-          <AppLayout>
-            <CRM />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <CRM />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/pacientes"
         element={
-          <AppLayout>
-            <Pacientes />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Pacientes />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/agenda"
         element={
-          <AppLayout>
-            <Agenda />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Agenda />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/orcamentos"
         element={
-          <AppLayout>
-            <Orcamentos />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Orcamentos />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/financeiro"
         element={
-          <AppLayout>
-            <Financeiro />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Financeiro />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/relatorios"
         element={
-          <AppLayout>
-            <Relatorios />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Relatorios />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/indicadores"
         element={
-          <AppLayout>
-            <Indicadores />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Indicadores />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/marketing"
         element={
-          <AppLayout>
-            <Marketing />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Marketing />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/cadastros"
         element={
-          <AppLayout>
-            <Cadastros />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Cadastros />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/configuracoes"
         element={
-          <AppLayout>
-            <Configuracoes />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Configuracoes />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/webhooks"
         element={
-          <AppLayout>
-            <Webhooks />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Webhooks />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/conversas"
         element={
-          <AppLayout>
-            <Conversas />
-          </AppLayout>
+          <ProtectedRoute>
+            <AppLayout>
+              <Conversas />
+            </AppLayout>
+          </ProtectedRoute>
         }
       />
       <Route path="*" element={<NotFound />} />
@@ -175,9 +209,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <EvolutionProvider>
-          <AppRoutes />
-        </EvolutionProvider>
+        <AuthProvider>
+          <EvolutionProvider>
+            <AppRoutes />
+          </EvolutionProvider>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
