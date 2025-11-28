@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 interface Organization {
   id: string;
@@ -14,8 +15,10 @@ interface Organization {
 
 interface OrganizationContextType {
   currentOrganization: Organization | null;
+  availableOrganizations: Organization[];
   isLoading: boolean;
   refreshOrganization: () => Promise<void>;
+  switchOrganization: (organizationId: string) => Promise<void>;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -23,11 +26,13 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
+  const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshOrganization = async () => {
+  const loadOrganizations = async () => {
     if (!user) {
       setCurrentOrganization(null);
+      setAvailableOrganizations([]);
       setIsLoading(false);
       return;
     }
@@ -38,7 +43,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       // Buscar memberships do usuário
       const { data: memberships, error: memberError } = await supabase
         .from('organization_members')
-        .select('organization_id')
+        .select('organization_id, organizations(*)')
         .eq('user_id', user.id)
         .eq('active', true);
 
@@ -83,6 +88,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
                 user_id: user.id,
               });
               setCurrentOrganization(existingOrg);
+              setAvailableOrganizations([existingOrg]);
             }
           } else if (newOrg) {
             // Adicionar usuário como membro
@@ -91,29 +97,51 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
               user_id: user.id,
             });
             setCurrentOrganization(newOrg);
+            setAvailableOrganizations([newOrg]);
           }
         }
       } else {
-        // Buscar organização ativa do primeiro membership
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('id', memberships[0].organization_id)
-          .eq('active', true)
-          .single();
+        // Extrair organizações dos memberships
+        const orgs = memberships
+          .map(m => m.organizations)
+          .filter((org): org is Organization => org !== null && org.active);
 
-        if (orgError) throw orgError;
-        setCurrentOrganization(org);
+        setAvailableOrganizations(orgs);
+
+        // Usar organização salva em localStorage ou primeira disponível
+        const savedOrgId = localStorage.getItem('currentOrganizationId');
+        const selectedOrg = savedOrgId 
+          ? orgs.find(o => o.id === savedOrgId) 
+          : orgs[0];
+
+        setCurrentOrganization(selectedOrg || orgs[0]);
       }
     } catch (error) {
-      console.error('Error loading organization:', error);
+      console.error('Error loading organizations:', error);
+      toast.error('Erro ao carregar organizações');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const switchOrganization = async (organizationId: string) => {
+    const org = availableOrganizations.find(o => o.id === organizationId);
+    if (org) {
+      setCurrentOrganization(org);
+      localStorage.setItem('currentOrganizationId', organizationId);
+      toast.success(`Organização alterada para ${org.name}`);
+      
+      // Invalidar queries do React Query para recarregar dados
+      window.location.reload();
+    }
+  };
+
+  const refreshOrganization = async () => {
+    await loadOrganizations();
+  };
+
   useEffect(() => {
-    refreshOrganization();
+    loadOrganizations();
   }, [user]);
 
   // Monitorar mudanças em integration_settings
@@ -145,8 +173,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     <OrganizationContext.Provider
       value={{
         currentOrganization,
+        availableOrganizations,
         isLoading,
         refreshOrganization,
+        switchOrganization,
       }}
     >
       {children}
