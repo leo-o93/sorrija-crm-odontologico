@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface FinancialTransaction {
   id: string;
@@ -30,9 +31,13 @@ export function useFinancialTransactions(filters?: {
   type?: string;
   status?: string;
 }) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['financial-transactions', filters],
+    queryKey: ['financial-transactions', currentOrganization?.id, filters],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from('financial_transactions')
         .select(`
@@ -41,6 +46,7 @@ export function useFinancialTransactions(filters?: {
           payment_methods(name),
           patients(name)
         `)
+        .eq("organization_id", currentOrganization.id)
         .order('transaction_date', { ascending: false });
 
       if (filters?.startDate) {
@@ -65,12 +71,18 @@ export function useFinancialTransactions(filters?: {
 
 export function useCreateTransaction() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (transaction: Partial<FinancialTransaction>) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from('financial_transactions')
-        .insert([transaction as any])
+        .insert([{
+          ...transaction,
+          organization_id: currentOrganization.id
+        } as any])
         .select()
         .single();
 
