@@ -1,4 +1,5 @@
 import { useIntegrationSettings } from '@/hooks/useIntegrationSettings';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Settings } from 'lucide-react';
@@ -14,7 +15,13 @@ export function WhatsAppConfigGuard({
   children, 
   fallbackMessage = 'Esta funcionalidade requer que o WhatsApp esteja configurado.' 
 }: WhatsAppConfigGuardProps) {
-  const { settings, isLoading } = useIntegrationSettings();
+  const { currentOrganization, isLoading: orgLoading } = useOrganization();
+  const { settings, isLoading: settingsLoading } = useIntegrationSettings(
+    'whatsapp_evolution',
+    currentOrganization?.id
+  );
+  
+  const isLoading = orgLoading || settingsLoading;
 
   if (isLoading) {
     return (
