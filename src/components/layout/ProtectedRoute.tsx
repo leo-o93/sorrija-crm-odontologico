@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,11 +10,16 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, loading, userRole } = useAuth();
+  const { isLoading: isLoadingOrg } = useOrganization();
 
-  if (loading) {
+  // Show loading while authentication or organization is loading
+  if (loading || isLoadingOrg) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center flex-col gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">
+          {loading ? 'Carregando...' : 'Carregando organização...'}
+        </p>
       </div>
     );
   }

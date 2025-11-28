@@ -1,12 +1,15 @@
-import { Bell, Search, Settings, MessageSquare } from "lucide-react";
+import { Bell, Search, Settings, MessageSquare, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEvolutionAPI } from "@/hooks/useEvolutionAPI";
 import { Badge } from "@/components/ui/badge";
 import { UserMenu } from "./UserMenu";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Header() {
   const { connectionState } = useEvolutionAPI();
+  const { currentOrganization, isLoading } = useOrganization();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -21,6 +24,23 @@ export function Header() {
               className="pl-10 bg-background"
             />
           </div>
+        </div>
+
+        {/* Organization Indicator */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          {isLoading ? (
+            <Skeleton className="h-4 w-32" />
+          ) : currentOrganization ? (
+            <div className="flex flex-col">
+              <span className="text-xs font-medium">{currentOrganization.name}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {currentOrganization.evolution_instance}
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Sem organização</span>
+          )}
         </div>
 
         {/* WhatsApp Status */}

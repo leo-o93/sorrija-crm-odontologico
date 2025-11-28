@@ -3,6 +3,7 @@ import { ConversationList } from '@/components/inbox/ConversationList';
 import { ChatView } from '@/components/inbox/ChatView';
 import { ContactSidebar } from '@/components/inbox/ContactSidebar';
 import { useConversations } from '@/hooks/useConversations';
+import { WhatsAppConfigGuard } from '@/components/layout/WhatsAppConfigGuard';
 
 export default function Conversas() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -12,7 +13,8 @@ export default function Conversas() {
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
+    <WhatsAppConfigGuard fallbackMessage="As conversas do WhatsApp requerem configuração da Evolution API.">
+      <div className="flex h-[calc(100vh-4rem)] bg-background">
       {/* Lista de conversas */}
       <div className="w-80 border-r border-border flex flex-col">
         <ConversationList
@@ -43,5 +45,6 @@ export default function Conversas() {
         </div>
       )}
     </div>
+    </WhatsAppConfigGuard>
   );
 }
