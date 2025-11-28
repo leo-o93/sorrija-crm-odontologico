@@ -122,6 +122,25 @@ export function useEvolutionAPI() {
     },
   });
 
+  const syncAllMessages = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-message-history', {
+        body: { syncAll: true, limit: 100 }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.total_synced} mensagens sincronizadas de ${data.total_conversations} conversas!`);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao sincronizar histórico: ${error.message}`);
+    },
+  });
+
   const testConnection = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('check-whatsapp-status');
@@ -174,6 +193,7 @@ export function useEvolutionAPI() {
     fetchContacts,
     syncContacts,
     syncMessages,
+    syncAllMessages,
     testConnection,
     registerWebhook,
     isConfigured: !!config,

@@ -12,10 +12,10 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, limit = 50 } = await req.json();
+    const { phone, limit = 50, syncAll = false } = await req.json();
 
-    if (!phone) {
-      throw new Error('Phone number is required');
+    if (!syncAll && !phone) {
+      throw new Error('Phone number is required when syncAll is false');
     }
 
     const supabase = createClient(
@@ -45,9 +45,118 @@ serve(async (req) => {
     const settings = config.settings as any;
     const cleanUrl = settings.evolution_base_url.replace(/\/manager\/?$/, '');
 
+    // Se syncAll for true, buscar todas as conversas da instância atual
+    if (syncAll) {
+      console.log('Syncing all conversations for instance...');
+      
+      const { data: conversations, error: convListError } = await supabase
+        .from('conversations')
+        .select('phone, id, evolution_instance')
+        .eq('evolution_instance', settings.evolution_instance);
+
+      if (convListError) throw convListError;
+
+      if (!conversations || conversations.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            synced: 0,
+            total_conversations: 0,
+            message: 'Nenhuma conversa encontrada para sincronizar'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      let totalSynced = 0;
+      const results = [];
+
+      for (const conv of conversations) {
+        try {
+          const remotePhone = conv.phone.includes('@') ? conv.phone : `${conv.phone}@s.whatsapp.net`;
+          
+          const response = await fetch(
+            `${cleanUrl}/chat/findMessages/${settings.evolution_instance}`,
+            {
+              method: 'POST',
+              headers: {
+                'apikey': settings.evolution_api_key,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                where: {
+                  key: {
+                    remoteJid: remotePhone,
+                  },
+                },
+                limit: limit,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            console.error(`Failed to sync ${conv.phone}: ${response.statusText}`);
+            results.push({ phone: conv.phone, success: false, error: response.statusText });
+            continue;
+          }
+
+          const messages = await response.json();
+          
+          if (messages.length > 0) {
+            const messagesToInsert = messages.map((msg: any) => ({
+              conversation_id: conv.id,
+              direction: msg.key.fromMe ? 'outgoing' : 'incoming',
+              type: msg.message?.conversation ? 'text' : 'media',
+              content_text: msg.message?.conversation || msg.message?.extendedTextMessage?.text,
+              provider_message_id: msg.key.id,
+              status: 'received',
+              created_at: new Date(msg.messageTimestamp * 1000).toISOString(),
+              raw_payload: msg,
+            }));
+
+            const { error: insertError } = await supabase
+              .from('messages')
+              .upsert(messagesToInsert, {
+                onConflict: 'provider_message_id',
+                ignoreDuplicates: true,
+              });
+
+            if (insertError) {
+              console.error(`Error inserting messages for ${conv.phone}:`, insertError);
+              results.push({ phone: conv.phone, success: false, error: insertError.message });
+            } else {
+              totalSynced += messages.length;
+              results.push({ phone: conv.phone, success: true, synced: messages.length });
+            }
+          } else {
+            results.push({ phone: conv.phone, success: true, synced: 0 });
+          }
+        } catch (error) {
+          console.error(`Error processing ${conv.phone}:`, error);
+          results.push({ phone: conv.phone, success: false, error: String(error) });
+        }
+      }
+
+      console.log(`Bulk sync complete. Total messages: ${totalSynced}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          total_synced: totalSynced,
+          total_conversations: conversations.length,
+          results: results,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Sincronização individual (código original)
     console.log(`Fetching message history for ${phone}...`);
 
-    // Buscar histórico de mensagens da Evolution API
     const remotePhone = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
     
     const response = await fetch(

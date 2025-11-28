@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { useIntegrationSettings, useSaveIntegrationSettings } from '@/hooks/useIntegrationSettings';
 import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
 import { ConnectionStatus } from '@/components/whatsapp/ConnectionStatus';
-import { Loader2, Copy, Check, Download } from 'lucide-react';
+import { Loader2, Copy, Check, Download, History } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function WhatsAppConfig() {
-  const { settings, isLoading } = useIntegrationSettings('whatsapp_evolution');
+  const { settings, isLoading, refetch } = useIntegrationSettings('whatsapp_evolution');
   const saveSettings = useSaveIntegrationSettings();
-  const { syncContacts, testConnection, registerWebhook, isConfigured } = useEvolutionAPI();
+  const { syncContacts, syncAllMessages, testConnection, registerWebhook, isConfigured } = useEvolutionAPI();
 
   const [formData, setFormData] = useState({
     evolution_base_url: '',
@@ -48,10 +48,24 @@ export function WhatsAppConfig() {
       evolution_base_url: formData.evolution_base_url.replace(/\/manager\/?$/, '')
     };
     
+    const previousInstance = settings?.settings?.evolution_instance;
+    const newInstance = cleanedData.evolution_instance;
+    
     await saveSettings.mutateAsync({
       integrationType: 'whatsapp_evolution',
       settings: cleanedData,
     });
+
+    // Refetch settings to update context
+    await refetch();
+    
+    // Se a instância mudou, sincronizar histórico automaticamente
+    if (previousInstance && previousInstance !== newInstance) {
+      toast.info('Instância alterada. Sincronizando histórico...');
+      setTimeout(() => {
+        syncAllMessages.mutate();
+      }, 1000);
+    }
   };
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-incoming`;
@@ -177,6 +191,19 @@ export function WhatsAppConfig() {
                     <Download className="mr-2 h-4 w-4" />
                   )}
                   Sincronizar Contatos
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => syncAllMessages.mutate()}
+                  disabled={syncAllMessages.isPending}
+                >
+                  {syncAllMessages.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <History className="mr-2 h-4 w-4" />
+                  )}
+                  Sincronizar Histórico
                 </Button>
               </>
             )}
