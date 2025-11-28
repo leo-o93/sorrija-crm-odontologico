@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppConfig } from "@/components/settings/WhatsAppConfig";
+import { UsersManager } from "@/components/settings/UsersManager";
 
 export default function Configuracoes() {
   return (
@@ -25,7 +26,7 @@ export default function Configuracoes() {
         </TabsContent>
         
         <TabsContent value="users" className="space-y-4">
-          <p className="text-muted-foreground">Gerenciamento de usuários em breve</p>
+          <UsersManager />
         </TabsContent>
       </Tabs>
     </div>
