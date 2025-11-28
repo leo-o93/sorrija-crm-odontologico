@@ -1,0 +1,88 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  type: 'receita' | 'despesa';
+  color: string | null;
+  icon: string | null;
+  active: boolean;
+  created_at: string;
+}
+
+export function useExpenseCategories(type?: 'receita' | 'despesa') {
+  return useQuery({
+    queryKey: ['expense-categories', type],
+    queryFn: async () => {
+      let query = supabase
+        .from('expense_categories')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+
+      if (type) {
+        query = query.eq('type', type);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as ExpenseCategory[];
+    },
+  });
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (category: Partial<ExpenseCategory>) => {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .insert([category as any])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast.success('Categoria criada com sucesso');
+    },
+    onError: (error) => {
+      console.error('Error creating category:', error);
+      toast.error('Erro ao criar categoria');
+    },
+  });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: Partial<ExpenseCategory> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast.success('Categoria atualizada com sucesso');
+    },
+    onError: (error) => {
+      console.error('Error updating category:', error);
+      toast.error('Erro ao atualizar categoria');
+    },
+  });
+}

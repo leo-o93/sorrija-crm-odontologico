@@ -174,6 +174,169 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          active: boolean
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          active?: boolean
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          active?: boolean
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      financial_goals: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          id: string
+          name: string
+          period_end: string
+          period_start: string
+          period_type: string
+          target_amount: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          period_end: string
+          period_start: string
+          period_type: string
+          target_amount: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          target_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_goals_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          patient_id: string | null
+          payment_date: string | null
+          payment_method_id: string | null
+          quote_id: string | null
+          status: string
+          transaction_date: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          payment_date?: string | null
+          payment_method_id?: string | null
+          quote_id?: string | null
+          status?: string
+          transaction_date?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          payment_date?: string | null
+          payment_method_id?: string | null
+          quote_id?: string | null
+          status?: string
+          transaction_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_settings: {
         Row: {
           active: boolean | null
@@ -476,6 +639,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_methods: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
       }
       procedures: {
         Row: {
