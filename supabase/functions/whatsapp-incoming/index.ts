@@ -64,59 +64,48 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find integration by instance
-    const { data: integrationSettings, error: integrationError } = await supabase
+    const instanceName = payload.instance;
+    console.log('Looking for integration with instance:', instanceName);
+
+    // Buscar todas as configurações ativas
+    const { data: allSettings, error: integrationError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
-      .eq('active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .eq('active', true);
 
-    if (integrationError || !integrationSettings) {
-      console.error('Integration not found:', integrationError);
+    if (integrationError || !allSettings || allSettings.length === 0) {
+      console.error('No integrations found:', integrationError);
       return new Response(
         JSON.stringify({ error: 'Integration not configured' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const evolutionInstance = integrationSettings.settings?.evolution_instance;
+    // Encontrar a configuração específica para esta instância
+    const integrationSettings = allSettings.find(
+      s => s.settings?.evolution_instance === instanceName
+    );
 
-    // Find or create organization for this instance
-    let organizationId: string;
-    const { data: existingOrg } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('evolution_instance', evolutionInstance)
-      .single();
-
-    if (existingOrg) {
-      organizationId = existingOrg.id;
-    } else {
-      const { data: newOrg, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          evolution_instance: evolutionInstance,
-          name: `Organização ${evolutionInstance}`,
-        })
-        .select('id')
-        .single();
-
-      if (orgError) {
-        console.error('Error creating organization:', orgError);
-        throw orgError;
-      }
-      organizationId = newOrg.id;
+    if (!integrationSettings) {
+      console.error('Integration not found for instance:', instanceName);
+      console.error('Available instances:', allSettings.map(s => s.settings?.evolution_instance));
+      return new Response(
+        JSON.stringify({ error: `Integration not configured for instance: ${instanceName}` }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Using organization:', organizationId);
+    // Usar o organization_id diretamente da configuração
+    const organizationId = integrationSettings.organization_id;
+    console.log('Using organization from integration:', organizationId);
 
-    // Validate webhook token
+    // Validar webhook token
     const storedToken = integrationSettings.settings?.webhook_secret;
     if (storedToken !== webhookToken) {
-      console.error('Invalid webhook token');
+      console.error('Invalid webhook token for instance:', instanceName);
+      console.error('Expected token:', storedToken?.substring(0, 10) + '...');
+      console.error('Received token:', webhookToken.substring(0, 10) + '...');
       return new Response(
         JSON.stringify({ error: 'Invalid webhook token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
