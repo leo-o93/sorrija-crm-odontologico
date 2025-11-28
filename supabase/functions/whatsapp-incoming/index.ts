@@ -13,6 +13,7 @@ interface EvolutionWebhookPayload {
       remoteJid: string;
       fromMe: boolean;
       id: string;
+      senderPn?: string; // Número real do remetente (presente quando remoteJid é @lid)
     };
     pushName?: string;
     message?: {
@@ -117,12 +118,44 @@ Deno.serve(async (req) => {
     const direction = isFromMe ? 'out' : 'in';
     console.log('Message direction:', direction);
 
-    // Extract phone number (remove @s.whatsapp.net suffix)
+    // Extract phone number - pode vir em senderPn (número real) ou remoteJid
+    // O remoteJid pode ser @lid (Lead ID interno) que NÃO é um número de telefone
     const remoteJid = payload.data.key.remoteJid;
-    const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
-    
+    const senderPn = payload.data.key.senderPn;
+
+    let phoneSource: string | null = null;
+
+    // Prioridade 1: usar senderPn se disponível (contém o número real)
+    if (senderPn && senderPn.includes('@s.whatsapp.net')) {
+      phoneSource = senderPn.replace('@s.whatsapp.net', '');
+      console.log('Using senderPn for phone:', phoneSource);
+    }
+    // Prioridade 2: usar remoteJid se for um número real (@s.whatsapp.net)
+    else if (remoteJid.includes('@s.whatsapp.net')) {
+      phoneSource = remoteJid.replace('@s.whatsapp.net', '');
+      console.log('Using remoteJid for phone:', phoneSource);
+    }
+    // Se for @lid, não temos o número real
+    else if (remoteJid.includes('@lid')) {
+      console.log('Received @lid identifier without senderPn, cannot extract phone number');
+      console.log('remoteJid:', remoteJid);
+      console.log('Full payload:', JSON.stringify(payload, null, 2));
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Cannot process @lid without senderPn - phone number not available' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // Fallback
+    else {
+      phoneSource = remoteJid.replace(/@.*$/, '');
+      console.log('Using fallback for phone:', phoneSource);
+    }
+
     // Normalize phone number
-    const normalizedPhone = phoneNumber.replace(/\D/g, '');
+    const normalizedPhone = phoneSource.replace(/\D/g, '');
     const phoneWithCountry = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
 
     console.log('Processing message from:', phoneWithCountry);
@@ -186,7 +219,15 @@ Deno.serve(async (req) => {
         console.log('Found existing patient:', contactId);
       } else {
         // Create new lead
-        const contactName = payload.data.pushName || 'Contato WhatsApp';
+        // Se a mensagem é "from me" (enviada pela clínica), o pushName é o nome da clínica
+        // Nesse caso, usamos o número de telefone formatado como nome do contato
+        // Se a mensagem é recebida (from me = false), podemos usar o pushName do contato
+        const contactName = isFromMe 
+          ? `Contato ${phoneWithCountry.slice(-4)}`
+          : (payload.data.pushName || `Contato ${phoneWithCountry.slice(-4)}`);
+        
+        console.log('Creating new lead with name:', contactName, 'fromMe:', isFromMe);
+        
         const { data: newLead, error: leadError } = await supabase
           .from('leads')
           .insert({
