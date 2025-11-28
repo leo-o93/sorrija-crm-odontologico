@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Procedure {
   id: string;
@@ -29,12 +30,17 @@ export interface UpdateProcedureInput {
 }
 
 export function useProcedures(includeInactive = false) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["procedures", includeInactive],
+    queryKey: ["procedures", currentOrganization?.id, includeInactive],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from("procedures")
         .select("*")
+        .eq("organization_id", currentOrganization.id)
         .order("name");
 
       if (!includeInactive) {
@@ -52,12 +58,18 @@ export function useProcedures(includeInactive = false) {
 
 export function useCreateProcedure() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateProcedureInput) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from("procedures")
-        .insert([input])
+        .insert([{
+          ...input,
+          organization_id: currentOrganization.id
+        }])
         .select()
         .single();
 

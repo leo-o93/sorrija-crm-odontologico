@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Webhook {
   id: string;
@@ -20,13 +21,17 @@ export interface Webhook {
 
 export function useWebhooks() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   const { data: webhooks, isLoading } = useQuery({
-    queryKey: ["webhooks"],
+    queryKey: ["webhooks", currentOrganization?.id],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       const { data, error } = await supabase
         .from("webhooks")
         .select("*")
+        .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

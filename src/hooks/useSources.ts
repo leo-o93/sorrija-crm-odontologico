@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Source {
   id: string;
@@ -23,12 +24,17 @@ export interface UpdateSourceInput {
 }
 
 export function useSources(includeInactive = false) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["sources", includeInactive],
+    queryKey: ["sources", currentOrganization?.id, includeInactive],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from("sources")
         .select("*")
+        .eq("organization_id", currentOrganization.id)
         .order("name");
 
       if (!includeInactive) {
@@ -46,12 +52,18 @@ export function useSources(includeInactive = false) {
 
 export function useCreateSource() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateSourceInput) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from("sources")
-        .insert([input])
+        .insert([{
+          ...input,
+          organization_id: currentOrganization.id
+        }])
         .select()
         .single();
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface QuoteItem {
   id?: string;
@@ -47,9 +48,13 @@ export interface Quote {
 }
 
 export function useQuotes(filters?: { status?: string; search?: string }) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["quotes", filters],
+    queryKey: ["quotes", currentOrganization?.id, filters],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from("quotes")
         .select(`
@@ -59,6 +64,7 @@ export function useQuotes(filters?: { status?: string; search?: string }) {
           quote_items(*),
           quote_payments(*)
         `)
+        .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
       if (filters?.status) {
@@ -115,9 +121,12 @@ interface CreateQuoteInput {
 export function useCreateQuote() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateQuoteInput) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+
       // Gerar número do orçamento
       const { data: quoteNumber, error: numberError } = await supabase
         .rpc("generate_quote_number");
@@ -146,6 +155,7 @@ export function useCreateQuote() {
           status: 'draft',
           valid_until: input.valid_until,
           notes: input.notes,
+          organization_id: currentOrganization.id,
         })
         .select()
         .single();

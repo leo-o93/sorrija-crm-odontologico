@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface Conversation {
   id: string;
@@ -53,10 +54,13 @@ export interface Conversation {
 
 export function useConversations(status: string = 'open', search: string = '') {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['conversations', status, search],
+    queryKey: ['conversations', currentOrganization?.id, status, search],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from('conversations')
         .select(`
@@ -72,6 +76,7 @@ export function useConversations(status: string = 'open', search: string = '') {
             medical_history, allergies, medications, notes
           )
         `)
+        .eq("organization_id", currentOrganization.id)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (status !== 'all') {

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface PaymentMethod {
   id: string;
@@ -11,12 +12,17 @@ export interface PaymentMethod {
 }
 
 export function usePaymentMethods() {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['payment-methods'],
+    queryKey: ['payment-methods', currentOrganization?.id],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       const { data, error } = await supabase
         .from('payment_methods')
         .select('*')
+        .eq('organization_id', currentOrganization.id)
         .eq('active', true)
         .order('name');
 
@@ -28,12 +34,18 @@ export function usePaymentMethods() {
 
 export function useCreatePaymentMethod() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (method: Partial<PaymentMethod>) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from('payment_methods')
-        .insert([method as any])
+        .insert([{
+          ...method,
+          organization_id: currentOrganization.id
+        } as any])
         .select()
         .single();
 

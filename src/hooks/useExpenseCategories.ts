@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface ExpenseCategory {
   id: string;
@@ -13,12 +14,17 @@ export interface ExpenseCategory {
 }
 
 export function useExpenseCategories(type?: 'receita' | 'despesa') {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ['expense-categories', type],
+    queryKey: ['expense-categories', currentOrganization?.id, type],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from('expense_categories')
         .select('*')
+        .eq('organization_id', currentOrganization.id)
         .eq('active', true)
         .order('name');
 
@@ -35,12 +41,18 @@ export function useExpenseCategories(type?: 'receita' | 'despesa') {
 
 export function useCreateCategory() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (category: Partial<ExpenseCategory>) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from('expense_categories')
-        .insert([category as any])
+        .insert([{
+          ...category,
+          organization_id: currentOrganization.id
+        } as any])
         .select()
         .single();
 

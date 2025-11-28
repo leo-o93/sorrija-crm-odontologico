@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export interface Message {
   id: string;
@@ -23,16 +24,18 @@ export interface Message {
 
 export function useMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['messages', conversationId],
+    queryKey: ['messages', conversationId, currentOrganization?.id],
     queryFn: async () => {
-      if (!conversationId) return [];
+      if (!conversationId || !currentOrganization?.id) return [];
 
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
+        .eq('organization_id', currentOrganization.id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;

@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { EvolutionProvider } from "@/contexts/EvolutionContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
@@ -186,9 +187,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <EvolutionProvider>
-            <AppRoutes />
-          </EvolutionProvider>
+          <OrganizationProvider>
+            <EvolutionProvider>
+              <AppRoutes />
+            </EvolutionProvider>
+          </OrganizationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

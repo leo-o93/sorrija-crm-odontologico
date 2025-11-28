@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Appointment {
   id: string;
@@ -47,9 +48,13 @@ export function useAppointments(filters?: {
   endDate?: string;
   status?: string;
 }) {
+  const { currentOrganization } = useOrganization();
+
   return useQuery({
-    queryKey: ["appointments", filters],
+    queryKey: ["appointments", currentOrganization?.id, filters],
     queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+
       let query = supabase
         .from("appointments")
         .select(`
@@ -58,6 +63,7 @@ export function useAppointments(filters?: {
           lead:leads(id, name, phone),
           procedure:procedures(id, name, category)
         `)
+        .eq("organization_id", currentOrganization.id)
         .order("appointment_date", { ascending: true });
 
       if (filters?.startDate) {
@@ -80,14 +86,18 @@ export function useAppointments(filters?: {
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateAppointmentInput) => {
+      if (!currentOrganization?.id) throw new Error("No organization selected");
+      
       const { data, error } = await supabase
         .from("appointments")
         .insert({
           ...input,
           status: input.status || "scheduled",
+          organization_id: currentOrganization.id,
         })
         .select()
         .single();
