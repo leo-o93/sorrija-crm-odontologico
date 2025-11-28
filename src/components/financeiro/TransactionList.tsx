@@ -28,8 +28,8 @@ export function TransactionList() {
     format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
   );
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: transactions, isLoading } = useFinancialTransactions({
     startDate,
@@ -84,7 +84,7 @@ export function TransactionList() {
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="receita">Receita</SelectItem>
             <SelectItem value="despesa">Despesa</SelectItem>
           </SelectContent>
@@ -95,7 +95,7 @@ export function TransactionList() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="paid">Pago</SelectItem>
             <SelectItem value="pending">Pendente</SelectItem>
             <SelectItem value="overdue">Vencido</SelectItem>
