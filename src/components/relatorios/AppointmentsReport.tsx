@@ -3,8 +3,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { useAppointmentsReport } from '@/hooks/useReportData';
 import { ExportButton } from './ExportButton';
 import { Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AppointmentsReportProps {
   startDate: Date;
@@ -77,7 +76,7 @@ export function AppointmentsReport({ startDate, endDate }: AppointmentsReportPro
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis type="number" />
               <YAxis dataKey="name" type="category" width={150} className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip />
               <Bar dataKey="value" fill="hsl(var(--primary))" />
             </BarChart>
           </ResponsiveContainer>
@@ -90,7 +89,7 @@ export function AppointmentsReport({ startDate, endDate }: AppointmentsReportPro
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="hour" />
               <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip />
               <Bar dataKey="value" fill="hsl(var(--accent))" />
             </BarChart>
           </ResponsiveContainer>

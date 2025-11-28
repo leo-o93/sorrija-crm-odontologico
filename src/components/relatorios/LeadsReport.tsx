@@ -3,8 +3,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { useLeadsReport } from '@/hooks/useReportData';
 import { ExportButton } from './ExportButton';
 import { Users, Calendar, CheckCircle, TrendingUp } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface LeadsReportProps {
   startDate: Date;
@@ -90,7 +89,7 @@ export function LeadsReport({ startDate, endDate }: LeadsReportProps) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -102,7 +101,7 @@ export function LeadsReport({ startDate, endDate }: LeadsReportProps) {
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip />
               <Bar dataKey="value" fill="hsl(var(--primary))" />
             </BarChart>
           </ResponsiveContainer>

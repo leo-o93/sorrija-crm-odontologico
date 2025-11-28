@@ -3,8 +3,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { useFinancialReport } from '@/hooks/useReportData';
 import { ExportButton } from './ExportButton';
 import { DollarSign, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 import { format } from 'date-fns';
 
 interface FinancialReportProps {
@@ -91,7 +90,7 @@ export function FinancialReport({ startDate, endDate }: FinancialReportProps) {
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="mes" className="text-xs" />
             <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="receitas" stroke="hsl(var(--primary))" name="Receitas" />
             <Line type="monotone" dataKey="despesas" stroke="hsl(var(--destructive))" name="Despesas" />
@@ -147,7 +146,7 @@ export function FinancialReport({ startDate, endDate }: FinancialReportProps) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </Card>
