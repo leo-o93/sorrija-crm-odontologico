@@ -11,24 +11,36 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Get organizationId from request body
+    const { organizationId } = await req.json();
+
+    if (!organizationId) {
+      return new Response(
+        JSON.stringify({ error: 'organizationId is required' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the latest active WhatsApp Evolution integration
+    // Get the active WhatsApp Evolution integration for the organization
     const { data: settings, error: settingsError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('organization_id', organizationId)
       .eq('active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .maybeSingle();
 
     if (settingsError || !settings) {
       console.error('Settings not found:', settingsError);
       return new Response(
-        JSON.stringify({ error: 'WhatsApp Evolution integration not configured' }),
+        JSON.stringify({ error: 'WhatsApp Evolution integration not configured for this organization' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -51,6 +63,7 @@ Deno.serve(async (req) => {
     console.log('Registering webhook with Evolution API:', {
       instance: evolutionInstance,
       webhookUrl,
+      organizationId,
     });
 
     // Register webhook with Evolution API
@@ -68,11 +81,13 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Add custom headers if webhook secret exists
+    // Add custom headers including organization ID
+    webhookPayload.webhook.headers = {
+      'x-organization-id': organizationId,
+    };
+
     if (webhookSecret) {
-      webhookPayload.webhook.headers = {
-        'x-webhook-token': webhookSecret,
-      };
+      webhookPayload.webhook.headers['x-webhook-token'] = webhookSecret;
     }
 
     const response = await fetch(

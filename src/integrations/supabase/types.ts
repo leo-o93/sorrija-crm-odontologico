@@ -355,6 +355,7 @@ export type Database = {
           created_at: string | null
           id: string
           integration_type: string
+          organization_id: string
           settings: Json
           updated_at: string | null
         }
@@ -363,6 +364,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           integration_type: string
+          organization_id: string
           settings?: Json
           updated_at?: string | null
         }
@@ -371,10 +373,19 @@ export type Database = {
           created_at?: string | null
           id?: string
           integration_type?: string
+          organization_id?: string
           settings?: Json
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "integration_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_interactions: {
         Row: {

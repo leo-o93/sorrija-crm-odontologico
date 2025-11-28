@@ -12,19 +12,34 @@ serve(async (req) => {
   }
 
   try {
+    // Get organizationId from request body
+    const { organizationId } = await req.json();
+
+    if (!organizationId) {
+      return new Response(
+        JSON.stringify({ 
+          status: 'error',
+          message: 'organizationId is required' 
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar configuração da Evolution API (mais recente)
+    // Buscar configuração da Evolution API para a organização
     const { data: config, error: configError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('organization_id', organizationId)
       .eq('active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
       .maybeSingle();
 
     if (configError) {

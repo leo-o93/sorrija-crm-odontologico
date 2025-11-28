@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Organization {
   id: string;
@@ -25,6 +26,7 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,8 +133,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('currentOrganizationId', organizationId);
       toast.success(`Organização alterada para ${org.name}`);
       
-      // Invalidar queries do React Query para recarregar dados
-      window.location.reload();
+      // Invalidar todas as queries para recarregar dados da nova organização
+      queryClient.invalidateQueries();
     }
   };
 

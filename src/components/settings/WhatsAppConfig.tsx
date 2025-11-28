@@ -8,9 +8,13 @@ import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
 import { ConnectionStatus } from '@/components/whatsapp/ConnectionStatus';
 import { Loader2, Copy, Check, Download, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Building2 } from 'lucide-react';
 
 export function WhatsAppConfig() {
-  const { settings, isLoading, refetch } = useIntegrationSettings('whatsapp_evolution');
+  const { currentOrganization } = useOrganization();
+  const { settings, isLoading, refetch } = useIntegrationSettings('whatsapp_evolution', currentOrganization?.id);
   const saveSettings = useSaveIntegrationSettings();
   const { syncContacts, syncAllMessages, testConnection, registerWebhook, isConfigured } = useEvolutionAPI();
 
@@ -42,6 +46,11 @@ export function WhatsAppConfig() {
   };
 
   const handleSave = async () => {
+    if (!currentOrganization?.id) {
+      toast.error('Nenhuma organização selecionada');
+      return;
+    }
+
     // Clean URL before saving (remove /manager/ if present)
     const cleanedData = {
       ...formData,
@@ -54,6 +63,7 @@ export function WhatsAppConfig() {
     await saveSettings.mutateAsync({
       integrationType: 'whatsapp_evolution',
       settings: cleanedData,
+      organizationId: currentOrganization.id,
     });
 
     // Refetch settings to update context
@@ -87,6 +97,20 @@ export function WhatsAppConfig() {
 
   return (
     <div className="space-y-6">
+      {currentOrganization && (
+        <Alert>
+          <Building2 className="h-4 w-4" />
+          <AlertDescription>
+            Configurando WhatsApp para: <strong>{currentOrganization.name}</strong> 
+            {currentOrganization.evolution_instance && (
+              <span className="text-muted-foreground ml-2">
+                (Instância: {currentOrganization.evolution_instance})
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <ConnectionStatus />
       
       <Card>
