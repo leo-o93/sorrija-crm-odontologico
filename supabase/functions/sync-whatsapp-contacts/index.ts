@@ -41,9 +41,9 @@ serve(async (req) => {
 
     console.log('Fetching contacts from Evolution API...');
 
-    // Buscar contatos da Evolution API
+    // Buscar contatos/conversas da Evolution API
     const response = await fetch(
-      `${cleanUrl}/chat/findContacts/${settings.evolution_instance}`,
+      `${cleanUrl}/chat/findChats/${settings.evolution_instance}`,
       {
         headers: {
           'apikey': settings.evolution_api_key,
@@ -52,10 +52,13 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      throw new Error(`Evolution API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Evolution API error:', errorText);
+      throw new Error(`Evolution API error: ${response.status} ${response.statusText}`);
     }
 
-    const contacts = await response.json();
+    const chatsData = await response.json();
+    const contacts = Array.isArray(chatsData) ? chatsData : [];
     console.log(`Found ${contacts.length} contacts`);
 
     // Sincronizar contatos com a tabela de leads
