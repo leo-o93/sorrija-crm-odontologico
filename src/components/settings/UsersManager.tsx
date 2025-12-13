@@ -11,22 +11,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { UserPlus, Edit, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
-interface UserProfile {
+interface UserWithAuth {
   id: string;
   full_name: string;
+  email: string;
   role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
   active: boolean;
   created_at: string;
 }
 
-interface UserWithAuth extends UserProfile {
-  email?: string;
-}
-
 export function UsersManager() {
-  const { userRole } = useAuth();
+  const { currentOrganization } = useOrganization();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -38,44 +35,66 @@ export function UsersManager() {
     role: 'recepcao' as const,
   });
 
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'gerente';
+  // Check if current user is admin/gerente of current organization
+  const { data: currentUserRole } = useQuery({
+    queryKey: ['current-user-org-role', currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return null;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrganization.id)
+        .eq('active', true)
+        .single();
+
+      if (error) return null;
+      return data?.role;
+    },
+    enabled: !!currentOrganization?.id,
+  });
+
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'gerente';
 
   const { data: users, isLoading } = useQuery<UserWithAuth[]>({
-    queryKey: ['users'],
+    queryKey: ['organization-users', currentOrganization?.id],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (!currentOrganization?.id) return [];
 
-      if (profilesError) throw profilesError;
+      const { data, error } = await supabase.functions.invoke('list-users', {
+        body: { organizationId: currentOrganization.id },
+      });
 
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) throw authError;
-
-      const usersWithEmail: UserWithAuth[] = profiles?.map(profile => ({
-        ...profile,
-        email: (authUsers || []).find(u => u.id === profile.id)?.email || 'N/A'
-      })) || [];
-
-      return usersWithEmail;
+      if (error) throw error;
+      return data.users || [];
     },
-    enabled: isAdmin,
+    enabled: isAdmin && !!currentOrganization?.id,
   });
 
   const createUserMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-        body: data,
+        body: {
+          ...data,
+          organizationId: currentOrganization.id,
+        },
       });
 
       if (error) throw error;
+      if (result.error) throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
       toast.success('Usuário criado com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['organization-users'] });
       setIsCreateDialogOpen(false);
       setFormData({ fullName: '', email: '', password: '', role: 'recepcao' });
     },
@@ -86,23 +105,22 @@ export function UsersManager() {
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista' }) => {
-      const { error: profileError } = await supabase
-        .from('profiles')
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
+      // Update role in organization_members (not profiles/user_roles)
+      const { error } = await supabase
+        .from('organization_members')
         .update({ role })
-        .eq('id', userId);
+        .eq('user_id', userId)
+        .eq('organization_id', currentOrganization.id);
 
-      if (profileError) throw profileError;
-
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .update({ role })
-        .eq('user_id', userId);
-
-      if (roleError) throw roleError;
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Função atualizada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['organization-users'] });
       setIsEditDialogOpen(false);
       setSelectedUser(null);
     },
@@ -129,7 +147,7 @@ export function UsersManager() {
     if (!selectedUser) return;
     updateRoleMutation.mutate({ 
       userId: selectedUser.id, 
-      role: selectedUser.role as 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista'
+      role: selectedUser.role
     });
   };
 
@@ -155,13 +173,26 @@ export function UsersManager() {
     return variants[role] || 'default';
   };
 
+  if (!currentOrganization) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando...</CardTitle>
+          <CardDescription>
+            Aguardando seleção de organização.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Acesso Negado</CardTitle>
           <CardDescription>
-            Você não tem permissão para acessar o gerenciamento de usuários.
+            Você não tem permissão para acessar o gerenciamento de usuários desta organização.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -175,7 +206,7 @@ export function UsersManager() {
           <div>
             <CardTitle>Gerenciamento de Usuários</CardTitle>
             <CardDescription>
-              Gerencie os usuários do sistema e suas permissões
+              Gerencie os usuários da organização <strong>{currentOrganization.name}</strong>
             </CardDescription>
           </div>
           <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -229,6 +260,13 @@ export function UsersManager() {
                   </TableCell>
                 </TableRow>
               ))}
+              {users?.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    Nenhum usuário encontrado nesta organização.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         )}
@@ -240,7 +278,7 @@ export function UsersManager() {
           <DialogHeader>
             <DialogTitle>Cadastrar Novo Usuário</DialogTitle>
             <DialogDescription>
-              Preencha os dados do novo usuário do sistema
+              O usuário será adicionado à organização <strong>{currentOrganization.name}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -262,7 +300,7 @@ export function UsersManager() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="joao@sorri.com"
+                placeholder="joao@empresa.com"
               />
             </div>
 
@@ -321,7 +359,7 @@ export function UsersManager() {
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
-              Altere a função do usuário {selectedUser?.full_name}
+              Altere a função do usuário {selectedUser?.full_name} nesta organização
             </DialogDescription>
           </DialogHeader>
 

@@ -10,6 +10,7 @@ interface CreateUserRequest {
   email: string;
   password: string;
   role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
+  organizationId: string;
 }
 
 Deno.serve(async (req) => {
@@ -42,25 +43,27 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Check if user has admin or gerente role
-    const { data: userRole, error: roleError } = await supabaseClient
-      .from('user_roles')
+    const { fullName, email, password, role, organizationId }: CreateUserRequest = await req.json();
+
+    if (!fullName || !email || !password || !role || !organizationId) {
+      throw new Error('Missing required fields (fullName, email, password, role, organizationId)');
+    }
+
+    // Check if user is admin/gerente of the target organization
+    const { data: memberCheck, error: memberError } = await supabaseClient
+      .from('organization_members')
       .select('role')
       .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('active', true)
       .single();
 
-    if (roleError || !userRole) {
-      throw new Error('Could not verify user role');
+    if (memberError || !memberCheck) {
+      throw new Error('You are not a member of this organization');
     }
 
-    if (userRole.role !== 'admin' && userRole.role !== 'gerente') {
-      throw new Error('Insufficient permissions');
-    }
-
-    const { fullName, email, password, role }: CreateUserRequest = await req.json();
-
-    if (!fullName || !email || !password || !role) {
-      throw new Error('Missing required fields');
+    if (memberCheck.role !== 'admin' && memberCheck.role !== 'gerente') {
+      throw new Error('Insufficient permissions - must be admin or gerente of this organization');
     }
 
     if (password.length < 6) {
@@ -87,7 +90,7 @@ Deno.serve(async (req) => {
     console.log(`User created successfully: ${newUser.user.id}`);
 
     // The trigger handle_new_user will automatically create the profile and user_role
-    // But we need to update the role if it's not 'recepcao'
+    // Update profile role if not recepcao
     if (role !== 'recepcao') {
       const { error: profileError } = await supabaseClient
         .from('profiles')
@@ -106,6 +109,23 @@ Deno.serve(async (req) => {
       if (roleUpdateError) {
         console.error('Error updating user role:', roleUpdateError);
       }
+    }
+
+    // Add user to the organization with the specified role
+    const { error: orgMemberError } = await supabaseClient
+      .from('organization_members')
+      .insert({
+        organization_id: organizationId,
+        user_id: newUser.user.id,
+        role: role,
+        active: true,
+      });
+
+    if (orgMemberError) {
+      console.error('Error adding user to organization:', orgMemberError);
+      // Don't throw - user is created, just log the error
+    } else {
+      console.log(`User ${newUser.user.id} added to organization ${organizationId} with role ${role}`);
     }
 
     return new Response(
