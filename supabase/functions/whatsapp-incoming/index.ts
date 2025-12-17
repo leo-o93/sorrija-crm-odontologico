@@ -9,11 +9,11 @@ interface EvolutionWebhookPayload {
   event: string;
   instance: string;
   data: {
-    key: {
+    key?: {
       remoteJid: string;
       fromMe: boolean;
       id: string;
-      senderPn?: string; // Número real do remetente (presente quando remoteJid é @lid)
+      senderPn?: string;
     };
     pushName?: string;
     message?: {
@@ -38,7 +38,7 @@ interface EvolutionWebhookPayload {
       };
     };
     messageType?: string;
-    messageTimestamp: number;
+    messageTimestamp?: number;
   };
 }
 
@@ -60,6 +60,31 @@ Deno.serve(async (req) => {
 
     const payload: EvolutionWebhookPayload = await req.json();
     console.log('Received Evolution webhook:', JSON.stringify(payload, null, 2));
+
+    // Filtrar apenas eventos de mensagens novas
+    const supportedEvents = ['messages.upsert'];
+    if (!supportedEvents.includes(payload.event)) {
+      console.log(`Ignoring event type: ${payload.event}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Event ${payload.event} ignored - only processing messages.upsert` 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validar estrutura do payload
+    if (!payload.data?.key) {
+      console.log('Missing data.key in payload, skipping');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Invalid payload structure - missing data.key' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
