@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 interface SendMessagePayload {
+  organization_id: string;
   conversation_id?: string;
   lead_id?: string;
   patient_id?: string;
@@ -48,38 +49,41 @@ Deno.serve(async (req) => {
     const payload: SendMessagePayload = await req.json();
     console.log('Send message request:', payload);
 
-    // Get integration settings
-    const { data: integrationSettings } = await supabase
+    // Validate organization_id
+    if (!payload.organization_id) {
+      return new Response(
+        JSON.stringify({ error: 'organization_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const organizationId = payload.organization_id;
+
+    // Get integration settings filtered by organization
+    const { data: integrationSettings, error: integrationError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('organization_id', organizationId)
       .eq('active', true)
-      .single();
+      .maybeSingle();
+
+    if (integrationError) {
+      console.error('Error fetching integration settings:', integrationError);
+      return new Response(
+        JSON.stringify({ error: 'Error fetching integration settings' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!integrationSettings) {
       return new Response(
-        JSON.stringify({ error: 'WhatsApp integration not configured' }),
+        JSON.stringify({ error: 'WhatsApp integration not configured for this organization' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const evolutionInstance = integrationSettings.settings?.evolution_instance;
-
-    // Find organization for this instance
-    const { data: organization } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('evolution_instance', evolutionInstance)
-      .single();
-
-    if (!organization) {
-      return new Response(
-        JSON.stringify({ error: 'Organization not found' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const organizationId = organization.id;
 
     const evolutionBaseUrl = integrationSettings.settings?.evolution_base_url;
     const evolutionApiKey = integrationSettings.settings?.evolution_api_key;
