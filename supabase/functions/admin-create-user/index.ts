@@ -13,6 +13,81 @@ interface CreateUserRequest {
   organizationId: string;
 }
 
+// Input validation helpers
+const VALID_ROLES = ['admin', 'gerente', 'comercial', 'recepcao', 'dentista'] as const;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 255;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
+
+function validateInput(data: unknown): CreateUserRequest {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid request body');
+  }
+
+  const { fullName, email, password, role, organizationId } = data as Record<string, unknown>;
+
+  // Validate fullName
+  if (typeof fullName !== 'string' || !fullName.trim()) {
+    throw new Error('Full name is required');
+  }
+  if (fullName.length > MAX_NAME_LENGTH) {
+    throw new Error(`Full name must be less than ${MAX_NAME_LENGTH} characters`);
+  }
+  // Sanitize name - remove potentially dangerous characters
+  const sanitizedName = fullName.trim().replace(/[<>'"&]/g, '');
+  if (sanitizedName.length < 2) {
+    throw new Error('Full name must be at least 2 characters');
+  }
+
+  // Validate email
+  if (typeof email !== 'string' || !email.trim()) {
+    throw new Error('Email is required');
+  }
+  if (email.length > MAX_EMAIL_LENGTH) {
+    throw new Error(`Email must be less than ${MAX_EMAIL_LENGTH} characters`);
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Invalid email format');
+  }
+
+  // Validate password
+  if (typeof password !== 'string') {
+    throw new Error('Password is required');
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    throw new Error(`Password must be less than ${MAX_PASSWORD_LENGTH} characters`);
+  }
+  // Check for at least one letter and one number
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    throw new Error('Password must contain at least one letter and one number');
+  }
+
+  // Validate role
+  if (typeof role !== 'string' || !VALID_ROLES.includes(role as typeof VALID_ROLES[number])) {
+    throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
+  }
+
+  // Validate organizationId (UUID format)
+  if (typeof organizationId !== 'string' || !UUID_REGEX.test(organizationId)) {
+    throw new Error('Invalid organization ID format');
+  }
+
+  return {
+    fullName: sanitizedName,
+    email: normalizedEmail,
+    password,
+    role: role as CreateUserRequest['role'],
+    organizationId,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -30,7 +105,7 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Verify the caller is authenticated and has admin/gerente role
+    // Verify the caller is authenticated
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
@@ -43,11 +118,9 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { fullName, email, password, role, organizationId }: CreateUserRequest = await req.json();
-
-    if (!fullName || !email || !password || !role || !organizationId) {
-      throw new Error('Missing required fields (fullName, email, password, role, organizationId)');
-    }
+    // Parse and validate input
+    const rawData = await req.json();
+    const { fullName, email, password, role, organizationId } = validateInput(rawData);
 
     // Check if user is admin/gerente of the target organization
     const { data: memberCheck, error: memberError } = await supabaseClient
@@ -64,10 +137,6 @@ Deno.serve(async (req) => {
 
     if (memberCheck.role !== 'admin' && memberCheck.role !== 'gerente') {
       throw new Error('Insufficient permissions - must be admin or gerente of this organization');
-    }
-
-    if (password.length < 6) {
-      throw new Error('Password must be at least 6 characters');
     }
 
     console.log(`Creating user: ${email} with role: ${role}`);
@@ -123,7 +192,6 @@ Deno.serve(async (req) => {
 
     if (orgMemberError) {
       console.error('Error adding user to organization:', orgMemberError);
-      // Don't throw - user is created, just log the error
     } else {
       console.log(`User ${newUser.user.id} added to organization ${organizationId} with role ${role}`);
     }
