@@ -431,6 +431,50 @@ export type Database = {
           },
         ]
       }
+      lead_statuses: {
+        Row: {
+          active: boolean
+          color: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          organization_id: string
+          position: number
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          organization_id: string
+          position?: number
+          title: string
+        }
+        Update: {
+          active?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          organization_id?: string
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_statuses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           appointment_date: string | null
