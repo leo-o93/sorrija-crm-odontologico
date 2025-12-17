@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
-import { Plus, Pencil, Trash2, Star, GripVertical } from "lucide-react";
-import { useLeadStatuses, useDeleteLeadStatus, useSetDefaultStatus, useReorderLeadStatuses, LeadStatus } from "@/hooks/useLeadStatuses";
+import { Plus, Pencil, Trash2, Star, GripVertical, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { useLeadStatuses, useDeleteLeadStatus, useSetDefaultStatus, useReorderLeadStatuses, useReactivateLeadStatus, LeadStatus } from "@/hooks/useLeadStatuses";
 import { LeadStatusForm } from "./LeadStatusForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { arrayMove } from "@dnd-kit/sortable";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface SortableStatusItemProps {
   status: LeadStatus;
@@ -90,14 +91,20 @@ function SortableStatusItem({ status, onEdit, onDelete, onSetDefault }: Sortable
 }
 
 export function LeadStatusesManager() {
-  const { data: statuses, isLoading } = useLeadStatuses();
+  const { data: activeStatuses, isLoading: isLoadingActive } = useLeadStatuses(false);
+  const { data: allStatuses, isLoading: isLoadingAll } = useLeadStatuses(true);
   const deleteStatus = useDeleteLeadStatus();
   const setDefaultStatus = useSetDefaultStatus();
   const reorderStatuses = useReorderLeadStatuses();
+  const reactivateStatus = useReactivateLeadStatus();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState<LeadStatus | null>(null);
   const [deletingStatus, setDeletingStatus] = useState<LeadStatus | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+
+  const inactiveStatuses = allStatuses?.filter(s => !s.active) || [];
+  const isLoading = isLoadingActive || isLoadingAll;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -110,19 +117,23 @@ export function LeadStatusesManager() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id || !statuses) return;
+    if (!over || active.id === over.id || !activeStatuses) return;
 
-    const oldIndex = statuses.findIndex((s) => s.id === active.id);
-    const newIndex = statuses.findIndex((s) => s.id === over.id);
+    const oldIndex = activeStatuses.findIndex((s) => s.id === active.id);
+    const newIndex = activeStatuses.findIndex((s) => s.id === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
-      const newOrder = arrayMove(statuses, oldIndex, newIndex);
+      const newOrder = arrayMove(activeStatuses, oldIndex, newIndex);
       const updates = newOrder.map((status, index) => ({
         id: status.id,
         position: index,
       }));
       reorderStatuses.mutate(updates);
     }
+  };
+
+  const handleReactivate = (status: LeadStatus) => {
+    reactivateStatus.mutate(status.id);
   };
 
   const handleDelete = async () => {
@@ -182,19 +193,19 @@ export function LeadStatusesManager() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent>
-          {statuses && statuses.length > 0 ? (
+        <CardContent className="space-y-4">
+          {activeStatuses && activeStatuses.length > 0 ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={statuses.map((s) => s.id)}
+                items={activeStatuses.map((s) => s.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-2">
-                  {statuses.map((status) => (
+                  {activeStatuses.map((status) => (
                     <SortableStatusItem
                       key={status.id}
                       status={status}
@@ -210,6 +221,43 @@ export function LeadStatusesManager() {
             <div className="text-center py-8 text-muted-foreground">
               Nenhum status cadastrado. Clique em "Novo Status" para começar.
             </div>
+          )}
+
+          {/* Seção de Status Inativos */}
+          {inactiveStatuses.length > 0 && (
+            <Collapsible open={showInactive} onOpenChange={setShowInactive}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between text-muted-foreground">
+                  <span>Status inativos ({inactiveStatuses.length})</span>
+                  {showInactive ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2">
+                {inactiveStatuses.map((status) => (
+                  <div
+                    key={status.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 border border-dashed rounded-lg opacity-60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded-full ${status.color}`} />
+                      <div>
+                        <span className="font-medium">{status.title}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({status.name})</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReactivate(status)}
+                      disabled={reactivateStatus.isPending}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Reativar
+                    </Button>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </CardContent>
       </Card>
