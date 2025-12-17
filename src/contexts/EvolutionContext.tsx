@@ -7,7 +7,6 @@ interface EvolutionConfig {
   evolution_api_key?: string;
   evolution_instance?: string;
   webhook_secret?: string;
-  n8n_outgoing_url?: string;
 }
 
 interface EvolutionContextType {
