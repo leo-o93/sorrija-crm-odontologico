@@ -14,7 +14,85 @@ interface SendMessagePayload {
   type: string;
   text?: string;
   media?: string;
-  metadata?: any;
+  metadata?: unknown;
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_TEXT_LENGTH = 4096;
+const MAX_PHONE_LENGTH = 20;
+
+function validatePayload(data: unknown): SendMessagePayload {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid request body');
+  }
+
+  const { organization_id, conversation_id, lead_id, patient_id, phone, type, text, media, metadata } = data as Record<string, unknown>;
+
+  // Validate organization_id
+  if (typeof organization_id !== 'string' || !UUID_REGEX.test(organization_id)) {
+    throw new Error('Valid organization_id is required');
+  }
+
+  // Validate optional UUIDs
+  if (conversation_id !== undefined && (typeof conversation_id !== 'string' || !UUID_REGEX.test(conversation_id))) {
+    throw new Error('Invalid conversation_id format');
+  }
+  if (lead_id !== undefined && lead_id !== null && (typeof lead_id !== 'string' || !UUID_REGEX.test(lead_id))) {
+    throw new Error('Invalid lead_id format');
+  }
+  if (patient_id !== undefined && patient_id !== null && (typeof patient_id !== 'string' || !UUID_REGEX.test(patient_id))) {
+    throw new Error('Invalid patient_id format');
+  }
+
+  // Validate phone
+  if (typeof phone !== 'string' || !phone.trim()) {
+    throw new Error('Phone number is required');
+  }
+  const cleanPhone = phone.replace(/\D/g, '');
+  if (cleanPhone.length < 10 || cleanPhone.length > MAX_PHONE_LENGTH) {
+    throw new Error('Invalid phone number length');
+  }
+
+  // Validate type
+  const validTypes = ['text', 'image', 'document', 'audio', 'video'];
+  if (typeof type !== 'string' || !validTypes.includes(type)) {
+    throw new Error(`Invalid message type. Must be one of: ${validTypes.join(', ')}`);
+  }
+
+  // Validate text
+  if (text !== undefined && text !== null) {
+    if (typeof text !== 'string') {
+      throw new Error('Text must be a string');
+    }
+    if (text.length > MAX_TEXT_LENGTH) {
+      throw new Error(`Text must be less than ${MAX_TEXT_LENGTH} characters`);
+    }
+  }
+
+  // Validate media URL if provided
+  if (media !== undefined && media !== null) {
+    if (typeof media !== 'string') {
+      throw new Error('Media must be a URL string');
+    }
+    // Basic URL validation
+    try {
+      new URL(media);
+    } catch {
+      throw new Error('Invalid media URL');
+    }
+  }
+
+  return {
+    organization_id,
+    conversation_id: conversation_id as string | undefined,
+    lead_id: lead_id as string | undefined,
+    patient_id: patient_id as string | undefined,
+    phone: cleanPhone,
+    type: type as string,
+    text: text as string | undefined,
+    media: media as string | undefined,
+    metadata,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -33,9 +111,15 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Client with user auth for RLS-protected queries
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    
+    // Service client for explicit authorization check
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get authenticated user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -46,18 +130,46 @@ Deno.serve(async (req) => {
       );
     }
 
-    const payload: SendMessagePayload = await req.json();
-    console.log('Send message request:', payload);
+    // Parse and validate payload
+    const rawPayload = await req.json();
+    const payload = validatePayload(rawPayload);
+    console.log('Send message request:', { ...payload, text: payload.text ? '[REDACTED]' : undefined });
 
-    // Validate organization_id
-    if (!payload.organization_id) {
+    const organizationId = payload.organization_id;
+
+    // EXPLICIT AUTHORIZATION CHECK: Verify user belongs to the organization
+    const { data: membership, error: membershipError } = await supabaseService
+      .from('organization_members')
+      .select('id, role, active')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error('Error checking organization membership:', membershipError);
       return new Response(
-        JSON.stringify({ error: 'organization_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Error verifying permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const organizationId = payload.organization_id;
+    if (!membership) {
+      console.warn(`User ${user.id} attempted to send message to organization ${organizationId} without membership`);
+      return new Response(
+        JSON.stringify({ error: 'You are not a member of this organization' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user has appropriate role to send messages
+    const allowedRoles = ['admin', 'gerente', 'recepcao', 'comercial'];
+    if (!allowedRoles.includes(membership.role)) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions to send messages' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get integration settings filtered by organization
     const { data: integrationSettings, error: integrationError } = await supabase
@@ -84,7 +196,6 @@ Deno.serve(async (req) => {
     }
 
     const evolutionInstance = integrationSettings.settings?.evolution_instance;
-
     const evolutionBaseUrl = integrationSettings.settings?.evolution_base_url;
     const evolutionApiKey = integrationSettings.settings?.evolution_api_key;
 
@@ -96,8 +207,7 @@ Deno.serve(async (req) => {
     }
 
     // Normalize phone
-    const normalizedPhone = payload.phone.replace(/\D/g, '');
-    const phoneWithCountry = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
+    const phoneWithCountry = payload.phone.startsWith('55') ? payload.phone : `55${payload.phone}`;
 
     let conversationId = payload.conversation_id;
 
@@ -122,7 +232,7 @@ Deno.serve(async (req) => {
             lead_id: payload.lead_id || null,
             patient_id: payload.patient_id || null,
             channel: 'whatsapp',
-            evolution_instance: integrationSettings.settings?.evolution_instance,
+            evolution_instance: evolutionInstance,
             phone: phoneWithCountry,
             status: 'open',
             assigned_user_id: user.id,
@@ -168,7 +278,7 @@ Deno.serve(async (req) => {
     
     if (n8nWebhookUrl) {
       // Send via n8n webhook
-      console.log('Sending via n8n webhook:', n8nWebhookUrl);
+      console.log('Sending via n8n webhook');
       
       const n8nPayload = {
         conversation_id: conversationId,
@@ -199,7 +309,7 @@ Deno.serve(async (req) => {
       }
 
       const n8nResult = await n8nResponse.json();
-      console.log('n8n response:', n8nResult);
+      console.log('n8n response received');
       providerMessageId = n8nResult.message_id || n8nResult.id;
       
     } else {
@@ -218,7 +328,6 @@ Deno.serve(async (req) => {
       };
 
       const evolutionUrl = `${evolutionBaseUrl}/message/sendText/${evolutionInstance}`;
-      console.log('Evolution URL:', evolutionUrl);
       
       const evolutionResponse = await fetch(evolutionUrl, {
         method: 'POST',
@@ -238,11 +347,11 @@ Deno.serve(async (req) => {
           .update({ status: 'failed' })
           .eq('id', newMessage.id);
 
-        throw new Error(`Failed to send message via Evolution API: ${errorText}`);
+        throw new Error('Failed to send message via Evolution API');
       }
 
       const evolutionResult = await evolutionResponse.json();
-      console.log('Evolution response:', evolutionResult);
+      console.log('Evolution response received');
       providerMessageId = evolutionResult.key?.id || evolutionResult.message?.key?.id;
     }
 
