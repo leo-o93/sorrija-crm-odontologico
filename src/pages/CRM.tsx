@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Phone, MessageCircle, Plus, Search, Eye } from "lucide-react";
+import { Phone, MessageCircle, Plus, Search, Eye, GripVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
@@ -53,13 +53,22 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
     <Card
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="cursor-move hover:shadow-md transition-shadow"
+      className={`hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary shadow-lg' : ''}`}
     >
       <CardHeader className="pb-2 pt-3 px-3">
-        <CardTitle className="text-sm font-medium">{lead.name}</CardTitle>
-        <p className="text-xs text-muted-foreground">{lead.phone}</p>
+        <div className="flex items-start gap-2">
+          <button
+            className="cursor-grab hover:bg-muted p-1 rounded touch-none flex-shrink-0 mt-0.5"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-sm font-medium truncate">{lead.name}</CardTitle>
+            <p className="text-xs text-muted-foreground">{lead.phone}</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-0 space-y-2">
         {lead.procedures && (
@@ -109,7 +118,7 @@ interface DroppableColumnProps {
 }
 
 function DroppableColumn({ column, leads, onLeadClick, onOpenConversation }: DroppableColumnProps) {
-  const { setNodeRef } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: column.name,
   });
 
@@ -118,7 +127,12 @@ function DroppableColumn({ column, leads, onLeadClick, onOpenConversation }: Dro
   const hasMore = leads.length > 5;
 
   return (
-    <div ref={setNodeRef} className="space-y-3">
+    <div 
+      ref={setNodeRef} 
+      className={`space-y-3 p-2 rounded-lg min-h-[200px] transition-colors ${
+        isOver ? 'bg-primary/10 ring-2 ring-primary/30' : 'bg-muted/30'
+      }`}
+    >
       <div className="flex items-center gap-2">
         <div className={`w-3 h-3 rounded-full ${column.color}`} />
         <h2 className="font-semibold text-sm">{column.title}</h2>
