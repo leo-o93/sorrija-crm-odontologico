@@ -272,88 +272,47 @@ Deno.serve(async (req) => {
       throw messageError;
     }
 
-    // Choose between n8n webhook or direct Evolution API call
-    const n8nWebhookUrl = integrationSettings.settings?.n8n_outgoing_url;
+    // Send directly to Evolution API
+    console.log('Sending message to Evolution API');
     let providerMessageId: string | null = null;
     
-    if (n8nWebhookUrl) {
-      // Send via n8n webhook
-      console.log('Sending via n8n webhook');
+    const evolutionPayload = {
+      number: phoneWithCountry,
+      text: payload.text,
+      ...(payload.media && { 
+        mediaMessage: {
+          mediatype: payload.type === 'image' ? 'image' : 'document',
+          media: payload.media,
+        }
+      }),
+    };
+
+    const evolutionUrl = `${evolutionBaseUrl}/message/sendText/${evolutionInstance}`;
+    
+    const evolutionResponse = await fetch(evolutionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': evolutionApiKey,
+      },
+      body: JSON.stringify(evolutionPayload),
+    });
+
+    if (!evolutionResponse.ok) {
+      const errorText = await evolutionResponse.text();
+      console.error('Evolution API failed:', errorText);
       
-      const n8nPayload = {
-        conversation_id: conversationId,
-        local_message_id: newMessage.id,
-        phone: phoneWithCountry,
-        type: payload.type,
-        text: payload.text,
-        media: payload.media,
-        instance: evolutionInstance,
-        metadata: payload.metadata,
-      };
+      await supabase
+        .from('messages')
+        .update({ status: 'failed' })
+        .eq('id', newMessage.id);
 
-      const n8nResponse = await fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(n8nPayload),
-      });
-
-      if (!n8nResponse.ok) {
-        console.error('n8n webhook failed:', await n8nResponse.text());
-        
-        await supabase
-          .from('messages')
-          .update({ status: 'failed' })
-          .eq('id', newMessage.id);
-
-        throw new Error('Failed to send message via n8n');
-      }
-
-      const n8nResult = await n8nResponse.json();
-      console.log('n8n response received');
-      providerMessageId = n8nResult.message_id || n8nResult.id;
-      
-    } else {
-      // Send directly to Evolution API
-      console.log('Sending directly to Evolution API');
-      
-      const evolutionPayload = {
-        number: phoneWithCountry,
-        text: payload.text,
-        ...(payload.media && { 
-          mediaMessage: {
-            mediatype: payload.type === 'image' ? 'image' : 'document',
-            media: payload.media,
-          }
-        }),
-      };
-
-      const evolutionUrl = `${evolutionBaseUrl}/message/sendText/${evolutionInstance}`;
-      
-      const evolutionResponse = await fetch(evolutionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': evolutionApiKey,
-        },
-        body: JSON.stringify(evolutionPayload),
-      });
-
-      if (!evolutionResponse.ok) {
-        const errorText = await evolutionResponse.text();
-        console.error('Evolution API failed:', errorText);
-        
-        await supabase
-          .from('messages')
-          .update({ status: 'failed' })
-          .eq('id', newMessage.id);
-
-        throw new Error('Failed to send message via Evolution API');
-      }
-
-      const evolutionResult = await evolutionResponse.json();
-      console.log('Evolution response received');
-      providerMessageId = evolutionResult.key?.id || evolutionResult.message?.key?.id;
+      throw new Error('Failed to send message via Evolution API');
     }
+
+    const evolutionResult = await evolutionResponse.json();
+    console.log('Evolution response received');
+    providerMessageId = evolutionResult.key?.id || evolutionResult.message?.key?.id;
 
     // Update message with provider ID and status
     const { data: updatedMessage } = await supabase

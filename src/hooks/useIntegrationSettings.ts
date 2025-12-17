@@ -10,7 +10,6 @@ export interface IntegrationSettings {
     evolution_api_key?: string;
     evolution_instance?: string;
     webhook_secret?: string;
-    n8n_outgoing_url?: string;
   };
   active: boolean;
   created_at: string;

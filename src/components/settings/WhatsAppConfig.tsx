@@ -23,7 +23,6 @@ export function WhatsAppConfig() {
     evolution_api_key: '',
     evolution_instance: '',
     webhook_secret: '',
-    n8n_outgoing_url: '',
   });
 
   const [copied, setCopied] = useState(false);
@@ -35,7 +34,6 @@ export function WhatsAppConfig() {
         evolution_api_key: settings.settings.evolution_api_key || '',
         evolution_instance: settings.settings.evolution_instance || '',
         webhook_secret: settings.settings.webhook_secret || '',
-        n8n_outgoing_url: settings.settings.n8n_outgoing_url || '',
       });
     }
   }, [settings]);
@@ -168,16 +166,6 @@ export function WhatsAppConfig() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="n8n_outgoing_url">URL do Webhook n8n (Envio)</Label>
-            <Input
-              id="n8n_outgoing_url"
-              placeholder="https://n8n.exemplo.com/webhook/enviar"
-              value={formData.n8n_outgoing_url}
-              onChange={(e) => setFormData({ ...formData, n8n_outgoing_url: e.target.value })}
-            />
-          </div>
-
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleSave} disabled={saveSettings.isPending}>
               {saveSettings.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -238,14 +226,14 @@ export function WhatsAppConfig() {
       {formData.webhook_secret && (
         <Card>
           <CardHeader>
-            <CardTitle>Configurar no n8n</CardTitle>
+            <CardTitle>Configuração do Webhook</CardTitle>
             <CardDescription>
-              Use estas informações para configurar o webhook no n8n para receber mensagens
+              Informações para configurar o webhook na Evolution API
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>URL do Webhook (Recebimento)</Label>
+              <Label>URL do Webhook</Label>
               <div className="flex gap-2">
                 <Input value={webhookUrl} readOnly />
                 <Button
@@ -269,10 +257,10 @@ export function WhatsAppConfig() {
             <div className="p-4 bg-accent rounded-lg text-sm space-y-2">
               <p className="font-medium">Instruções:</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                <li>Configure a Evolution API para enviar webhooks para o n8n</li>
-                <li>No n8n, crie um fluxo que recebe webhooks da Evolution</li>
-                <li>Faça o n8n enviar para a URL acima com o header de autenticação</li>
-                <li>Para enviar mensagens, o n8n deve chamar a Evolution API</li>
+                <li>Use o botão "Registrar Webhook" acima para configurar automaticamente</li>
+                <li>Ou configure manualmente na Evolution API com a URL e header acima</li>
+                <li>Certifique-se de que o evento MESSAGES_UPSERT está habilitado</li>
+                <li>Desabilite a opção "Webhook Base64" na Evolution</li>
               </ol>
             </div>
           </CardContent>
