@@ -251,3 +251,26 @@ export function useSetDefaultStatus() {
     },
   });
 }
+
+export function useReactivateLeadStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("lead_statuses")
+        .update({ active: true })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead_statuses"] });
+      toast.success("Status reativado com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Error reactivating lead status:", error);
+      toast.error("Erro ao reativar status");
+    },
+  });
+}
