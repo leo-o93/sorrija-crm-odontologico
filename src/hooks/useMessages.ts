@@ -79,6 +79,7 @@ export function useMessages(conversationId: string | null) {
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
   return useMutation({
     mutationFn: async ({
@@ -98,8 +99,13 @@ export function useSendMessage() {
       text?: string;
       media?: string;
     }) => {
+      if (!currentOrganization?.id) {
+        throw new Error('Organization not selected');
+      }
+
       const { data, error } = await supabase.functions.invoke('messages-send', {
         body: {
+          organization_id: currentOrganization.id,
           conversation_id: conversationId,
           lead_id: leadId,
           patient_id: patientId,
