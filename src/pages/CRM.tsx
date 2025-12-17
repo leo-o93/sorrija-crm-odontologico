@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Phone, MessageCircle, Plus, Search, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
+import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -15,35 +16,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
-
-type LeadStatus =
-  | "novo_lead"
-  | "primeira_tentativa"
-  | "segunda_tentativa"
-  | "terceira_tentativa"
-  | "agendado"
-  | "compareceu"
-  | "nao_compareceu"
-  | "orcamento_enviado"
-  | "fechado"
-  | "perdido";
-
-const columns: {
-  id: LeadStatus;
-  title: string;
-  color: string;
-}[] = [
-  { id: "novo_lead", title: "Novo Lead", color: "bg-blue-500" },
-  { id: "primeira_tentativa", title: "1ª Tentativa", color: "bg-yellow-500" },
-  { id: "segunda_tentativa", title: "2ª Tentativa", color: "bg-orange-500" },
-  { id: "terceira_tentativa", title: "3ª Tentativa", color: "bg-red-500" },
-  { id: "agendado", title: "Agendado", color: "bg-purple-500" },
-  { id: "compareceu", title: "Compareceu", color: "bg-green-500" },
-  { id: "nao_compareceu", title: "Não Compareceu", color: "bg-red-600" },
-  { id: "orcamento_enviado", title: "Orçamento Enviado", color: "bg-indigo-500" },
-  { id: "fechado", title: "Fechado", color: "bg-emerald-500" },
-  { id: "perdido", title: "Perdido", color: "bg-gray-500" },
-];
 
 interface SortableLeadCardProps {
   lead: Lead;
@@ -126,7 +98,8 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
 
 interface DroppableColumnProps {
   column: {
-    id: LeadStatus;
+    id: string;
+    name: string;
     title: string;
     color: string;
   };
@@ -137,7 +110,7 @@ interface DroppableColumnProps {
 
 function DroppableColumn({ column, leads, onLeadClick, onOpenConversation }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({
-    id: column.id,
+    id: column.name,
   });
 
   const [showAll, setShowAll] = useState(false);
@@ -187,7 +160,8 @@ function DroppableColumn({ column, leads, onLeadClick, onOpenConversation }: Dro
 
 export default function CRM() {
   const navigate = useNavigate();
-  const { data: leads, isLoading } = useLeads();
+  const { data: leads, isLoading: isLoadingLeads } = useLeads();
+  const { data: statuses, isLoading: isLoadingStatuses } = useLeadStatuses();
   const updateLeadStatus = useUpdateLeadStatus();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -203,11 +177,22 @@ export default function CRM() {
     })
   );
 
+  // Convert statuses to columns format
+  const columns = useMemo(() => {
+    if (!statuses) return [];
+    return statuses.map((status) => ({
+      id: status.id,
+      name: status.name,
+      title: status.title,
+      color: status.color,
+    }));
+  }, [statuses]);
+
+  const validStatusNames = useMemo(() => columns.map((c) => c.name), [columns]);
+
   const handleDragStart = (event: DragEndEvent) => {
     setActiveId(event.active.id as string);
   };
-
-  const validStatuses = columns.map(c => c.id);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -218,23 +203,23 @@ export default function CRM() {
     const leadId = active.id as string;
     const overId = over.id as string;
 
-    // Verifica se o drop foi sobre uma coluna válida
-    if (validStatuses.includes(overId as LeadStatus)) {
-      const currentLead = leads?.find(l => l.id === leadId);
+    // Check if dropped on a valid column (status name)
+    if (validStatusNames.includes(overId)) {
+      const currentLead = leads?.find((l) => l.id === leadId);
       if (currentLead?.status !== overId) {
-        updateLeadStatus.mutate({ id: leadId, status: overId as LeadStatus });
+        updateLeadStatus.mutate({ id: leadId, status: overId });
       }
       return;
     }
 
-    // Se não for um status válido, é um drop sobre outro lead
-    // Encontrar a coluna (status) do lead sobre o qual foi dropado
-    const targetLead = leads?.find(l => l.id === overId);
+    // If not a valid status, it's a drop on another lead
+    // Find the column (status) of the lead it was dropped on
+    const targetLead = leads?.find((l) => l.id === overId);
     if (targetLead) {
-      const newStatus = targetLead.status as LeadStatus;
-      const currentLead = leads?.find(l => l.id === leadId);
+      const newStatus = targetLead.status;
+      const currentLead = leads?.find((l) => l.id === leadId);
       
-      // Só atualiza se o status for diferente
+      // Only update if status is different
       if (currentLead?.status !== newStatus) {
         updateLeadStatus.mutate({ id: leadId, status: newStatus });
       }
@@ -250,7 +235,7 @@ export default function CRM() {
     navigate('/conversas');
   };
 
-  // Filtrar leads pela busca
+  // Filter leads by search
   const filteredLeads = useMemo(() => {
     if (!searchQuery.trim()) return leads;
     
@@ -263,6 +248,8 @@ export default function CRM() {
   }, [leads, searchQuery]);
 
   const activeLead = activeId ? leads?.find((lead) => lead.id === activeId) : null;
+
+  const isLoading = isLoadingLeads || isLoadingStatuses;
 
   if (isLoading) {
     return (
@@ -359,38 +346,49 @@ export default function CRM() {
         </Card>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {columns.map((column) => {
-            const columnLeads = filteredLeads?.filter((lead) => lead.status === column.id) || [];
-            return (
-              <DroppableColumn
-                key={column.id}
-                column={column}
-                leads={columnLeads}
-                onLeadClick={handleLeadClick}
-                onOpenConversation={handleOpenConversation}
-              />
-            );
-          })}
-        </div>
+      {columns.length > 0 ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {columns.map((column) => {
+              const columnLeads = filteredLeads?.filter((lead) => lead.status === column.name) || [];
+              return (
+                <DroppableColumn
+                  key={column.id}
+                  column={column}
+                  leads={columnLeads}
+                  onLeadClick={handleLeadClick}
+                  onOpenConversation={handleOpenConversation}
+                />
+              );
+            })}
+          </div>
 
-        <DragOverlay>
-          {activeLead ? (
-            <Card className="cursor-grabbing opacity-80">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{activeLead.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{activeLead.phone}</p>
-              </CardHeader>
-            </Card>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+          <DragOverlay>
+            {activeLead ? (
+              <Card className="cursor-grabbing opacity-80">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{activeLead.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{activeLead.phone}</p>
+                </CardHeader>
+              </Card>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      ) : (
+        <Card className="p-8">
+          <div className="text-center text-muted-foreground">
+            <p>Nenhum status configurado.</p>
+            <p className="text-sm mt-2">
+              Vá em <strong>Cadastros → Status de Leads</strong> para configurar as colunas do Kanban.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <LeadDetailPanel lead={selectedLead} open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen} />
     </div>
