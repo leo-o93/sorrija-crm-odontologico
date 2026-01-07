@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Clock, FileText, CalendarCheck } from "lucide-react";
+import { MessageCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HotSubstatusBadgeProps {
@@ -25,18 +25,6 @@ const substatusConfig: Record<string, {
     icon: Clock,
     bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
     textColor: "text-yellow-700 dark:text-yellow-300",
-  },
-  em_negociacao: {
-    label: "Em negociação",
-    icon: FileText,
-    bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    textColor: "text-blue-700 dark:text-blue-300",
-  },
-  follow_up_agendado: {
-    label: "Follow-up agendado",
-    icon: CalendarCheck,
-    bgColor: "bg-purple-100 dark:bg-purple-900/30",
-    textColor: "text-purple-700 dark:text-purple-300",
   },
 };
 

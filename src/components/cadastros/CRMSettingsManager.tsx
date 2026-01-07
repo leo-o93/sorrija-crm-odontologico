@@ -168,7 +168,7 @@ export function CRMSettingsManager() {
               <CardTitle>Substatus de Leads Quentes</CardTitle>
             </div>
             <CardDescription>
-              Configure a detecção automática de substatus (em conversa, aguardando resposta, em negociação).
+              O substatus é atualizado automaticamente: "Em conversa" quando o cliente responde, "Aguardando resposta" quando você envia uma mensagem.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -178,30 +178,14 @@ export function CRMSettingsManager() {
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">Ativar detecção de substatus</FormLabel>
+                    <FormLabel className="text-base">Ativar detecção automática</FormLabel>
                     <FormDescription>
-                      O substatus será atualizado automaticamente baseado nas interações
+                      Substatus atualizado automaticamente com base nas mensagens
                     </FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="awaiting_response_minutes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tempo para "Aguardando Resposta"</FormLabel>
-                  <FormControl>
-                    <Input type="number" min={1} max={10080} {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Minutos sem resposta do cliente após enviar mensagem (máx: 10080 = 7 dias)
-                  </FormDescription>
                 </FormItem>
               )}
             />

@@ -3,10 +3,7 @@ import {
   Flame, 
   Snowflake, 
   X, 
-  Calendar, 
-  FileText, 
-  RotateCcw,
-  PhoneOutgoing
+  RotateCcw
 } from "lucide-react";
 import { useUpdateLeadTemperature } from "@/hooks/useUpdateLeadTemperature";
 
@@ -75,24 +72,6 @@ export function TemperatureActions({
           <Button
             size="sm"
             variant="outline"
-            disabled={isLoading}
-            className="text-primary"
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            Agendar
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isLoading}
-            className="text-blue-600"
-          >
-            <FileText className="h-4 w-4 mr-1" />
-            Enviar Orçamento
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
             onClick={() => handleTemperatureChange("frio")}
             disabled={isLoading}
             className="text-slate-600"
@@ -116,15 +95,6 @@ export function TemperatureActions({
     case "frio":
       return (
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isLoading}
-            className="text-primary"
-          >
-            <PhoneOutgoing className="h-4 w-4 mr-1" />
-            Follow-up
-          </Button>
           <Button
             size="sm"
             variant="outline"
