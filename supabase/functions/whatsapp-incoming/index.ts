@@ -282,15 +282,20 @@ Deno.serve(async (req) => {
       contactType = 'lead';
       console.log('Found existing lead:', contactId);
 
-      // Update last_interaction_at and hot_substatus for incoming messages
+      // Update last_interaction_at and temperature/substatus for incoming messages
       if (direction === 'in') {
         const updateData: Record<string, unknown> = {
           last_interaction_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        // If lead is "quente", update substatus to "em_conversa"
-        if (existingLead.temperature === 'quente') {
+        // If lead responds, they become "quente" with substatus "em_conversa"
+        // This also reactivates cold leads when they respond
+        if (existingLead.temperature === 'frio' || existingLead.temperature === 'novo') {
+          updateData.temperature = 'quente';
+          updateData.hot_substatus = 'em_conversa';
+          console.log(`Reactivating ${existingLead.temperature} lead to quente/em_conversa`);
+        } else if (existingLead.temperature === 'quente') {
           updateData.hot_substatus = 'em_conversa';
           console.log('Updating hot lead substatus to em_conversa');
         }
