@@ -332,6 +332,27 @@ Deno.serve(async (req) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId);
 
+    // Update lead substatus if sending to a hot lead
+    if (payload.lead_id) {
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('temperature')
+        .eq('id', payload.lead_id)
+        .maybeSingle();
+
+      if (lead?.temperature === 'quente') {
+        await supabase
+          .from('leads')
+          .update({ 
+            hot_substatus: 'aguardando_resposta',
+            last_interaction_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', payload.lead_id);
+        console.log('Updated lead substatus to aguardando_resposta');
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -16,6 +16,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
+import { TemperatureBadge, getTemperatureColor } from "@/components/crm/TemperatureBadge";
+import { HotSubstatusBadge } from "@/components/crm/HotSubstatusBadge";
+import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
+import { cn } from "@/lib/utils";
 
 interface SortableLeadCardProps {
   lead: Lead;
@@ -53,7 +57,14 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
     <Card
       ref={setNodeRef}
       style={style}
-      className={`hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary shadow-lg' : ''}`}
+      className={cn(
+        "hover:shadow-md transition-all",
+        isDragging ? "ring-2 ring-primary shadow-lg" : "",
+        lead.temperature === "quente" && "border-l-4 border-l-orange-400",
+        lead.temperature === "frio" && "border-l-4 border-l-slate-400",
+        lead.temperature === "perdido" && "border-l-4 border-l-red-400",
+        lead.temperature === "novo" && "border-l-4 border-l-blue-400"
+      )}
     >
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-start gap-2">
@@ -65,17 +76,25 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-sm font-medium truncate">{lead.name}</CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="text-sm font-medium truncate">{lead.name}</CardTitle>
+              <TemperatureBadge temperature={lead.temperature} size="sm" showLabel={false} />
+            </div>
             <p className="text-xs text-muted-foreground">{lead.phone}</p>
           </div>
         </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-0 space-y-2">
-        {lead.procedures && (
-          <Badge variant="secondary" className="text-xs py-0 px-2">
-            {lead.procedures.name}
-          </Badge>
-        )}
+        <div className="flex flex-wrap gap-1">
+          {lead.procedures && (
+            <Badge variant="secondary" className="text-xs py-0 px-2">
+              {lead.procedures.name}
+            </Badge>
+          )}
+          {lead.temperature === "quente" && lead.hot_substatus && (
+            <HotSubstatusBadge substatus={lead.hot_substatus} size="sm" />
+          )}
+        </div>
         <div className="flex gap-1">
           <Button size="sm" variant="outline" className="h-7 px-2" onClick={makeCall} title="Ligar">
             <Phone className="h-3 w-3" />
@@ -182,6 +201,7 @@ export default function CRM() {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [temperatureFilter, setTemperatureFilter] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -249,17 +269,25 @@ export default function CRM() {
     navigate('/conversas');
   };
 
-  // Filter leads by search
+  // Filter leads by search and temperature
   const filteredLeads = useMemo(() => {
-    if (!searchQuery.trim()) return leads;
+    let result = leads;
     
-    const query = searchQuery.toLowerCase();
-    return leads?.filter((lead) => {
-      const matchName = lead.name.toLowerCase().includes(query);
-      const matchPhone = lead.phone.replace(/\D/g, '').includes(query.replace(/\D/g, ''));
-      return matchName || matchPhone;
-    });
-  }, [leads, searchQuery]);
+    if (temperatureFilter) {
+      result = result?.filter((lead) => lead.temperature === temperatureFilter);
+    }
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result?.filter((lead) => {
+        const matchName = lead.name.toLowerCase().includes(query);
+        const matchPhone = lead.phone.replace(/\D/g, '').includes(query.replace(/\D/g, ''));
+        return matchName || matchPhone;
+      });
+    }
+    
+    return result;
+  }, [leads, searchQuery, temperatureFilter]);
 
   const activeLead = activeId ? leads?.find((lead) => lead.id === activeId) : null;
 
@@ -313,7 +341,7 @@ export default function CRM() {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
@@ -323,6 +351,8 @@ export default function CRM() {
             className="pl-10"
           />
         </div>
+        
+        <TemperatureFilter value={temperatureFilter} onChange={setTemperatureFilter} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

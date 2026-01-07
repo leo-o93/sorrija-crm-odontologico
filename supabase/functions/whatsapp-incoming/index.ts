@@ -42,6 +42,58 @@ interface EvolutionWebhookPayload {
   };
 }
 
+interface InterestTrigger {
+  id: string;
+  name: string;
+  condition_field: string;
+  condition_operator: string;
+  condition_value: string;
+  case_sensitive: boolean;
+  action_set_interest_id: string | null;
+  action_set_source_id: string | null;
+  action_set_temperature: string | null;
+  action_set_status: string | null;
+  priority: number;
+}
+
+// Function to evaluate trigger conditions
+function evaluateTriggerCondition(
+  trigger: InterestTrigger,
+  messageText: string
+): boolean {
+  const value = trigger.condition_value || '';
+  const testValue = trigger.case_sensitive ? messageText : messageText.toLowerCase();
+  const conditionValue = trigger.case_sensitive ? value : value.toLowerCase();
+
+  switch (trigger.condition_operator) {
+    case 'contains':
+      return testValue.includes(conditionValue);
+    case 'not_contains':
+      return !testValue.includes(conditionValue);
+    case 'equals':
+      return testValue === conditionValue;
+    case 'not_equals':
+      return testValue !== conditionValue;
+    case 'starts_with':
+      return testValue.startsWith(conditionValue);
+    case 'ends_with':
+      return testValue.endsWith(conditionValue);
+    case 'regex':
+      try {
+        const regex = new RegExp(value, trigger.case_sensitive ? '' : 'i');
+        return regex.test(messageText);
+      } catch {
+        return false;
+      }
+    case 'is_empty':
+      return testValue.trim() === '';
+    case 'is_not_empty':
+      return testValue.trim() !== '';
+    default:
+      return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -144,7 +196,6 @@ Deno.serve(async (req) => {
     console.log('Message direction:', direction);
 
     // Extract phone number - pode vir em senderPn (número real) ou remoteJid
-    // O remoteJid pode ser @lid (Lead ID interno) que NÃO é um número de telefone
     const remoteJid = payload.data.key.remoteJid;
     const senderPn = payload.data.key.senderPn;
 
@@ -216,11 +267,12 @@ Deno.serve(async (req) => {
     // Find or create lead by phone
     let contactId: string | null = null;
     let contactType: 'lead' | 'patient' = 'lead';
+    let isNewLead = false;
 
     // Try to find existing lead
     const { data: existingLead } = await supabase
       .from('leads')
-      .select('id')
+      .select('id, temperature, hot_substatus')
       .eq('phone', phoneWithCountry)
       .eq('organization_id', organizationId)
       .maybeSingle();
@@ -229,6 +281,25 @@ Deno.serve(async (req) => {
       contactId = existingLead.id;
       contactType = 'lead';
       console.log('Found existing lead:', contactId);
+
+      // Update last_interaction_at and hot_substatus for incoming messages
+      if (direction === 'in') {
+        const updateData: Record<string, unknown> = {
+          last_interaction_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // If lead is "quente", update substatus to "em_conversa"
+        if (existingLead.temperature === 'quente') {
+          updateData.hot_substatus = 'em_conversa';
+          console.log('Updating hot lead substatus to em_conversa');
+        }
+
+        await supabase
+          .from('leads')
+          .update(updateData)
+          .eq('id', contactId);
+      }
     } else {
       // Try to find existing patient
       const { data: existingPatient } = await supabase
@@ -243,23 +314,71 @@ Deno.serve(async (req) => {
         contactType = 'patient';
         console.log('Found existing patient:', contactId);
       } else {
-        // Create new lead
-        // Se a mensagem é "from me" (enviada pela clínica), o pushName é o nome da clínica
-        // Nesse caso, usamos o número de telefone formatado como nome do contato
-        // Se a mensagem é recebida (from me = false), podemos usar o pushName do contato
+        // Create new lead - this is a new contact
+        isNewLead = true;
         const contactName = isFromMe 
           ? `Contato ${phoneWithCountry.slice(-4)}`
           : (payload.data.pushName || `Contato ${phoneWithCountry.slice(-4)}`);
         
         console.log('Creating new lead with name:', contactName, 'fromMe:', isFromMe);
         
+        // Fetch interest triggers for this organization
+        let triggerActions: {
+          interest_id?: string;
+          source_id?: string;
+          temperature?: string;
+          status?: string;
+          triggered_by?: string;
+        } = {};
+
+        if (direction === 'in' && messageText) {
+          const { data: triggers } = await supabase
+            .from('interest_triggers')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('active', true)
+            .order('priority', { ascending: true });
+
+          if (triggers && triggers.length > 0) {
+            console.log(`Found ${triggers.length} active triggers to evaluate`);
+            
+            for (const trigger of triggers as InterestTrigger[]) {
+              if (evaluateTriggerCondition(trigger, messageText)) {
+                console.log(`Trigger matched: ${trigger.name} (${trigger.id})`);
+                
+                if (trigger.action_set_interest_id) {
+                  triggerActions.interest_id = trigger.action_set_interest_id;
+                }
+                if (trigger.action_set_source_id) {
+                  triggerActions.source_id = trigger.action_set_source_id;
+                }
+                if (trigger.action_set_temperature) {
+                  triggerActions.temperature = trigger.action_set_temperature;
+                }
+                if (trigger.action_set_status) {
+                  triggerActions.status = trigger.action_set_status;
+                }
+                triggerActions.triggered_by = trigger.id;
+                
+                // First matching trigger wins
+                break;
+              }
+            }
+          }
+        }
+        
         const { data: newLead, error: leadError } = await supabase
           .from('leads')
           .insert({
             name: contactName,
             phone: phoneWithCountry,
-            source_id: null,
-            status: 'novo_lead',
+            source_id: triggerActions.source_id || null,
+            interest_id: triggerActions.interest_id || null,
+            status: triggerActions.status || 'novo_lead',
+            temperature: triggerActions.temperature || 'novo',
+            hot_substatus: triggerActions.temperature === 'quente' ? 'em_conversa' : null,
+            triggered_by: triggerActions.triggered_by || null,
+            last_interaction_at: new Date().toISOString(),
             notes: 'Contato iniciado via WhatsApp',
             organization_id: organizationId,
           })
@@ -273,7 +392,7 @@ Deno.serve(async (req) => {
 
         contactId = newLead.id;
         contactType = 'lead';
-        console.log('Created new lead:', contactId);
+        console.log('Created new lead:', contactId, 'with trigger actions:', triggerActions);
       }
     }
 
@@ -365,6 +484,7 @@ Deno.serve(async (req) => {
         lead_id: contactType === 'lead' ? contactId : null,
         patient_id: contactType === 'patient' ? contactId : null,
         message_id: newMessage.id,
+        is_new_lead: isNewLead,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

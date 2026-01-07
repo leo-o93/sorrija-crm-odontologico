@@ -2,14 +2,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead, useDeleteLead } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { LeadForm } from "./LeadForm";
 import { ConvertToPatientDialog } from "@/components/pacientes/ConvertToPatientDialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { TemperatureBadge } from "./TemperatureBadge";
+import { HotSubstatusBadge } from "./HotSubstatusBadge";
+import { TemperatureActions } from "./TemperatureActions";
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -78,10 +81,61 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
           ) : (
             <>
               {/* Header com nome e status */}
-              <div>
+              <div className="space-y-2">
                 <h2 className="text-2xl font-bold">{lead.name}</h2>
-                <Badge className="mt-2">{statusLabels[lead.status] || lead.status}</Badge>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Badge>{statusLabels[lead.status] || lead.status}</Badge>
+                  <TemperatureBadge temperature={lead.temperature} />
+                  {lead.temperature === "quente" && lead.hot_substatus && (
+                    <HotSubstatusBadge substatus={lead.hot_substatus} size="md" />
+                  )}
+                </div>
               </div>
+
+              {/* Seção de Temperatura */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <ThermometerSun className="h-4 w-4" />
+                  Temperatura do Lead
+                </h3>
+                
+                {lead.last_interaction_at && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                      Última interação: {formatDistanceToNow(new Date(lead.last_interaction_at), { 
+                        addSuffix: true, 
+                        locale: ptBR 
+                      })}
+                    </span>
+                  </div>
+                )}
+
+                {lead.follow_up_count !== null && lead.follow_up_count > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Follow-ups realizados: {lead.follow_up_count}
+                  </p>
+                )}
+
+                {lead.no_show_count !== null && lead.no_show_count > 0 && (
+                  <p className="text-sm text-orange-600">
+                    Faltas: {lead.no_show_count}
+                  </p>
+                )}
+
+                {lead.lost_reason && (
+                  <p className="text-sm text-red-600">
+                    Motivo da perda: {lead.lost_reason}
+                  </p>
+                )}
+
+                <TemperatureActions 
+                  leadId={lead.id} 
+                  currentTemperature={lead.temperature}
+                />
+              </div>
+
+              <Separator />
 
               {/* Ações rápidas */}
               <div className="flex gap-2">
