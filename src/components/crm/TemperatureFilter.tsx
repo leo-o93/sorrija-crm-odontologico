@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Flame, Snowflake, Sparkles, X, ThermometerSun } from "lucide-react";
+import { Flame, Snowflake, Sparkles, X, ThermometerSun, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TemperatureFilterProps {
@@ -11,6 +11,7 @@ const filters = [
   { value: null, label: "Todos", icon: ThermometerSun },
   { value: "novo", label: "Novos", icon: Sparkles, color: "text-blue-600" },
   { value: "quente", label: "Quentes", icon: Flame, color: "text-orange-600" },
+  { value: "em_conversa", label: "Em Conversa", icon: MessageCircle, color: "text-green-600" },
   { value: "frio", label: "Frios", icon: Snowflake, color: "text-slate-500" },
   { value: "perdido", label: "Perdidos", icon: X, color: "text-red-600" },
 ];
