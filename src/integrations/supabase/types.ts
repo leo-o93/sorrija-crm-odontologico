@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_suggestions: {
+        Row: {
+          created_at: string | null
+          id: string
+          lead_id: string
+          organization_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+          suggestion_data: Json
+          suggestion_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          organization_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          suggestion_data?: Json
+          suggestion_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          organization_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          suggestion_data?: Json
+          suggestion_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_suggestions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -151,6 +202,74 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_settings: {
+        Row: {
+          automation_mode: string | null
+          awaiting_response_minutes: number | null
+          created_at: string | null
+          default_follow_up_interval: number | null
+          enable_auto_substatus: boolean | null
+          enable_auto_temperature: boolean | null
+          enable_automation: boolean | null
+          enable_cold_lead_alerts: boolean | null
+          enable_follow_up_alerts: boolean | null
+          enable_no_show_alerts: boolean | null
+          hot_to_cold_days: number | null
+          hot_to_cold_hours: number | null
+          id: string
+          max_follow_up_attempts: number | null
+          organization_id: string
+          updated_at: string | null
+          use_ai_for_unmatched: boolean | null
+        }
+        Insert: {
+          automation_mode?: string | null
+          awaiting_response_minutes?: number | null
+          created_at?: string | null
+          default_follow_up_interval?: number | null
+          enable_auto_substatus?: boolean | null
+          enable_auto_temperature?: boolean | null
+          enable_automation?: boolean | null
+          enable_cold_lead_alerts?: boolean | null
+          enable_follow_up_alerts?: boolean | null
+          enable_no_show_alerts?: boolean | null
+          hot_to_cold_days?: number | null
+          hot_to_cold_hours?: number | null
+          id?: string
+          max_follow_up_attempts?: number | null
+          organization_id: string
+          updated_at?: string | null
+          use_ai_for_unmatched?: boolean | null
+        }
+        Update: {
+          automation_mode?: string | null
+          awaiting_response_minutes?: number | null
+          created_at?: string | null
+          default_follow_up_interval?: number | null
+          enable_auto_substatus?: boolean | null
+          enable_auto_temperature?: boolean | null
+          enable_automation?: boolean | null
+          enable_cold_lead_alerts?: boolean | null
+          enable_follow_up_alerts?: boolean | null
+          enable_no_show_alerts?: boolean | null
+          hot_to_cold_days?: number | null
+          hot_to_cold_hours?: number | null
+          id?: string
+          max_follow_up_attempts?: number | null
+          organization_id?: string
+          updated_at?: string | null
+          use_ai_for_unmatched?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -387,6 +506,79 @@ export type Database = {
           },
         ]
       }
+      interest_triggers: {
+        Row: {
+          action_set_interest_id: string | null
+          action_set_source_id: string | null
+          action_set_status: string | null
+          action_set_temperature: string | null
+          active: boolean | null
+          case_sensitive: boolean | null
+          condition_field: string
+          condition_operator: string
+          condition_value: string
+          created_at: string | null
+          id: string
+          name: string
+          organization_id: string
+          priority: number | null
+        }
+        Insert: {
+          action_set_interest_id?: string | null
+          action_set_source_id?: string | null
+          action_set_status?: string | null
+          action_set_temperature?: string | null
+          active?: boolean | null
+          case_sensitive?: boolean | null
+          condition_field: string
+          condition_operator: string
+          condition_value?: string
+          created_at?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          priority?: number | null
+        }
+        Update: {
+          action_set_interest_id?: string | null
+          action_set_source_id?: string | null
+          action_set_status?: string | null
+          action_set_temperature?: string | null
+          active?: boolean | null
+          case_sensitive?: boolean | null
+          condition_field?: string
+          condition_operator?: string
+          condition_value?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          priority?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interest_triggers_action_set_interest_id_fkey"
+            columns: ["action_set_interest_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interest_triggers_action_set_source_id_fkey"
+            columns: ["action_set_source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interest_triggers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_interactions: {
         Row: {
           channel: string
@@ -475,18 +667,89 @@ export type Database = {
           },
         ]
       }
+      lead_temperatures: {
+        Row: {
+          active: boolean | null
+          auto_transition_days: number | null
+          auto_transition_to: string | null
+          color: string
+          created_at: string | null
+          icon: string
+          id: string
+          is_default: boolean | null
+          is_system: boolean | null
+          name: string
+          organization_id: string
+          position: number | null
+          title: string
+        }
+        Insert: {
+          active?: boolean | null
+          auto_transition_days?: number | null
+          auto_transition_to?: string | null
+          color?: string
+          created_at?: string | null
+          icon?: string
+          id?: string
+          is_default?: boolean | null
+          is_system?: boolean | null
+          name: string
+          organization_id: string
+          position?: number | null
+          title: string
+        }
+        Update: {
+          active?: boolean | null
+          auto_transition_days?: number | null
+          auto_transition_to?: string | null
+          color?: string
+          created_at?: string | null
+          icon?: string
+          id?: string
+          is_default?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          organization_id?: string
+          position?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_temperatures_auto_transition_to_fkey"
+            columns: ["auto_transition_to"]
+            isOneToOne: false
+            referencedRelation: "lead_temperatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_temperatures_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           appointment_date: string | null
+          automation_enabled: boolean | null
           budget_paid: number | null
           budget_total: number | null
           created_at: string
           evaluation_result: string | null
           first_contact_channel: string | null
           first_contact_date: string | null
+          follow_up_count: number | null
+          hot_substatus: string | null
           id: string
           interest_id: string | null
+          last_follow_up_date: string | null
+          last_interaction_at: string | null
+          lost_reason: string | null
           name: string
+          next_follow_up_date: string | null
+          no_show_count: number | null
           notes: string | null
           organization_id: string | null
           phone: string
@@ -498,21 +761,31 @@ export type Database = {
           second_contact_date: string | null
           source_id: string | null
           status: string
+          temperature: string | null
           third_contact_channel: string | null
           third_contact_date: string | null
+          triggered_by: string | null
           updated_at: string
         }
         Insert: {
           appointment_date?: string | null
+          automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
           created_at?: string
           evaluation_result?: string | null
           first_contact_channel?: string | null
           first_contact_date?: string | null
+          follow_up_count?: number | null
+          hot_substatus?: string | null
           id?: string
           interest_id?: string | null
+          last_follow_up_date?: string | null
+          last_interaction_at?: string | null
+          lost_reason?: string | null
           name: string
+          next_follow_up_date?: string | null
+          no_show_count?: number | null
           notes?: string | null
           organization_id?: string | null
           phone: string
@@ -524,21 +797,31 @@ export type Database = {
           second_contact_date?: string | null
           source_id?: string | null
           status?: string
+          temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          triggered_by?: string | null
           updated_at?: string
         }
         Update: {
           appointment_date?: string | null
+          automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
           created_at?: string
           evaluation_result?: string | null
           first_contact_channel?: string | null
           first_contact_date?: string | null
+          follow_up_count?: number | null
+          hot_substatus?: string | null
           id?: string
           interest_id?: string | null
+          last_follow_up_date?: string | null
+          last_interaction_at?: string | null
+          lost_reason?: string | null
           name?: string
+          next_follow_up_date?: string | null
+          no_show_count?: number | null
           notes?: string | null
           organization_id?: string | null
           phone?: string
@@ -550,8 +833,10 @@ export type Database = {
           second_contact_date?: string | null
           source_id?: string | null
           status?: string
+          temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          triggered_by?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -574,6 +859,67 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "interest_triggers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          active: boolean | null
+          attempt_number: number | null
+          category: string
+          content: string
+          created_at: string | null
+          id: string
+          interest_id: string | null
+          name: string
+          organization_id: string
+          temperature: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          attempt_number?: number | null
+          category: string
+          content: string
+          created_at?: string | null
+          id?: string
+          interest_id?: string | null
+          name: string
+          organization_id: string
+          temperature?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          attempt_number?: number | null
+          category?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          interest_id?: string | null
+          name?: string
+          organization_id?: string
+          temperature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_interest_id_fkey"
+            columns: ["interest_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
