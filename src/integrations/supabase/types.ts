@@ -208,58 +208,70 @@ export type Database = {
       }
       crm_settings: {
         Row: {
+          aguardando_to_cold_hours: number | null
           automation_mode: string | null
           awaiting_response_minutes: number | null
           created_at: string | null
           default_follow_up_interval: number | null
+          em_conversa_timeout_minutes: number | null
           enable_auto_substatus: boolean | null
           enable_auto_temperature: boolean | null
           enable_automation: boolean | null
           enable_cold_lead_alerts: boolean | null
           enable_follow_up_alerts: boolean | null
           enable_no_show_alerts: boolean | null
+          enable_substatus_timeout: boolean | null
           hot_to_cold_days: number | null
           hot_to_cold_hours: number | null
           id: string
           max_follow_up_attempts: number | null
+          new_to_cold_hours: number | null
           organization_id: string
           updated_at: string | null
           use_ai_for_unmatched: boolean | null
         }
         Insert: {
+          aguardando_to_cold_hours?: number | null
           automation_mode?: string | null
           awaiting_response_minutes?: number | null
           created_at?: string | null
           default_follow_up_interval?: number | null
+          em_conversa_timeout_minutes?: number | null
           enable_auto_substatus?: boolean | null
           enable_auto_temperature?: boolean | null
           enable_automation?: boolean | null
           enable_cold_lead_alerts?: boolean | null
           enable_follow_up_alerts?: boolean | null
           enable_no_show_alerts?: boolean | null
+          enable_substatus_timeout?: boolean | null
           hot_to_cold_days?: number | null
           hot_to_cold_hours?: number | null
           id?: string
           max_follow_up_attempts?: number | null
+          new_to_cold_hours?: number | null
           organization_id: string
           updated_at?: string | null
           use_ai_for_unmatched?: boolean | null
         }
         Update: {
+          aguardando_to_cold_hours?: number | null
           automation_mode?: string | null
           awaiting_response_minutes?: number | null
           created_at?: string | null
           default_follow_up_interval?: number | null
+          em_conversa_timeout_minutes?: number | null
           enable_auto_substatus?: boolean | null
           enable_auto_temperature?: boolean | null
           enable_automation?: boolean | null
           enable_cold_lead_alerts?: boolean | null
           enable_follow_up_alerts?: boolean | null
           enable_no_show_alerts?: boolean | null
+          enable_substatus_timeout?: boolean | null
           hot_to_cold_days?: number | null
           hot_to_cold_hours?: number | null
           id?: string
           max_follow_up_attempts?: number | null
+          new_to_cold_hours?: number | null
           organization_id?: string
           updated_at?: string | null
           use_ai_for_unmatched?: boolean | null
