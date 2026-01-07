@@ -17,10 +17,19 @@ Deno.serve(async (req) => {
 
     console.log('Starting auto lead transitions...');
 
-    // Get all organizations with their CRM settings
+    // Get all organizations with their CRM settings (including new fields)
     const { data: crmSettings, error: settingsError } = await supabase
       .from('crm_settings')
-      .select('organization_id, hot_to_cold_days, hot_to_cold_hours, enable_auto_temperature')
+      .select(`
+        organization_id, 
+        hot_to_cold_days, 
+        hot_to_cold_hours, 
+        enable_auto_temperature,
+        new_to_cold_hours,
+        em_conversa_timeout_minutes,
+        enable_substatus_timeout,
+        aguardando_to_cold_hours
+      `)
       .eq('enable_auto_temperature', true);
 
     if (settingsError) {
@@ -37,79 +46,196 @@ Deno.serve(async (req) => {
     }
 
     let totalTransitions = 0;
+    let totalSubstatusCleared = 0;
 
     for (const settings of crmSettings) {
-      const { organization_id, hot_to_cold_days, hot_to_cold_hours } = settings;
-      
-      // Calculate threshold in hours
-      const thresholdHours = (hot_to_cold_days || 3) * 24 + (hot_to_cold_hours || 0);
-      const thresholdDate = new Date();
-      thresholdDate.setHours(thresholdDate.getHours() - thresholdHours);
+      const { 
+        organization_id, 
+        hot_to_cold_days, 
+        hot_to_cold_hours,
+        new_to_cold_hours,
+        em_conversa_timeout_minutes,
+        enable_substatus_timeout,
+        aguardando_to_cold_hours
+      } = settings;
 
-      console.log(`Processing org ${organization_id}: threshold ${thresholdHours} hours (since ${thresholdDate.toISOString()})`);
+      console.log(`Processing org ${organization_id}...`);
 
-      // Find hot leads that haven't had interaction since threshold
-      const { data: staleHotLeads, error: hotLeadsError } = await supabase
-        .from('leads')
-        .select('id, name, last_interaction_at')
-        .eq('organization_id', organization_id)
-        .eq('temperature', 'quente')
-        .lt('last_interaction_at', thresholdDate.toISOString());
+      // ============================================
+      // 1. NOVO → FRIO (timer separado)
+      // ============================================
+      const newToColdHours = new_to_cold_hours || 24;
+      const newToColdThreshold = new Date();
+      newToColdThreshold.setHours(newToColdThreshold.getHours() - newToColdHours);
 
-      if (hotLeadsError) {
-        console.error(`Error fetching hot leads for org ${organization_id}:`, hotLeadsError);
-        continue;
-      }
+      console.log(`  NOVO→FRIO: threshold ${newToColdHours}h (since ${newToColdThreshold.toISOString()})`);
 
-      // Also find new leads that haven't had any interaction within threshold
+      // Find new leads without interaction since threshold
       const { data: staleNewLeads, error: newLeadsError } = await supabase
         .from('leads')
         .select('id, name, last_interaction_at, created_at')
         .eq('organization_id', organization_id)
         .eq('temperature', 'novo')
-        .or(`last_interaction_at.lt.${thresholdDate.toISOString()},last_interaction_at.is.null`);
+        .or(`last_interaction_at.lt.${newToColdThreshold.toISOString()},last_interaction_at.is.null`);
 
       if (newLeadsError) {
-        console.error(`Error fetching new leads for org ${organization_id}:`, newLeadsError);
+        console.error(`  Error fetching new leads:`, newLeadsError);
+      } else {
+        // Filter: only transition if created_at is also older than threshold
+        const filteredNewLeads = (staleNewLeads || []).filter(lead => {
+          const checkDate = lead.last_interaction_at || lead.created_at;
+          return new Date(checkDate) < newToColdThreshold;
+        });
+
+        if (filteredNewLeads.length > 0) {
+          console.log(`  Found ${filteredNewLeads.length} stale NOVO leads to transition to FRIO`);
+
+          const { error: updateNewError } = await supabase
+            .from('leads')
+            .update({ 
+              temperature: 'frio',
+              hot_substatus: null,
+              updated_at: new Date().toISOString()
+            })
+            .in('id', filteredNewLeads.map(l => l.id));
+
+          if (updateNewError) {
+            console.error('  Error updating NOVO leads:', updateNewError);
+          } else {
+            totalTransitions += filteredNewLeads.length;
+            console.log(`  Transitioned ${filteredNewLeads.length} NOVO leads to FRIO`);
+          }
+        }
       }
 
-      // Filter new leads: only transition if created_at is also older than threshold
-      const filteredNewLeads = (staleNewLeads || []).filter(lead => {
-        const checkDate = lead.last_interaction_at || lead.created_at;
-        return new Date(checkDate) < thresholdDate;
-      });
+      // ============================================
+      // 2. QUENTE → FRIO (timer existente)
+      // ============================================
+      const hotToColdHours = (hot_to_cold_days || 3) * 24 + (hot_to_cold_hours || 0);
+      const hotToColdThreshold = new Date();
+      hotToColdThreshold.setHours(hotToColdThreshold.getHours() - hotToColdHours);
 
-      const allStaleLeads = [...(staleHotLeads || []), ...filteredNewLeads];
+      console.log(`  QUENTE→FRIO: threshold ${hotToColdHours}h (since ${hotToColdThreshold.toISOString()})`);
 
-      if (allStaleLeads.length > 0) {
-        console.log(`Found ${staleHotLeads?.length || 0} stale hot leads and ${filteredNewLeads.length} stale new leads to transition to cold`);
+      // Find hot leads without interaction (excluding those with aguardando_resposta - handled separately)
+      const { data: staleHotLeads, error: hotLeadsError } = await supabase
+        .from('leads')
+        .select('id, name, last_interaction_at')
+        .eq('organization_id', organization_id)
+        .eq('temperature', 'quente')
+        .neq('hot_substatus', 'aguardando_resposta')
+        .lt('last_interaction_at', hotToColdThreshold.toISOString());
 
-        // Update leads to cold
-        const { error: updateError } = await supabase
+      if (hotLeadsError) {
+        console.error(`  Error fetching hot leads:`, hotLeadsError);
+      } else if (staleHotLeads && staleHotLeads.length > 0) {
+        console.log(`  Found ${staleHotLeads.length} stale QUENTE leads to transition to FRIO`);
+
+        const { error: updateHotError } = await supabase
           .from('leads')
           .update({ 
             temperature: 'frio',
             hot_substatus: null,
             updated_at: new Date().toISOString()
           })
-          .in('id', allStaleLeads.map(l => l.id));
+          .in('id', staleHotLeads.map(l => l.id));
 
-        if (updateError) {
-          console.error('Error updating leads:', updateError);
+        if (updateHotError) {
+          console.error('  Error updating QUENTE leads:', updateHotError);
         } else {
-          totalTransitions += allStaleLeads.length;
-          console.log(`Transitioned ${allStaleLeads.length} leads to cold`);
+          totalTransitions += staleHotLeads.length;
+          console.log(`  Transitioned ${staleHotLeads.length} QUENTE leads to FRIO`);
+        }
+      }
+
+      // ============================================
+      // 3. Limpar substatus "em_conversa" após timeout
+      // ============================================
+      if (enable_substatus_timeout) {
+        const emConversaMinutes = em_conversa_timeout_minutes || 60;
+        const emConversaThreshold = new Date();
+        emConversaThreshold.setMinutes(emConversaThreshold.getMinutes() - emConversaMinutes);
+
+        console.log(`  em_conversa timeout: ${emConversaMinutes}min (since ${emConversaThreshold.toISOString()})`);
+
+        const { data: staleEmConversa, error: emConversaError } = await supabase
+          .from('leads')
+          .select('id, name')
+          .eq('organization_id', organization_id)
+          .eq('temperature', 'quente')
+          .eq('hot_substatus', 'em_conversa')
+          .lt('last_interaction_at', emConversaThreshold.toISOString());
+
+        if (emConversaError) {
+          console.error('  Error fetching em_conversa leads:', emConversaError);
+        } else if (staleEmConversa && staleEmConversa.length > 0) {
+          console.log(`  Found ${staleEmConversa.length} leads with stale "em_conversa" substatus`);
+
+          const { error: updateSubstatusError } = await supabase
+            .from('leads')
+            .update({ 
+              hot_substatus: null,
+              updated_at: new Date().toISOString()
+            })
+            .in('id', staleEmConversa.map(l => l.id));
+
+          if (updateSubstatusError) {
+            console.error('  Error clearing em_conversa substatus:', updateSubstatusError);
+          } else {
+            totalSubstatusCleared += staleEmConversa.length;
+            console.log(`  Cleared "em_conversa" substatus for ${staleEmConversa.length} leads`);
+          }
+        }
+      }
+
+      // ============================================
+      // 4. "Aguardando resposta" → FRIO após timeout
+      // ============================================
+      const aguardandoHours = aguardando_to_cold_hours || 48;
+      const aguardandoThreshold = new Date();
+      aguardandoThreshold.setHours(aguardandoThreshold.getHours() - aguardandoHours);
+
+      console.log(`  aguardando_resposta→FRIO: ${aguardandoHours}h (since ${aguardandoThreshold.toISOString()})`);
+
+      const { data: staleAguardando, error: aguardandoError } = await supabase
+        .from('leads')
+        .select('id, name')
+        .eq('organization_id', organization_id)
+        .eq('temperature', 'quente')
+        .eq('hot_substatus', 'aguardando_resposta')
+        .lt('last_interaction_at', aguardandoThreshold.toISOString());
+
+      if (aguardandoError) {
+        console.error('  Error fetching aguardando_resposta leads:', aguardandoError);
+      } else if (staleAguardando && staleAguardando.length > 0) {
+        console.log(`  Found ${staleAguardando.length} "aguardando_resposta" leads to transition to FRIO`);
+
+        const { error: updateAguardandoError } = await supabase
+          .from('leads')
+          .update({ 
+            temperature: 'frio',
+            hot_substatus: null,
+            updated_at: new Date().toISOString()
+          })
+          .in('id', staleAguardando.map(l => l.id));
+
+        if (updateAguardandoError) {
+          console.error('  Error updating aguardando_resposta leads:', updateAguardandoError);
+        } else {
+          totalTransitions += staleAguardando.length;
+          console.log(`  Transitioned ${staleAguardando.length} "aguardando_resposta" leads to FRIO`);
         }
       }
     }
 
-    console.log(`Auto transitions complete. Total: ${totalTransitions}`);
+    console.log(`Auto transitions complete. Total transitions: ${totalTransitions}, substatus cleared: ${totalSubstatusCleared}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: `Processed ${crmSettings.length} organizations`,
-        transitions: totalTransitions 
+        transitions: totalTransitions,
+        substatus_cleared: totalSubstatusCleared
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

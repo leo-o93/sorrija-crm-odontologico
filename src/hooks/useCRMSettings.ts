@@ -7,7 +7,10 @@ export interface CRMSettings {
   id: string;
   organization_id: string;
   
-  // Configurações de temperatura automática
+  // Configurações de temperatura automática - NOVO → FRIO
+  new_to_cold_hours: number;
+  
+  // Configurações de temperatura automática - QUENTE → FRIO
   hot_to_cold_days: number;
   hot_to_cold_hours: number;
   enable_auto_temperature: boolean;
@@ -15,6 +18,9 @@ export interface CRMSettings {
   // Configurações de substatus quente
   awaiting_response_minutes: number;
   enable_auto_substatus: boolean;
+  em_conversa_timeout_minutes: number;
+  enable_substatus_timeout: boolean;
+  aguardando_to_cold_hours: number;
   
   // Configurações de follow-up
   max_follow_up_attempts: number;
@@ -35,11 +41,15 @@ export interface CRMSettings {
 }
 
 export interface UpdateCRMSettingsInput {
+  new_to_cold_hours?: number;
   hot_to_cold_days?: number;
   hot_to_cold_hours?: number;
   enable_auto_temperature?: boolean;
   awaiting_response_minutes?: number;
   enable_auto_substatus?: boolean;
+  em_conversa_timeout_minutes?: number;
+  enable_substatus_timeout?: boolean;
+  aguardando_to_cold_hours?: number;
   max_follow_up_attempts?: number;
   default_follow_up_interval?: number;
   enable_automation?: boolean;
@@ -71,11 +81,15 @@ export function useCRMSettings() {
         return {
           id: '',
           organization_id: currentOrganization.id,
+          new_to_cold_hours: 24,
           hot_to_cold_days: 3,
           hot_to_cold_hours: 0,
           enable_auto_temperature: true,
           awaiting_response_minutes: 60,
           enable_auto_substatus: true,
+          em_conversa_timeout_minutes: 60,
+          enable_substatus_timeout: true,
+          aguardando_to_cold_hours: 48,
           max_follow_up_attempts: 5,
           default_follow_up_interval: 3,
           enable_automation: false,
