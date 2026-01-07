@@ -27,6 +27,13 @@ export interface Lead {
   responsible_user_id: string | null;
   created_at: string;
   updated_at: string;
+  temperature: string | null;
+  hot_substatus: string | null;
+  last_interaction_at: string | null;
+  follow_up_count: number | null;
+  no_show_count: number | null;
+  lost_reason: string | null;
+  triggered_by: string | null;
   sources?: { name: string };
   procedures?: { name: string };
 }
@@ -36,6 +43,8 @@ export function useLeads(filters?: {
   source_id?: string;
   interest_id?: string;
   search?: string;
+  temperature?: string;
+  hot_substatus?: string;
 }) {
   const { currentOrganization } = useOrganization();
 
@@ -64,6 +73,14 @@ export function useLeads(filters?: {
 
       if (filters?.interest_id) {
         query = query.eq("interest_id", filters.interest_id);
+      }
+
+      if (filters?.temperature) {
+        query = query.eq("temperature", filters.temperature);
+      }
+
+      if (filters?.hot_substatus) {
+        query = query.eq("hot_substatus", filters.hot_substatus);
       }
 
       if (filters?.search) {
