@@ -28,7 +28,7 @@ interface SortableLeadCardProps {
 }
 
 function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableLeadCardProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   });
 
@@ -69,6 +69,7 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-start gap-2">
           <button
+            ref={setActivatorNodeRef}
             className="cursor-grab hover:bg-muted p-1 rounded touch-none flex-shrink-0 mt-0.5"
             {...attributes}
             {...listeners}
