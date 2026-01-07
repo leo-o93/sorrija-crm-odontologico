@@ -275,7 +275,14 @@ export default function CRM() {
     let result = leads;
     
     if (temperatureFilter) {
-      result = result?.filter((lead) => lead.temperature === temperatureFilter);
+      if (temperatureFilter === "em_conversa") {
+        // Filtro especial: leads quentes com substatus "em_conversa"
+        result = result?.filter(
+          (lead) => lead.temperature === "quente" && lead.hot_substatus === "em_conversa"
+        );
+      } else {
+        result = result?.filter((lead) => lead.temperature === temperatureFilter);
+      }
     }
     
     if (searchQuery.trim()) {
