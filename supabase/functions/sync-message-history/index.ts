@@ -175,32 +175,51 @@ serve(async (req) => {
               organization_id: conv.organization_id,
             }));
 
-            const { error: insertError } = await supabase
+            // Tentar upsert primeiro
+            const { error: upsertError } = await supabase
               .from('messages')
               .upsert(messagesToInsert, {
                 onConflict: 'provider_message_id',
                 ignoreDuplicates: true,
               });
 
-            if (insertError) {
-              console.error(`Error inserting messages for ${conv.phone}:`, insertError);
-              results.push({ phone: conv.phone, success: false, error: insertError.message });
-            } else {
-              const latestMessageTimestamp = Math.max(
-                ...messages.map((msg: any) => (msg.messageTimestamp ?? 0) * 1000)
-              );
-
-              if (latestMessageTimestamp > 0) {
-                const latestMessageDate = new Date(latestMessageTimestamp).toISOString();
-                await supabase
-                  .from('conversations')
-                  .update({ last_message_at: latestMessageDate })
-                  .eq('id', conv.id);
+            if (upsertError) {
+              console.warn(`Upsert failed for ${conv.phone}, trying individual inserts:`, upsertError.message);
+              
+              // Fallback: inserir individualmente ignorando duplicados
+              let successCount = 0;
+              for (const msg of messagesToInsert) {
+                const { error: singleError } = await supabase
+                  .from('messages')
+                  .upsert(msg, {
+                    onConflict: 'provider_message_id',
+                    ignoreDuplicates: true,
+                  });
+                
+                if (!singleError) {
+                  successCount++;
+                } else if (!singleError.message.includes('duplicate')) {
+                  console.error('Error inserting single message:', singleError);
+                }
               }
-
-              totalSynced += messages.length;
-              results.push({ phone: conv.phone, success: true, synced: messages.length });
+              console.log(`Individual insert: ${successCount}/${messagesToInsert.length} messages`);
             }
+
+            // Atualizar last_message_at
+            const latestMessageTimestamp = Math.max(
+              ...messages.map((msg: any) => (msg.messageTimestamp ?? 0) * 1000)
+            );
+
+            if (latestMessageTimestamp > 0) {
+              const latestMessageDate = new Date(latestMessageTimestamp).toISOString();
+              await supabase
+                .from('conversations')
+                .update({ last_message_at: latestMessageDate })
+                .eq('id', conv.id);
+            }
+
+            totalSynced += messages.length;
+            results.push({ phone: conv.phone, success: true, synced: messages.length });
           } else {
             results.push({ phone: conv.phone, success: true, synced: 0 });
           }
@@ -305,16 +324,34 @@ serve(async (req) => {
         organization_id: conversation?.organization_id || organizationId,
       }));
 
-      const { error: insertError } = await supabase
+      // Tentar upsert primeiro
+      const { error: upsertError } = await supabase
         .from('messages')
         .upsert(messagesToInsert, {
           onConflict: 'provider_message_id',
           ignoreDuplicates: true,
         });
 
-      if (insertError) {
-        console.error('Error inserting messages:', insertError);
-        throw insertError;
+      if (upsertError) {
+        console.warn('Upsert failed, trying individual inserts:', upsertError.message);
+        
+        // Fallback: inserir individualmente ignorando duplicados
+        let successCount = 0;
+        for (const msg of messagesToInsert) {
+          const { error: singleError } = await supabase
+            .from('messages')
+            .upsert(msg, {
+              onConflict: 'provider_message_id',
+              ignoreDuplicates: true,
+            });
+          
+          if (!singleError) {
+            successCount++;
+          } else if (!singleError.message.includes('duplicate')) {
+            console.error('Error inserting single message:', singleError);
+          }
+        }
+        console.log(`Individual insert: ${successCount}/${messagesToInsert.length} messages`);
       }
 
       const latestMessageTimestamp = Math.max(
