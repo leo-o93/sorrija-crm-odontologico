@@ -47,14 +47,17 @@ FROM public.organizations o
 CROSS JOIN (
   VALUES 
     ('novo_lead', 'Novo Lead', 'bg-blue-500', 0, true),
-    ('tentativa_1', '1ª Tentativa', 'bg-yellow-500', 1, false),
-    ('tentativa_2', '2ª Tentativa', 'bg-orange-500', 2, false),
-    ('tentativa_3', '3ª Tentativa', 'bg-red-400', 3, false),
-    ('agendado', 'Agendado', 'bg-purple-500', 4, false),
-    ('compareceu', 'Compareceu', 'bg-teal-500', 5, false),
-    ('nao_compareceu', 'Não Compareceu', 'bg-red-500', 6, false),
-    ('orcamento_enviado', 'Orçamento Enviado', 'bg-indigo-500', 7, false),
-    ('fechado', 'Fechado', 'bg-green-500', 8, false),
-    ('perdido', 'Perdido', 'bg-gray-500', 9, false)
+    ('triagem', 'Triagem', 'bg-sky-500', 1, false),
+    ('tentativa_1', '1ª Tentativa', 'bg-yellow-500', 2, false),
+    ('tentativa_2', '2ª Tentativa', 'bg-orange-500', 3, false),
+    ('tentativa_3', '3ª Tentativa', 'bg-red-400', 4, false),
+    ('agendado', 'Agendado', 'bg-purple-500', 5, false),
+    ('compareceu', 'Compareceu', 'bg-teal-500', 6, false),
+    ('avaliacao', 'Avaliação', 'bg-amber-500', 7, false),
+    ('orcamento_enviado', 'Orçamento Enviado', 'bg-indigo-500', 8, false),
+    ('pos_consulta', 'Pós-consulta', 'bg-emerald-500', 9, false),
+    ('nao_compareceu', 'Não Compareceu', 'bg-red-500', 10, false),
+    ('fechado', 'Fechado', 'bg-green-500', 11, false),
+    ('perdido', 'Perdido', 'bg-gray-500', 12, false)
 ) AS s(name, title, color, position, is_default)
 WHERE o.active = true;

@@ -73,12 +73,12 @@ export function useLeadStats() {
         .eq("status", "nao_compareceu")
         .gte("registration_date", firstDayOfMonth);
 
-      // Em tratamento (compareceu + orçamento enviado)
+      // Em tratamento (compareceu + avaliação + orçamento enviado + pós-consulta)
       const { count: inTreatment } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", currentOrganization.id)
-        .in("status", ["compareceu", "orcamento_enviado"]);
+        .in("status", ["compareceu", "avaliacao", "orcamento_enviado", "pos_consulta"]);
 
       // Finalizados (fechado)
       const { count: completed } = await supabase

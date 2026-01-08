@@ -142,11 +142,25 @@ export function useSalesDashboard(startDate?: Date, endDate?: Date) {
 
       // Conversion funnel
       const leadsContacted = leads.filter(l => l.status !== 'novo_lead').length;
-      const leadsScheduled = leads.filter(l => 
-        l.scheduled || l.status === 'agendado' || l.status === 'compareceu' || l.status === 'fechado'
-      ).length;
+      const scheduledStatuses = new Set([
+        'agendado',
+        'compareceu',
+        'avaliacao',
+        'orcamento_enviado',
+        'pos_consulta',
+        'fechado',
+      ]);
+      const attendedStatuses = new Set([
+        'compareceu',
+        'avaliacao',
+        'orcamento_enviado',
+        'pos_consulta',
+        'fechado',
+      ]);
+
+      const leadsScheduled = leads.filter(l => l.scheduled || scheduledStatuses.has(l.status)).length;
       const leadsAttended = leads.filter(l => 
-        l.status === 'compareceu' || l.status === 'fechado' || l.evaluation_result === 'Fechou'
+        attendedStatuses.has(l.status) || l.evaluation_result === 'Fechou'
       ).length;
       const leadsClosed = leads.filter(l => 
         l.status === 'fechado' || l.evaluation_result === 'Fechou'

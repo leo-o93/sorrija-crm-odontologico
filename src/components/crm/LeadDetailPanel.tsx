@@ -22,13 +22,19 @@ interface LeadDetailPanelProps {
 
 const statusLabels: Record<string, string> = {
   novo_lead: "Novo Lead",
+  triagem: "Triagem",
   primeira_tentativa: "1ª Tentativa",
+  tentativa_1: "1ª Tentativa",
   segunda_tentativa: "2ª Tentativa",
+  tentativa_2: "2ª Tentativa",
   terceira_tentativa: "3ª Tentativa",
+  tentativa_3: "3ª Tentativa",
   agendado: "Agendado",
   compareceu: "Compareceu",
+  avaliacao: "Avaliação",
   nao_compareceu: "Não Compareceu",
   orcamento_enviado: "Orçamento Enviado",
+  pos_consulta: "Pós-consulta",
   fechado: "Fechado",
   perdido: "Perdido",
 };
