@@ -128,7 +128,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           return renderMediaExpired('image');
         }
         
-        if (mediaError) {
+        if (mediaError || !mediaUrl) {
           return (
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <p className="text-sm text-muted-foreground">Imagem indisponível</p>
@@ -136,13 +136,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           );
         }
         
-        return mediaUrl && (
+        return (
           <div className="space-y-1">
             <img 
               src={mediaUrl} 
               alt="Imagem" 
               className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => window.open(mediaUrl!, '_blank')}
+              onClick={() => window.open(mediaUrl, '_blank')}
               onError={handleMediaError}
             />
             {message.content_text && (
@@ -168,7 +168,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           return renderMediaExpired('video');
         }
         
-        if (mediaError) {
+        if (mediaError || !mediaUrl) {
           return (
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <p className="text-sm text-muted-foreground">Vídeo indisponível</p>
@@ -176,7 +176,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           );
         }
         
-        return mediaUrl && (
+        return (
           <div className="space-y-1">
             <video 
               controls 
@@ -207,7 +207,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           return renderMediaExpired('audio');
         }
         
-        if (mediaError) {
+        if (mediaError || !mediaUrl) {
           return (
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <p className="text-sm text-muted-foreground">Áudio indisponível</p>
@@ -215,7 +215,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           );
         }
         
-        return mediaUrl && (
+        return (
           <audio 
             controls 
             className="max-w-full min-w-[200px]"
