@@ -8,6 +8,7 @@ const corsHeaders = {
 interface EvolutionWebhookPayload {
   event: string;
   instance: string;
+  sender?: string; // Campo que contém o telefone real do contato (ex: 553183932843@s.whatsapp.net)
   data: {
     key?: {
       remoteJid: string;
@@ -223,12 +224,13 @@ Deno.serve(async (req) => {
         phoneSource = remoteJid.replace('@s.whatsapp.net', '');
         console.log('Using remoteJid for outbound phone:', phoneSource);
       } else if (remoteJid.includes('@lid')) {
-        console.log('Outbound @lid identifier, trying senderPn/mapping...');
+        console.log('Outbound @lid identifier, trying senderPn/mapping/sender...');
         if (senderPn && senderPn.includes('@s.whatsapp.net')) {
           phoneSource = senderPn.replace('@s.whatsapp.net', '');
           lidId = remoteJid;
           console.log('Using senderPn for outbound @lid:', phoneSource);
         } else {
+          // Tentar buscar mapeamento existente
           const { data: lidMapping } = await supabase
             .from('lid_phone_mapping')
             .select('phone')
@@ -239,6 +241,11 @@ Deno.serve(async (req) => {
           if (lidMapping) {
             phoneSource = lidMapping.phone.replace(/^\+?55/, '');
             console.log('Found outbound lid mapping, phone:', phoneSource);
+          } else if (payload.sender && payload.sender.includes('@s.whatsapp.net')) {
+            // Fallback: usar campo sender do payload root
+            phoneSource = payload.sender.replace('@s.whatsapp.net', '');
+            lidId = remoteJid;
+            console.log('Using root sender for outbound @lid:', phoneSource);
           }
         }
       } else if (senderPn && senderPn.includes('@s.whatsapp.net')) {
