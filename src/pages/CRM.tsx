@@ -280,6 +280,8 @@ export default function CRM() {
         result = result?.filter(
           (lead) => lead.temperature === "quente" && lead.hot_substatus === "em_conversa"
         );
+      } else if (temperatureFilter === "agendado") {
+        result = result?.filter((lead) => lead.scheduled);
       } else {
         result = result?.filter((lead) => lead.temperature === temperatureFilter);
       }
