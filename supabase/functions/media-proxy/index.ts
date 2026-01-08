@@ -128,6 +128,21 @@ Deno.serve(async (req) => {
     if (!evolutionResponse.ok) {
       const errorText = await evolutionResponse.text();
       console.error('[media-proxy] Evolution API error:', errorText);
+      
+      // Check if it's a 403 error (media expired)
+      const isMediaExpired = errorText.includes('403') || errorText.includes('Forbidden');
+      
+      if (isMediaExpired) {
+        console.log('[media-proxy] Media expired, returning expired status');
+        return new Response(JSON.stringify({ 
+          error: 'media_expired',
+          message: 'Mídia expirada. O WhatsApp remove mídias após ~48h. Ative "Webhook Base64" na Evolution API para persistir automaticamente.'
+        }), { 
+          status: 410, // Gone - indicates resource no longer available
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+      
       return new Response(JSON.stringify({ error: 'Failed to fetch media from Evolution' }), { 
         status: 502, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

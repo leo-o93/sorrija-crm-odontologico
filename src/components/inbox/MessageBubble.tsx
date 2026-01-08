@@ -15,6 +15,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const [mediaUrl, setMediaUrl] = useState(message.media_url);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState(false);
+  const [mediaExpired, setMediaExpired] = useState(false);
 
   const getStatusIcon = () => {
     if (message.direction === 'in') return null;
@@ -53,6 +54,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       if (response.data?.url) {
         setMediaUrl(response.data.url);
         setMediaError(false);
+        setMediaExpired(false);
+      } else if (response.data?.error === 'media_expired') {
+        setMediaExpired(true);
+        setMediaError(false);
       } else {
         setMediaError(true);
       }
@@ -63,6 +68,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       setIsLoadingMedia(false);
     }
   };
+
+  const renderMediaExpired = (type: string) => (
+    <div className="p-4 bg-muted/50 rounded-lg text-center space-y-1">
+      <p className="text-sm text-muted-foreground">
+        {type === 'image' ? '📷' : type === 'video' ? '🎬' : '🎵'} Mídia expirada
+      </p>
+      <p className="text-xs text-muted-foreground/70">
+        O WhatsApp remove mídias após ~48h
+      </p>
+    </div>
+  );
 
   const renderContent = () => {
     switch (message.type) {
@@ -82,6 +98,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               </div>
             </div>
           );
+        }
+        
+        if (mediaExpired) {
+          return renderMediaExpired('image');
         }
         
         if (mediaError) {
