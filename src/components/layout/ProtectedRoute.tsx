@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useAutoLeadTransitions } from '@/hooks/useAutoLeadTransitions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,6 +12,9 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, loading, userRole } = useAuth();
   const { isLoading: isLoadingOrg } = useOrganization();
+  
+  // Run auto-lead-transitions every 5 minutes while user is authenticated
+  useAutoLeadTransitions({ intervalMinutes: 5 });
 
   // Show loading while authentication or organization is loading
   if (loading || isLoadingOrg) {
