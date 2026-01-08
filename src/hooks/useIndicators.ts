@@ -106,11 +106,25 @@ export function useIndicators(startDate?: Date, endDate?: Date) {
       const leadsContacted = currentLeads?.filter(l => 
         l.status !== 'novo_lead'
       ).length || 0;
-      const leadsScheduled = currentLeads?.filter(l => 
-        l.status === 'agendado' || l.status === 'compareceu' || l.status === 'fechado'
-      ).length || 0;
+      const scheduledStatuses = new Set([
+        'agendado',
+        'compareceu',
+        'avaliacao',
+        'orcamento_enviado',
+        'pos_consulta',
+        'fechado',
+      ]);
+      const attendedStatuses = new Set([
+        'compareceu',
+        'avaliacao',
+        'orcamento_enviado',
+        'pos_consulta',
+        'fechado',
+      ]);
+
+      const leadsScheduled = currentLeads?.filter(l => scheduledStatuses.has(l.status)).length || 0;
       const leadsAttended = currentLeads?.filter(l => 
-        l.status === 'compareceu' || l.status === 'fechado' || l.evaluation_result === 'Fechou'
+        attendedStatuses.has(l.status) || l.evaluation_result === 'Fechou'
       ).length || 0;
       const leadsClosed = currentLeads?.filter(l => 
         l.status === 'fechado' || l.evaluation_result === 'Fechou'
