@@ -167,3 +167,82 @@ export function useReorderTemperatureRules() {
     },
   });
 }
+
+// Função para testar se uma regra aplicaria a um lead simulado
+export interface TestLeadConditions {
+  temperature: string;
+  substatus: string | null;
+  minutesSinceInteraction: number;
+}
+
+export interface TestResult {
+  matches: boolean;
+  reasons: Array<{
+    condition: string;
+    passed: boolean;
+    expected: string;
+    actual: string;
+  }>;
+}
+
+export function testTransitionRule(
+  rule: TemperatureTransitionRule,
+  conditions: TestLeadConditions
+): TestResult {
+  const reasons: TestResult['reasons'] = [];
+  let allPassed = true;
+
+  // Verificar temperatura de origem
+  if (rule.from_temperature) {
+    const passed = conditions.temperature === rule.from_temperature;
+    if (!passed) allPassed = false;
+    reasons.push({
+      condition: 'Temperatura',
+      passed,
+      expected: rule.from_temperature.toUpperCase(),
+      actual: conditions.temperature.toUpperCase(),
+    });
+  } else {
+    reasons.push({
+      condition: 'Temperatura',
+      passed: true,
+      expected: 'Qualquer',
+      actual: conditions.temperature.toUpperCase(),
+    });
+  }
+
+  // Verificar substatus de origem
+  if (rule.from_substatus) {
+    const passed = conditions.substatus === rule.from_substatus;
+    if (!passed) allPassed = false;
+    reasons.push({
+      condition: 'Substatus',
+      passed,
+      expected: rule.from_substatus === 'em_conversa' ? 'Em Conversa' : 'Aguardando Resposta',
+      actual: conditions.substatus 
+        ? (conditions.substatus === 'em_conversa' ? 'Em Conversa' : 'Aguardando Resposta')
+        : 'Nenhum',
+    });
+  } else {
+    reasons.push({
+      condition: 'Substatus',
+      passed: true,
+      expected: 'Qualquer',
+      actual: conditions.substatus 
+        ? (conditions.substatus === 'em_conversa' ? 'Em Conversa' : 'Aguardando Resposta')
+        : 'Nenhum',
+    });
+  }
+
+  // Verificar timer
+  const timerPassed = conditions.minutesSinceInteraction >= rule.timer_minutes;
+  if (!timerPassed) allPassed = false;
+  reasons.push({
+    condition: 'Timer',
+    passed: timerPassed,
+    expected: `≥ ${rule.timer_minutes} minutos`,
+    actual: `${conditions.minutesSinceInteraction} minutos`,
+  });
+
+  return { matches: allPassed, reasons };
+}
