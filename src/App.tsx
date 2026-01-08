@@ -9,6 +9,7 @@ import { EvolutionProvider } from "@/contexts/EvolutionContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
@@ -38,6 +39,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="container mx-auto p-6">{children}</div>
         </main>
       </div>
+      <FloatingAIAssistant />
     </div>
   );
 }
