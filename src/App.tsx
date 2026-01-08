@@ -99,7 +99,7 @@ function AppRoutes() {
       <Route
         path="/financeiro"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={["admin", "gerente"]}>
             <AppLayout>
               <Financeiro />
             </AppLayout>
@@ -139,7 +139,7 @@ function AppRoutes() {
       <Route
         path="/cadastros"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={["admin", "gerente"]}>
             <AppLayout>
               <Cadastros />
             </AppLayout>
@@ -149,7 +149,7 @@ function AppRoutes() {
       <Route
         path="/configuracoes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={["admin", "gerente"]}>
             <AppLayout>
               <Configuracoes />
             </AppLayout>
@@ -159,7 +159,7 @@ function AppRoutes() {
       <Route
         path="/webhooks"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={["admin", "gerente"]}>
             <AppLayout>
               <Webhooks />
             </AppLayout>
