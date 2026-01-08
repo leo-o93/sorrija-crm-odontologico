@@ -1597,6 +1597,14 @@ export type Database = {
     Functions: {
       cleanup_old_webhooks: { Args: never; Returns: undefined }
       generate_quote_number: { Args: never; Returns: string }
+      get_sales_dashboard_data: {
+        Args: {
+          p_end_date: string
+          p_organization_id: string
+          p_start_date: string
+        }
+        Returns: Json
+      }
       get_user_organization_ids: {
         Args: { _user_id?: string }
         Returns: string[]
