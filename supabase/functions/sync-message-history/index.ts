@@ -314,7 +314,9 @@ serve(async (req) => {
       conversationId = newConv.id;
     }
 
-    // Inserir mensagens no banco de dados
+    // Inserir mensagens no banco de dados e contar apenas as novas
+    let newMessagesCount = 0;
+    
     if (messages.length > 0 && conversationId) {
       const messagesToInsert = messages.map((msg: any) => ({
         conversation_id: conversationId,
@@ -324,34 +326,34 @@ serve(async (req) => {
         organization_id: conversation?.organization_id || organizationId,
       }));
 
-      // Tentar upsert primeiro
-      const { error: upsertError } = await supabase
-        .from('messages')
-        .upsert(messagesToInsert, {
-          onConflict: 'provider_message_id',
-          ignoreDuplicates: true,
-        });
-
-      if (upsertError) {
-        console.warn('Upsert failed, trying individual inserts:', upsertError.message);
+      // Inserir individualmente para rastrear quantas são realmente novas
+      for (const msg of messagesToInsert) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('messages')
+          .upsert(msg, {
+            onConflict: 'provider_message_id',
+            ignoreDuplicates: true,
+          })
+          .select('id, created_at, updated_at')
+          .maybeSingle();
         
-        // Fallback: inserir individualmente ignorando duplicados
-        let successCount = 0;
-        for (const msg of messagesToInsert) {
-          const { error: singleError } = await supabase
-            .from('messages')
-            .upsert(msg, {
-              onConflict: 'provider_message_id',
-              ignoreDuplicates: true,
-            });
-          
-          if (!singleError) {
-            successCount++;
-          } else if (!singleError.message.includes('duplicate')) {
-            console.error('Error inserting single message:', singleError);
+        if (insertError) {
+          // Ignorar erros de duplicata
+          if (!insertError.message.includes('duplicate')) {
+            console.error('Error inserting message:', insertError);
+          }
+          continue;
+        }
+        
+        // Verificar se foi insert (novo) ou update (existente)
+        // Se created_at e updated_at são aproximadamente iguais (< 2s), é novo
+        if (inserted) {
+          const created = new Date(inserted.created_at).getTime();
+          const updated = new Date(inserted.updated_at).getTime();
+          if (Math.abs(created - updated) < 2000) {
+            newMessagesCount++;
           }
         }
-        console.log(`Individual insert: ${successCount}/${messagesToInsert.length} messages`);
       }
 
       const latestMessageTimestamp = Math.max(
@@ -367,12 +369,13 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Successfully synced ${messages.length} messages`);
+    console.log(`Synced: ${newMessagesCount} new messages (fetched ${messages.length} total)`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        synced: messages.length,
+        synced: newMessagesCount,
+        total_fetched: messages.length,
         conversation_id: conversationId,
       }),
       {

@@ -106,24 +106,29 @@ export function useEvolutionAPI() {
   });
 
   const syncMessages = useMutation({
-    mutationFn: async (phone: string) => {
+    mutationFn: async ({ phone, silent = false }: { phone: string; silent?: boolean }) => {
       const { data, error } = await supabase.functions.invoke('sync-message-history', {
         body: { phone, limit: 100 }
       });
       
       if (error) throw error;
-      return data;
+      return { ...data, silent };
     },
     onSuccess: (data) => {
-      // Só exibe toast se sincronizou mensagens novas
-      if (data.synced > 0) {
-        toast.success(`${data.synced} mensagens sincronizadas com sucesso!`);
-      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['messages'] });
+      
+      // Só exibe toast se não for silencioso E tiver mensagens novas
+      if (!data.silent && data.synced > 0) {
+        toast.success(`${data.synced} novas mensagens sincronizadas!`);
+      }
     },
-    onError: (error: Error) => {
-      toast.error(`Erro ao sincronizar mensagens: ${error.message}`);
+    onError: (error: Error, variables) => {
+      console.error('Sync error:', error.message);
+      // Só exibe toast se não for silencioso
+      if (!variables.silent) {
+        toast.error(`Erro ao sincronizar mensagens: ${error.message}`);
+      }
     },
   });
 
