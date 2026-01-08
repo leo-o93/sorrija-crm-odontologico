@@ -157,12 +157,14 @@ export function useEvolutionAPI() {
       return data;
     },
     onSuccess: (data) => {
-      if (data.state === 'open') {
+      if (data.status === 'open') {
         toast.success('✅ Conexão com WhatsApp estabelecida!');
-      } else if (data.state === 'close') {
+      } else if (data.status === 'close') {
         toast.warning('⚠️ WhatsApp desconectado. Gere um QR Code para conectar.');
+      } else if (data.status === 'not_configured') {
+        toast.warning('⚠️ WhatsApp não configurado.');
       } else {
-        toast.info(`Status: ${data.state}`);
+        toast.info(`Status: ${data.status || 'desconhecido'}`);
       }
       refetchConnectionState();
     },
