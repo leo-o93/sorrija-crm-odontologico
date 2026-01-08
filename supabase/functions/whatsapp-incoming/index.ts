@@ -217,51 +217,80 @@ Deno.serve(async (req) => {
 
     let phoneSource: string | null = null;
 
-    // Prioridade 1: usar senderPn se disponível (contém o número real)
-    if (senderPn && senderPn.includes('@s.whatsapp.net')) {
-      phoneSource = senderPn.replace('@s.whatsapp.net', '');
-      console.log('Using senderPn for phone:', phoneSource);
-      
-      // Se remoteJid é @lid, salvar o mapeamento
-      if (remoteJid.includes('@lid')) {
-        lidId = remoteJid;
+    if (isFromMe) {
+      // Mensagens enviadas: remoteJid representa o destinatário
+      if (remoteJid.includes('@s.whatsapp.net')) {
+        phoneSource = remoteJid.replace('@s.whatsapp.net', '');
+        console.log('Using remoteJid for outbound phone:', phoneSource);
+      } else if (remoteJid.includes('@lid')) {
+        console.log('Outbound @lid identifier, trying senderPn/mapping...');
+        if (senderPn && senderPn.includes('@s.whatsapp.net')) {
+          phoneSource = senderPn.replace('@s.whatsapp.net', '');
+          lidId = remoteJid;
+          console.log('Using senderPn for outbound @lid:', phoneSource);
+        } else {
+          const { data: lidMapping } = await supabase
+            .from('lid_phone_mapping')
+            .select('phone')
+            .eq('lid_id', remoteJid)
+            .eq('organization_id', organizationId)
+            .maybeSingle();
+
+          if (lidMapping) {
+            phoneSource = lidMapping.phone.replace(/^\+?55/, '');
+            console.log('Found outbound lid mapping, phone:', phoneSource);
+          }
+        }
+      } else if (senderPn && senderPn.includes('@s.whatsapp.net')) {
+        phoneSource = senderPn.replace('@s.whatsapp.net', '');
+        console.log('Using senderPn fallback for outbound phone:', phoneSource);
       }
-    }
-    // Prioridade 2: usar remoteJid se for um número real (@s.whatsapp.net)
-    else if (remoteJid.includes('@s.whatsapp.net')) {
-      phoneSource = remoteJid.replace('@s.whatsapp.net', '');
-      console.log('Using remoteJid for phone:', phoneSource);
-    }
-    // Se for @lid, tentar buscar no mapeamento
-    else if (remoteJid.includes('@lid')) {
-      console.log('Received @lid identifier, looking for mapping...');
-      
-      const { data: lidMapping } = await supabase
-        .from('lid_phone_mapping')
-        .select('phone')
-        .eq('lid_id', remoteJid)
-        .eq('organization_id', organizationId)
-        .maybeSingle();
-      
-      if (lidMapping) {
-        phoneSource = lidMapping.phone.replace(/^\+?55/, '');
-        console.log('Found lid mapping, phone:', phoneSource);
+    } else {
+      // Mensagens recebidas: senderPn costuma trazer o número real do contato
+      if (senderPn && senderPn.includes('@s.whatsapp.net')) {
+        phoneSource = senderPn.replace('@s.whatsapp.net', '');
+        console.log('Using senderPn for inbound phone:', phoneSource);
+        
+        // Se remoteJid é @lid, salvar o mapeamento
+        if (remoteJid.includes('@lid')) {
+          lidId = remoteJid;
+        }
+      } else if (remoteJid.includes('@s.whatsapp.net')) {
+        phoneSource = remoteJid.replace('@s.whatsapp.net', '');
+        console.log('Using remoteJid for inbound phone:', phoneSource);
+      } else if (remoteJid.includes('@lid')) {
+        console.log('Received @lid identifier, looking for mapping...');
+        
+        const { data: lidMapping } = await supabase
+          .from('lid_phone_mapping')
+          .select('phone')
+          .eq('lid_id', remoteJid)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        
+        if (lidMapping) {
+          phoneSource = lidMapping.phone.replace(/^\+?55/, '');
+          console.log('Found lid mapping, phone:', phoneSource);
+        } else {
+          console.log('No lid mapping found, cannot extract phone number');
+          console.log('remoteJid:', remoteJid);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: 'Cannot process @lid without mapping - phone number not available' 
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       } else {
-        console.log('No lid mapping found, cannot extract phone number');
-        console.log('remoteJid:', remoteJid);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: 'Cannot process @lid without mapping - phone number not available' 
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        phoneSource = remoteJid.replace(/@.*$/, '');
+        console.log('Using fallback for inbound phone:', phoneSource);
       }
     }
-    // Fallback
-    else {
+
+    if (!phoneSource) {
+      console.log('No phone source resolved, using fallback');
       phoneSource = remoteJid.replace(/@.*$/, '');
-      console.log('Using fallback for phone:', phoneSource);
     }
 
     // Validate phoneSource before proceeding
