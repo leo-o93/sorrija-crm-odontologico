@@ -134,11 +134,13 @@ Deno.serve(async (req) => {
       
       if (isMediaExpired) {
         console.log('[media-proxy] Media expired, returning expired status');
+        // Return 200 with error field so SDK doesn't throw
         return new Response(JSON.stringify({ 
           error: 'media_expired',
-          message: 'Mídia expirada. O WhatsApp remove mídias após ~48h. Ative "Webhook Base64" na Evolution API para persistir automaticamente.'
+          expired: true,
+          message: 'Mídia expirada. O WhatsApp remove mídias após ~48h.'
         }), { 
-          status: 410, // Gone - indicates resource no longer available
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
