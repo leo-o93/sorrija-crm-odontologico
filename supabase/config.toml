@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.auto-lead-transitions]
 verify_jwt = true
+
+[functions.media-proxy]
+verify_jwt = true

@@ -14,6 +14,9 @@ import { ConvertToPatientDialog } from '@/components/pacientes/ConvertToPatientD
 import { QuickScheduleDialog } from './QuickScheduleDialog';
 import { ContactNotes } from './ContactNotes';
 import { ConversationActions } from './ConversationActions';
+import { TemperatureBadge } from '@/components/crm/TemperatureBadge';
+import { HotSubstatusBadge } from '@/components/crm/HotSubstatusBadge';
+import { TemperatureActions } from '@/components/crm/TemperatureActions';
 import {
   ExternalLink,
   User,
@@ -29,6 +32,7 @@ import {
   AlertTriangle,
   FileText,
   Clock,
+  Thermometer,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +47,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
+    temperature: true,
     actions: true,
     info: true,
     budget: true,
@@ -128,6 +133,23 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                   {conversation.contact_type === 'lead' ? 'Lead' : 'Paciente'}
                 </Badge>
               </div>
+              
+              {/* Temperature Badges for Leads */}
+              {conversation.contact_type === 'lead' && conversation.leads && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <TemperatureBadge 
+                    temperature={conversation.leads.temperature} 
+                    size="sm" 
+                  />
+                  {conversation.leads.temperature === 'quente' && conversation.leads.hot_substatus && (
+                    <HotSubstatusBadge 
+                      substatus={conversation.leads.hot_substatus} 
+                      size="sm" 
+                    />
+                  )}
+                </div>
+              )}
+              
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 <Phone className="w-3 h-3" />
                 <span>{conversation.phone}</span>
@@ -157,6 +179,48 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             </Button>
           </div>
         </Card>
+
+        {/* Temperatura do Lead */}
+        {conversation.contact_type === 'lead' && conversation.leads && (
+          <Collapsible open={sectionsOpen.temperature} onOpenChange={() => toggleSection('temperature')}>
+            <Card className="overflow-hidden">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Thermometer className="w-4 h-4" />
+                  <span className="font-medium text-sm">Temperatura do Lead</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${sectionsOpen.temperature ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-3 pt-0 space-y-3">
+                  {/* Current Status Display */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <TemperatureBadge temperature={conversation.leads.temperature} size="md" />
+                    {conversation.leads.hot_substatus && (
+                      <HotSubstatusBadge substatus={conversation.leads.hot_substatus} size="md" />
+                    )}
+                  </div>
+                  
+                  {/* Temperature Actions */}
+                  <TemperatureActions
+                    leadId={conversation.lead_id!}
+                    currentTemperature={conversation.leads.temperature}
+                  />
+                  
+                  {/* Last Interaction Info */}
+                  {conversation.leads.last_interaction_at && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        Última interação: {format(new Date(conversation.leads.last_interaction_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         {/* Ações do Contato */}
         <Collapsible open={sectionsOpen.actions} onOpenChange={() => toggleSection('actions')}>

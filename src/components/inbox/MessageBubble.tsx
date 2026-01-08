@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Message } from '@/hooks/useMessages';
 import { cn } from '@/lib/utils';
-import { Check, CheckCheck, FileText, Download } from 'lucide-react';
+import { Check, CheckCheck, FileText, Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MessageBubbleProps {
   message: Message;
@@ -9,6 +12,9 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isOutgoing = message.direction === 'out';
+  const [mediaUrl, setMediaUrl] = useState(message.media_url);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
 
   const getStatusIcon = () => {
     if (message.direction === 'in') return null;
@@ -25,6 +31,39 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     return null;
   };
 
+  const handleMediaError = async () => {
+    // Only try proxy if URL is from WhatsApp's temporary CDN
+    if (!mediaUrl?.includes('mmg.whatsapp.net') || isLoadingMedia || mediaError) {
+      setMediaError(true);
+      return;
+    }
+
+    setIsLoadingMedia(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setMediaError(true);
+        return;
+      }
+
+      const response = await supabase.functions.invoke('media-proxy', {
+        body: { message_id: message.id },
+      });
+
+      if (response.data?.url) {
+        setMediaUrl(response.data.url);
+        setMediaError(false);
+      } else {
+        setMediaError(true);
+      }
+    } catch (error) {
+      console.error('Media proxy error:', error);
+      setMediaError(true);
+    } finally {
+      setIsLoadingMedia(false);
+    }
+  };
+
   const renderContent = () => {
     switch (message.type) {
       case 'text':
@@ -33,13 +72,34 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         );
 
       case 'image':
-        return message.media_url && (
+        if (isLoadingMedia) {
+          return (
+            <div className="space-y-1">
+              <Skeleton className="w-48 h-48 rounded" />
+              <div className="flex items-center gap-2 text-xs opacity-70">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Carregando imagem...</span>
+              </div>
+            </div>
+          );
+        }
+        
+        if (mediaError) {
+          return (
+            <div className="p-4 bg-muted/50 rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">Imagem indisponível</p>
+            </div>
+          );
+        }
+        
+        return mediaUrl && (
           <div className="space-y-1">
             <img 
-              src={message.media_url} 
+              src={mediaUrl} 
               alt="Imagem" 
               className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => window.open(message.media_url!, '_blank')}
+              onClick={() => window.open(mediaUrl!, '_blank')}
+              onError={handleMediaError}
             />
             {message.content_text && (
               <p className="text-sm whitespace-pre-wrap break-words">{message.content_text}</p>
@@ -48,14 +108,27 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         );
 
       case 'video':
-        return message.media_url && (
+        if (isLoadingMedia) {
+          return (
+            <div className="space-y-1">
+              <Skeleton className="w-64 h-36 rounded" />
+              <div className="flex items-center gap-2 text-xs opacity-70">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Carregando vídeo...</span>
+              </div>
+            </div>
+          );
+        }
+        
+        return mediaUrl && (
           <div className="space-y-1">
             <video 
               controls 
               className="rounded max-w-full max-h-64"
               preload="metadata"
+              onError={handleMediaError}
             >
-              <source src={message.media_url} />
+              <source src={mediaUrl} />
               Seu navegador não suporta vídeo.
             </video>
             {message.content_text && (
@@ -65,14 +138,24 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         );
 
       case 'audio':
-        return message.media_url && (
+        if (isLoadingMedia) {
+          return (
+            <div className="flex items-center gap-2 p-3">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Carregando áudio...</span>
+            </div>
+          );
+        }
+        
+        return mediaUrl && (
           <audio 
             controls 
             className="max-w-full min-w-[200px]"
             preload="metadata"
+            onError={handleMediaError}
           >
-            <source src={message.media_url} type="audio/ogg" />
-            <source src={message.media_url} type="audio/mpeg" />
+            <source src={mediaUrl} type="audio/ogg" />
+            <source src={mediaUrl} type="audio/mpeg" />
             Seu navegador não suporta áudio.
           </audio>
         );
