@@ -1,10 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversation, useUpdateConversation } from '@/hooks/useConversations';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageInput } from './MessageInput';
 import { MessageBubble } from './MessageBubble';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
 
 interface ChatViewProps {
@@ -17,6 +17,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const updateConversation = useUpdateConversation();
   const { syncMessages } = useEvolutionAPI();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Refs estáveis para evitar loops no useEffect
   const syncRef = useRef(syncMessages);
@@ -39,13 +40,17 @@ export function ChatView({ conversationId }: ChatViewProps) {
     }
   }, [conversationId, conversation?.unread_count]);
 
-  // Sync periódico com refs estáveis - evita loops
+  // Sync periódico com refs estáveis - evita loops (SILENCIOSO)
   useEffect(() => {
     if (!conversation?.phone) return;
 
     const syncNow = () => {
       if (!syncRef.current.isPending) {
-        syncRef.current.mutate(conversation.phone);
+        setIsSyncing(true);
+        syncRef.current.mutate(
+          { phone: conversation.phone, silent: true },
+          { onSettled: () => setIsSyncing(false) }
+        );
       }
     };
 
@@ -83,9 +88,17 @@ export function ChatView({ conversationId }: ChatViewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <h3 className="font-semibold">{contactName}</h3>
-        <p className="text-sm text-muted-foreground">{conversation.phone}</p>
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">{contactName}</h3>
+          <p className="text-sm text-muted-foreground">{conversation.phone}</p>
+        </div>
+        {isSyncing && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            <span>Sincronizando...</span>
+          </div>
+        )}
       </div>
 
       {/* Messages */}

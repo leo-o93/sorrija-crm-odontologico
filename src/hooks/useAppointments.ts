@@ -92,7 +92,7 @@ export function useCreateAppointment() {
     mutationFn: async (input: CreateAppointmentInput) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
       
-      const { data, error } = await supabase
+      const { data: appointment, error } = await supabase
         .from("appointments")
         .insert({
           ...input,
@@ -103,10 +103,26 @@ export function useCreateAppointment() {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Se tem lead_id, atualizar o lead para marcá-lo como agendado
+      if (input.lead_id && input.status !== 'cancelled' && input.status !== 'completed') {
+        const appointmentDate = input.appointment_date?.split('T')[0] || null;
+        await supabase
+          .from("leads")
+          .update({
+            scheduled: true,
+            appointment_date: appointmentDate,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", input.lead_id);
+      }
+
+      return appointment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
       toast.success("Agendamento criado com sucesso!");
     },
     onError: (error: Error) => {
@@ -124,14 +140,53 @@ export function useUpdateAppointment() {
         .from("appointments")
         .update(input)
         .eq("id", id)
-        .select()
+        .select("*, lead_id")
         .single();
 
       if (error) throw error;
+
+      // Se o status mudou para completed ou cancelled, verificar se deve atualizar lead
+      if (data.lead_id && (input.status === 'completed' || input.status === 'cancelled')) {
+        // Buscar próximo agendamento ativo para o lead
+        const { data: nextAppointment } = await supabase
+          .from("appointments")
+          .select("appointment_date")
+          .eq("lead_id", data.lead_id)
+          .eq("status", "scheduled")
+          .neq("id", id)
+          .order("appointment_date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (nextAppointment) {
+          // Atualizar appointment_date do lead com o próximo agendamento
+          await supabase
+            .from("leads")
+            .update({
+              scheduled: true,
+              appointment_date: nextAppointment.appointment_date?.split('T')[0],
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", data.lead_id);
+        } else {
+          // Sem mais agendamentos, desmarcar
+          await supabase
+            .from("leads")
+            .update({
+              scheduled: false,
+              appointment_date: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", data.lead_id);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
       toast.success("Agendamento atualizado com sucesso!");
     },
     onError: (error: Error) => {
@@ -145,15 +200,58 @@ export function useDeleteAppointment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // 1. Buscar o agendamento para obter lead_id antes de deletar
+      const { data: appointment } = await supabase
+        .from("appointments")
+        .select("lead_id")
+        .eq("id", id)
+        .single();
+
+      // 2. Deletar o agendamento
       const { error } = await supabase
         .from("appointments")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+
+      // 3. Se tinha lead, verificar se ainda tem outros agendamentos ativos
+      if (appointment?.lead_id) {
+        const { data: otherAppointments } = await supabase
+          .from("appointments")
+          .select("id, appointment_date")
+          .eq("lead_id", appointment.lead_id)
+          .eq("status", "scheduled")
+          .order("appointment_date", { ascending: true })
+          .limit(1);
+
+        if (!otherAppointments || otherAppointments.length === 0) {
+          // Não tem mais agendamentos, desmarcar o lead
+          await supabase
+            .from("leads")
+            .update({
+              scheduled: false,
+              appointment_date: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", appointment.lead_id);
+        } else {
+          // Atualizar com a próxima data de agendamento
+          await supabase
+            .from("leads")
+            .update({
+              scheduled: true,
+              appointment_date: otherAppointments[0].appointment_date?.split('T')[0],
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", appointment.lead_id);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
       toast.success("Agendamento excluído com sucesso!");
     },
     onError: (error: Error) => {
