@@ -1,9 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Clock } from "lucide-react";
+import { MessageCircle, Clock, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HotSubstatusBadgeProps {
   substatus: string | null;
+  scheduled?: boolean;
   size?: "sm" | "md";
   className?: string;
 }
@@ -14,6 +15,12 @@ const substatusConfig: Record<string, {
   bgColor: string;
   textColor: string;
 }> = {
+  agendado: {
+    label: "Agendado",
+    icon: CalendarCheck,
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+    textColor: "text-emerald-700 dark:text-emerald-300",
+  },
   em_conversa: {
     label: "Em conversa",
     icon: MessageCircle,
@@ -38,10 +45,13 @@ const iconSizes = {
   md: "h-4 w-4",
 };
 
-export function HotSubstatusBadge({ substatus, size = "sm", className }: HotSubstatusBadgeProps) {
-  if (!substatus) return null;
+export function HotSubstatusBadge({ substatus, scheduled, size = "sm", className }: HotSubstatusBadgeProps) {
+  // Prioriza "Agendado" sobre outros substatuses
+  const effectiveSubstatus = scheduled ? "agendado" : substatus;
   
-  const config = substatusConfig[substatus];
+  if (!effectiveSubstatus) return null;
+  
+  const config = substatusConfig[effectiveSubstatus];
   if (!config) return null;
   
   const Icon = config.icon;
@@ -63,6 +73,7 @@ export function HotSubstatusBadge({ substatus, size = "sm", className }: HotSubs
   );
 }
 
-export function getSubstatusLabel(substatus: string | null): string {
+export function getSubstatusLabel(substatus: string | null, scheduled?: boolean): string {
+  if (scheduled) return substatusConfig.agendado.label;
   return substatusConfig[substatus || ""]?.label || substatus || "";
 }

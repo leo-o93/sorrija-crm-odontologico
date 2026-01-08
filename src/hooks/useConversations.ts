@@ -35,6 +35,7 @@ export interface Conversation {
     no_show_count: number | null;
     lost_reason: string | null;
     next_follow_up_date: string | null;
+    scheduled: boolean;
     procedures?: {
       id: string;
       name: string;
@@ -76,7 +77,7 @@ export function useConversations(status: string = 'open', search: string = '') {
             id, name, phone, interest_id, source_id, status, notes, 
             budget_total, budget_paid, registration_date,
             temperature, hot_substatus, last_interaction_at,
-            follow_up_count, no_show_count, lost_reason, next_follow_up_date,
+            follow_up_count, no_show_count, lost_reason, next_follow_up_date, scheduled,
             procedures:interest_id(id, name, category),
             sources:source_id(id, name, channel)
           ),
@@ -151,7 +152,7 @@ export function useConversation(conversationId: string | null) {
             id, name, phone, interest_id, source_id, status, notes,
             budget_total, budget_paid, registration_date,
             temperature, hot_substatus, last_interaction_at,
-            follow_up_count, no_show_count, lost_reason, next_follow_up_date,
+            follow_up_count, no_show_count, lost_reason, next_follow_up_date, scheduled,
             procedures:interest_id(id, name, category),
             sources:source_id(id, name, channel)
           ),
