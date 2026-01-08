@@ -44,6 +44,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setMediaError(true);
+        setIsLoadingMedia(false);
         return;
       }
 
@@ -54,13 +55,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       // Check for error in response (including HTTP errors)
       if (response.error) {
         // Parse error body to check for media_expired
-        const errorBody = response.error.message || '';
-        if (errorBody.includes('media_expired') || errorBody.includes('410')) {
+        const errorBody = String(response.error.message || response.error || '');
+        if (errorBody.includes('media_expired') || errorBody.includes('410') || errorBody.includes('expirada')) {
           setMediaExpired(true);
           setMediaError(false);
         } else {
           setMediaError(true);
         }
+        setIsLoadingMedia(false);
         return;
       }
 
@@ -75,10 +77,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         setMediaError(true);
       }
     } catch (error: unknown) {
-      console.error('Media proxy error:', error);
-      // Check if error message indicates media expired
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      if (errorMsg.includes('media_expired') || errorMsg.includes('410')) {
+      // Handle any thrown errors - including FunctionsHttpError from SDK
+      const errorStr = String(error);
+      console.warn('Media proxy caught:', errorStr);
+      
+      // Check if error indicates media expired (410 or media_expired in message)
+      if (errorStr.includes('media_expired') || errorStr.includes('410') || errorStr.includes('expirada')) {
         setMediaExpired(true);
         setMediaError(false);
       } else {
