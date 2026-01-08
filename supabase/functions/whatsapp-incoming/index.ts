@@ -198,6 +198,7 @@ Deno.serve(async (req) => {
     // Extract phone number - pode vir em senderPn (número real) ou remoteJid
     const remoteJid = payload.data.key.remoteJid;
     const senderPn = payload.data.key.senderPn;
+    let lidId: string | null = null;
 
     let phoneSource: string | null = null;
 
@@ -205,24 +206,42 @@ Deno.serve(async (req) => {
     if (senderPn && senderPn.includes('@s.whatsapp.net')) {
       phoneSource = senderPn.replace('@s.whatsapp.net', '');
       console.log('Using senderPn for phone:', phoneSource);
+      
+      // Se remoteJid é @lid, salvar o mapeamento
+      if (remoteJid.includes('@lid')) {
+        lidId = remoteJid;
+      }
     }
     // Prioridade 2: usar remoteJid se for um número real (@s.whatsapp.net)
     else if (remoteJid.includes('@s.whatsapp.net')) {
       phoneSource = remoteJid.replace('@s.whatsapp.net', '');
       console.log('Using remoteJid for phone:', phoneSource);
     }
-    // Se for @lid, não temos o número real
+    // Se for @lid, tentar buscar no mapeamento
     else if (remoteJid.includes('@lid')) {
-      console.log('Received @lid identifier without senderPn, cannot extract phone number');
-      console.log('remoteJid:', remoteJid);
-      console.log('Full payload:', JSON.stringify(payload, null, 2));
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Cannot process @lid without senderPn - phone number not available' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('Received @lid identifier, looking for mapping...');
+      
+      const { data: lidMapping } = await supabase
+        .from('lid_phone_mapping')
+        .select('phone')
+        .eq('lid_id', remoteJid)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      
+      if (lidMapping) {
+        phoneSource = lidMapping.phone.replace(/^\+?55/, '');
+        console.log('Found lid mapping, phone:', phoneSource);
+      } else {
+        console.log('No lid mapping found, cannot extract phone number');
+        console.log('remoteJid:', remoteJid);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Cannot process @lid without mapping - phone number not available' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
     // Fallback
     else {
@@ -230,11 +249,31 @@ Deno.serve(async (req) => {
       console.log('Using fallback for phone:', phoneSource);
     }
 
+    // Validate phoneSource before proceeding
+    if (!phoneSource) {
+      console.error('Could not extract phone number from message');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Could not extract phone number' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Normalize phone number
     const normalizedPhone = phoneSource.replace(/\D/g, '');
     const phoneWithCountry = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
-
-    console.log('Processing message from:', phoneWithCountry);
+    if (lidId && phoneSource) {
+      console.log('Saving lid mapping:', lidId, '->', phoneWithCountry);
+      await supabase
+        .from('lid_phone_mapping')
+        .upsert({
+          lid_id: lidId,
+          phone: phoneWithCountry,
+          organization_id: organizationId,
+        }, { onConflict: 'lid_id' });
+    }
 
     // Extract message content
     let messageText = '';
@@ -264,140 +303,115 @@ Deno.serve(async (req) => {
 
     console.log('Message content:', { messageType, messageText, mediaUrl });
 
-    // Find or create lead by phone
+    // Find or create lead/patient using RPC function to prevent race conditions
     let contactId: string | null = null;
     let contactType: 'lead' | 'patient' = 'lead';
     let isNewLead = false;
 
-    // Try to find existing lead
-    const { data: existingLead } = await supabase
-      .from('leads')
-      .select('id, temperature, hot_substatus')
+    // Check if patient exists first
+    const { data: existingPatient } = await supabase
+      .from('patients')
+      .select('id')
       .eq('phone', phoneWithCountry)
       .eq('organization_id', organizationId)
       .maybeSingle();
 
-    if (existingLead) {
-      contactId = existingLead.id;
-      contactType = 'lead';
-      console.log('Found existing lead:', contactId);
-
-      // Update last_interaction_at and temperature/substatus for incoming messages
-      if (direction === 'in') {
-        const updateData: Record<string, unknown> = {
-          last_interaction_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        // If lead responds, they become "quente" with substatus "em_conversa"
-        // This also reactivates cold leads when they respond
-        if (existingLead.temperature === 'frio' || existingLead.temperature === 'novo') {
-          updateData.temperature = 'quente';
-          updateData.hot_substatus = 'em_conversa';
-          console.log(`Reactivating ${existingLead.temperature} lead to quente/em_conversa`);
-        } else if (existingLead.temperature === 'quente') {
-          updateData.hot_substatus = 'em_conversa';
-          console.log('Updating hot lead substatus to em_conversa');
-        }
-
-        await supabase
-          .from('leads')
-          .update(updateData)
-          .eq('id', contactId);
-      }
+    if (existingPatient) {
+      contactId = existingPatient.id;
+      contactType = 'patient';
+      console.log('Found existing patient:', contactId);
     } else {
-      // Try to find existing patient
-      const { data: existingPatient } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('phone', phoneWithCountry)
-        .eq('organization_id', organizationId)
-        .maybeSingle();
+      // Use RPC function to find or create lead atomically (prevents race condition)
+      const contactName = isFromMe 
+        ? `Contato ${phoneWithCountry.slice(-4)}`
+        : (payload.data.pushName || `Contato ${phoneWithCountry.slice(-4)}`);
 
-      if (existingPatient) {
-        contactId = existingPatient.id;
-        contactType = 'patient';
-        console.log('Found existing patient:', contactId);
-      } else {
-        // Create new lead - this is a new contact
-        isNewLead = true;
-        const contactName = isFromMe 
-          ? `Contato ${phoneWithCountry.slice(-4)}`
-          : (payload.data.pushName || `Contato ${phoneWithCountry.slice(-4)}`);
-        
-        console.log('Creating new lead with name:', contactName, 'fromMe:', isFromMe);
-        
-        // Fetch interest triggers for this organization
-        let triggerActions: {
-          interest_id?: string;
-          source_id?: string;
-          temperature?: string;
-          status?: string;
-          triggered_by?: string;
-        } = {};
+      // Fetch interest triggers for this organization if incoming message
+      let triggerActions: {
+        interest_id?: string;
+        source_id?: string;
+        temperature?: string;
+        status?: string;
+        triggered_by?: string;
+      } = {};
 
-        if (direction === 'in' && messageText) {
-          const { data: triggers } = await supabase
-            .from('interest_triggers')
-            .select('*')
-            .eq('organization_id', organizationId)
-            .eq('active', true)
-            .order('priority', { ascending: true });
+      if (direction === 'in' && messageText) {
+        const { data: triggers } = await supabase
+          .from('interest_triggers')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .eq('active', true)
+          .order('priority', { ascending: true });
 
-          if (triggers && triggers.length > 0) {
-            console.log(`Found ${triggers.length} active triggers to evaluate`);
-            
-            for (const trigger of triggers as InterestTrigger[]) {
-              if (evaluateTriggerCondition(trigger, messageText)) {
-                console.log(`Trigger matched: ${trigger.name} (${trigger.id})`);
-                
-                if (trigger.action_set_interest_id) {
-                  triggerActions.interest_id = trigger.action_set_interest_id;
-                }
-                if (trigger.action_set_source_id) {
-                  triggerActions.source_id = trigger.action_set_source_id;
-                }
-                if (trigger.action_set_temperature) {
-                  triggerActions.temperature = trigger.action_set_temperature;
-                }
-                if (trigger.action_set_status) {
-                  triggerActions.status = trigger.action_set_status;
-                }
-                triggerActions.triggered_by = trigger.id;
-                
-                // First matching trigger wins
-                break;
+        if (triggers && triggers.length > 0) {
+          console.log(`Found ${triggers.length} active triggers to evaluate`);
+          
+          for (const trigger of triggers as InterestTrigger[]) {
+            if (evaluateTriggerCondition(trigger, messageText)) {
+              console.log(`Trigger matched: ${trigger.name} (${trigger.id})`);
+              
+              if (trigger.action_set_interest_id) {
+                triggerActions.interest_id = trigger.action_set_interest_id;
               }
+              if (trigger.action_set_source_id) {
+                triggerActions.source_id = trigger.action_set_source_id;
+              }
+              if (trigger.action_set_temperature) {
+                triggerActions.temperature = trigger.action_set_temperature;
+              }
+              if (trigger.action_set_status) {
+                triggerActions.status = trigger.action_set_status;
+              }
+              triggerActions.triggered_by = trigger.id;
+              
+              // First matching trigger wins
+              break;
             }
           }
         }
-        
-        const { data: newLead, error: leadError } = await supabase
-          .from('leads')
-          .insert({
-            name: contactName,
-            phone: phoneWithCountry,
-            source_id: triggerActions.source_id || null,
-            interest_id: triggerActions.interest_id || null,
-            status: triggerActions.status || 'novo_lead',
-            temperature: triggerActions.temperature || 'novo',
-            hot_substatus: triggerActions.temperature === 'quente' ? 'em_conversa' : null,
-            triggered_by: triggerActions.triggered_by || null,
-            last_interaction_at: new Date().toISOString(),
-            notes: 'Contato iniciado via WhatsApp',
-            organization_id: organizationId,
-          })
-          .select()
-          .single();
+      }
 
-        if (leadError) {
-          console.error('Error creating lead:', leadError);
-          throw leadError;
-        }
+      console.log('Calling upsert_lead_by_phone RPC with:', {
+        p_phone: phoneWithCountry,
+        p_organization_id: organizationId,
+        p_name: contactName,
+        p_source_id: triggerActions.source_id || null,
+        p_interest_id: triggerActions.interest_id || null,
+        p_temperature: triggerActions.temperature || 'novo',
+        p_direction: direction
+      });
 
-        contactId = newLead.id;
+      // Use RPC to atomically find or create lead
+      const { data: leadResult, error: rpcError } = await supabase
+        .rpc('upsert_lead_by_phone', {
+          p_phone: phoneWithCountry,
+          p_organization_id: organizationId,
+          p_name: contactName,
+          p_source_id: triggerActions.source_id || null,
+          p_interest_id: triggerActions.interest_id || null,
+          p_temperature: triggerActions.temperature || 'novo',
+          p_direction: direction
+        });
+
+      if (rpcError) {
+        console.error('Error in upsert_lead_by_phone RPC:', rpcError);
+        throw rpcError;
+      }
+
+      if (leadResult && leadResult.length > 0) {
+        const result = leadResult[0];
+        contactId = result.lead_id;
+        isNewLead = result.is_new;
         contactType = 'lead';
-        console.log('Created new lead:', contactId, 'with trigger actions:', triggerActions);
+        console.log('Lead result:', {
+          lead_id: contactId,
+          is_new: isNewLead,
+          temperature: result.lead_temperature,
+          hot_substatus: result.lead_hot_substatus
+        });
+      } else {
+        console.error('No result from upsert_lead_by_phone');
+        throw new Error('Failed to create or find lead');
       }
     }
 
@@ -491,10 +505,9 @@ Deno.serve(async (req) => {
         message_id: newMessage.id,
         is_new_lead: isNewLead,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error processing webhook:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(

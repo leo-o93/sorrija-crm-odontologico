@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { useMessages } from '@/hooks/useMessages';
-import { useConversation } from '@/hooks/useConversations';
+import { useConversation, useUpdateConversation } from '@/hooks/useConversations';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageInput } from './MessageInput';
 import { MessageBubble } from './MessageBubble';
@@ -12,6 +13,25 @@ interface ChatViewProps {
 export function ChatView({ conversationId }: ChatViewProps) {
   const { conversation, isLoading: conversationLoading } = useConversation(conversationId);
   const { messages, isLoading: messagesLoading } = useMessages(conversationId);
+  const updateConversation = useUpdateConversation();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll para a última mensagem
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  // Marcar conversa como lida quando abrir
+  useEffect(() => {
+    if (conversation && conversation.unread_count > 0) {
+      updateConversation.mutate({
+        conversationId: conversationId,
+        updates: { unread_count: 0 },
+      });
+    }
+  }, [conversationId, conversation?.unread_count]);
 
   if (conversationLoading) {
     return (
@@ -58,6 +78,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </ScrollArea>
