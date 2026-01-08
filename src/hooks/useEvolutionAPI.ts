@@ -115,7 +115,10 @@ export function useEvolutionAPI() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`${data.synced} mensagens sincronizadas com sucesso!`);
+      // Só exibe toast se sincronizou mensagens novas
+      if (data.synced > 0) {
+        toast.success(`${data.synced} mensagens sincronizadas com sucesso!`);
+      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['messages'] });
     },
@@ -134,7 +137,10 @@ export function useEvolutionAPI() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`${data.total_synced} mensagens sincronizadas de ${data.total_conversations} conversas!`);
+      // Só exibe toast se sincronizou mensagens novas
+      if (data.total_synced > 0) {
+        toast.success(`${data.total_synced} mensagens sincronizadas de ${data.total_conversations} conversas!`);
+      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['messages'] });
     },

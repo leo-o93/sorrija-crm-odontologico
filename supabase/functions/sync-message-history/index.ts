@@ -13,8 +13,15 @@ const extractMessages = (response: any): any[] => {
   }
   
   if (response && typeof response === 'object') {
+    // Estrutura: { messages: { records: [...] } }
+    if (response.messages?.records && Array.isArray(response.messages.records)) {
+      return response.messages.records;
+    }
+    // Estrutura: { messages: [...] }
     if (Array.isArray(response.messages)) return response.messages;
+    // Estrutura: { data: [...] }
     if (Array.isArray(response.data)) return response.data;
+    // Estrutura: { records: [...] }
     if (Array.isArray(response.records)) return response.records;
   }
   
