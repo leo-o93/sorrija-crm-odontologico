@@ -11,8 +11,7 @@ export interface CRMSettings {
   new_to_cold_minutes: number;
   
   // Configurações de temperatura automática - QUENTE → FRIO
-  hot_to_cold_days: number;
-  hot_to_cold_hours: number;
+  hot_to_cold_minutes: number;
   enable_auto_temperature: boolean;
   
   // Configurações de substatus quente
@@ -42,8 +41,7 @@ export interface CRMSettings {
 
 export interface UpdateCRMSettingsInput {
   new_to_cold_minutes?: number;
-  hot_to_cold_days?: number;
-  hot_to_cold_hours?: number;
+  hot_to_cold_minutes?: number;
   enable_auto_temperature?: boolean;
   awaiting_response_minutes?: number;
   enable_auto_substatus?: boolean;
@@ -82,8 +80,7 @@ export function useCRMSettings() {
           id: '',
           organization_id: currentOrganization.id,
           new_to_cold_minutes: 1440,
-          hot_to_cold_days: 3,
-          hot_to_cold_hours: 0,
+          hot_to_cold_minutes: 4320,
           enable_auto_temperature: true,
           awaiting_response_minutes: 60,
           enable_auto_substatus: true,

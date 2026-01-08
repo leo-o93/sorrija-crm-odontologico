@@ -22,8 +22,7 @@ Deno.serve(async (req) => {
       .from('crm_settings')
       .select(`
         organization_id, 
-        hot_to_cold_days, 
-        hot_to_cold_hours, 
+        hot_to_cold_minutes, 
         enable_auto_temperature,
         new_to_cold_minutes,
         em_conversa_timeout_minutes,
@@ -51,8 +50,7 @@ Deno.serve(async (req) => {
     for (const settings of crmSettings) {
       const { 
         organization_id, 
-        hot_to_cold_days, 
-        hot_to_cold_hours,
+        hot_to_cold_minutes,
         new_to_cold_minutes,
         em_conversa_timeout_minutes,
         enable_substatus_timeout,
@@ -109,13 +107,13 @@ Deno.serve(async (req) => {
       }
 
       // ============================================
-      // 2. QUENTE → FRIO (timer existente)
+      // 2. QUENTE → FRIO (timer em minutos)
       // ============================================
-      const hotToColdHours = (hot_to_cold_days || 3) * 24 + (hot_to_cold_hours || 0);
+      const hotToColdMins = hot_to_cold_minutes || 4320; // default 3 dias em minutos
       const hotToColdThreshold = new Date();
-      hotToColdThreshold.setHours(hotToColdThreshold.getHours() - hotToColdHours);
+      hotToColdThreshold.setMinutes(hotToColdThreshold.getMinutes() - hotToColdMins);
 
-      console.log(`  QUENTE→FRIO: threshold ${hotToColdHours}h (since ${hotToColdThreshold.toISOString()})`);
+      console.log(`  QUENTE→FRIO: threshold ${hotToColdMins}min (since ${hotToColdThreshold.toISOString()})`);
 
       // Find hot leads without interaction (excluding those with aguardando_resposta - handled separately)
       const { data: staleHotLeads, error: hotLeadsError } = await supabase
