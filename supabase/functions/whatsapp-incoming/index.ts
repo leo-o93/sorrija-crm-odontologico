@@ -429,6 +429,7 @@ Deno.serve(async (req) => {
         p_source_id: triggerActions.source_id || null,
         p_interest_id: triggerActions.interest_id || null,
         p_temperature: triggerActions.temperature || 'novo',
+        p_status: triggerActions.status || null,
         p_direction: direction
       });
 
@@ -441,6 +442,7 @@ Deno.serve(async (req) => {
           p_source_id: triggerActions.source_id || null,
           p_interest_id: triggerActions.interest_id || null,
           p_temperature: triggerActions.temperature || 'novo',
+          p_status: triggerActions.status || null,
           p_direction: direction
         });
 

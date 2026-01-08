@@ -1617,23 +1617,42 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
-      upsert_lead_by_phone: {
-        Args: {
-          p_direction?: string
-          p_interest_id?: string
-          p_name: string
-          p_organization_id: string
-          p_phone: string
-          p_source_id?: string
-          p_temperature?: string
-        }
-        Returns: {
-          is_new: boolean
-          lead_hot_substatus: string
-          lead_id: string
-          lead_temperature: string
-        }[]
-      }
+      upsert_lead_by_phone:
+        | {
+            Args: {
+              p_direction?: string
+              p_interest_id?: string
+              p_name?: string
+              p_organization_id: string
+              p_phone: string
+              p_source_id?: string
+              p_status?: string
+              p_temperature?: string
+            }
+            Returns: {
+              is_new: boolean
+              lead_hot_substatus: string
+              lead_id: string
+              lead_temperature: string
+            }[]
+          }
+        | {
+            Args: {
+              p_direction?: string
+              p_interest_id?: string
+              p_name: string
+              p_organization_id: string
+              p_phone: string
+              p_source_id?: string
+              p_temperature?: string
+            }
+            Returns: {
+              is_new: boolean
+              lead_hot_substatus: string
+              lead_id: string
+              lead_temperature: string
+            }[]
+          }
     }
     Enums: {
       app_role: "admin" | "gerente" | "comercial" | "recepcao" | "dentista"
