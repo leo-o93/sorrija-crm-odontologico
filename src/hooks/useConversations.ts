@@ -104,6 +104,10 @@ export function useConversations(status: string = 'open', search: string = '') {
 
   // Realtime subscription
   useEffect(() => {
+    if (!currentOrganization?.id) {
+      return undefined;
+    }
+
     const channel = supabase
       .channel('conversations-changes')
       .on(
@@ -112,6 +116,7 @@ export function useConversations(status: string = 'open', search: string = '') {
           event: '*',
           schema: 'public',
           table: 'conversations',
+          filter: `organization_id=eq.${currentOrganization.id}`,
         },
         () => {
           refetch();
@@ -122,7 +127,7 @@ export function useConversations(status: string = 'open', search: string = '') {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [currentOrganization?.id, refetch]);
 
   return {
     conversations: data || [],
