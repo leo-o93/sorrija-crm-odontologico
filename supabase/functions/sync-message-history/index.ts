@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper para extrair array de mensagens do formato variável da Evolution API
+const extractMessages = (response: any): any[] => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  
+  if (response && typeof response === 'object') {
+    if (Array.isArray(response.messages)) return response.messages;
+    if (Array.isArray(response.data)) return response.data;
+    if (Array.isArray(response.records)) return response.records;
+  }
+  
+  console.warn('Could not extract messages from response:', JSON.stringify(response).slice(0, 500));
+  return [];
+};
+
 const mapMessagePayload = (msg: any) => {
   const direction = msg.key?.fromMe ? 'out' : 'in';
   let type = 'text';
@@ -139,7 +155,9 @@ serve(async (req) => {
             continue;
           }
 
-          const messages = await response.json();
+          const responseData = await response.json();
+          const messages = extractMessages(responseData);
+          console.log(`[${conv.phone}] Extracted ${messages.length} messages from response`);
           
           if (messages.length > 0) {
             const messagesToInsert = messages.map((msg: any) => ({
@@ -228,8 +246,9 @@ serve(async (req) => {
       throw new Error(`Evolution API error: ${response.statusText}`);
     }
 
-    const messages = await response.json();
-    console.log(`Found ${messages.length} messages`);
+    const responseData = await response.json();
+    const messages = extractMessages(responseData);
+    console.log(`Found ${messages.length} messages for ${phone}`);
 
     // Find organization for this instance
     const { data: organization } = await supabase
