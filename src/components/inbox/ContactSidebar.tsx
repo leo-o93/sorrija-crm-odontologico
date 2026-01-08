@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useNavigate } from 'react-router-dom';
 import { useUpdateLeadStatus } from '@/hooks/useLeads';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { ConvertToPatientDialog } from '@/components/pacientes/ConvertToPatientDialog';
 import { QuickScheduleDialog } from './QuickScheduleDialog';
 import { ContactNotes } from './ContactNotes';
@@ -17,6 +18,7 @@ import { ConversationActions } from './ConversationActions';
 import { TemperatureBadge } from '@/components/crm/TemperatureBadge';
 import { HotSubstatusBadge } from '@/components/crm/HotSubstatusBadge';
 import { TemperatureActions } from '@/components/crm/TemperatureActions';
+import { Repeat, XCircle } from 'lucide-react';
 import {
   ExternalLink,
   User,
@@ -57,6 +59,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   });
 
   const updateLeadStatus = useUpdateLeadStatus();
+  const { data: leadStatuses } = useLeadStatuses();
   const contact = conversation.contact_type === 'lead' ? conversation.leads : conversation.patients;
 
   // Fetch appointments for this contact
@@ -207,15 +210,45 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     currentTemperature={conversation.leads.temperature}
                   />
                   
-                  {/* Last Interaction Info */}
-                  {conversation.leads.last_interaction_at && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-                      <Clock className="w-3 h-3" />
-                      <span>
-                        Última interação: {format(new Date(conversation.leads.last_interaction_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
-                  )}
+                  {/* Follow-up and No-show Info */}
+                  <div className="space-y-1.5 pt-2 border-t">
+                    {(conversation.leads.follow_up_count ?? 0) > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Repeat className="w-3 h-3" />
+                        <span>Follow-ups realizados: {conversation.leads.follow_up_count}</span>
+                      </div>
+                    )}
+                    
+                    {(conversation.leads.no_show_count ?? 0) > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-orange-600">
+                        <XCircle className="w-3 h-3" />
+                        <span>Faltas: {conversation.leads.no_show_count}</span>
+                      </div>
+                    )}
+                    
+                    {conversation.leads.lost_reason && (
+                      <div className="flex items-center gap-2 text-xs text-destructive">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>Motivo da perda: {conversation.leads.lost_reason}</span>
+                      </div>
+                    )}
+                    
+                    {conversation.leads.next_follow_up_date && (
+                      <div className="flex items-center gap-2 text-xs text-blue-600">
+                        <Calendar className="w-3 h-3" />
+                        <span>Próximo follow-up: {format(new Date(conversation.leads.next_follow_up_date), "dd/MM/yyyy", { locale: ptBR })}</span>
+                      </div>
+                    )}
+                    
+                    {conversation.leads.last_interaction_at && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          Última interação: {format(new Date(conversation.leads.last_interaction_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CollapsibleContent>
             </Card>
@@ -240,14 +273,14 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="novo_lead">Novo Lead</SelectItem>
-                          <SelectItem value="primeira_tentativa">1ª Tentativa</SelectItem>
-                          <SelectItem value="segunda_tentativa">2ª Tentativa</SelectItem>
-                          <SelectItem value="terceira_tentativa">3ª Tentativa</SelectItem>
-                          <SelectItem value="agendado">Agendado</SelectItem>
-                          <SelectItem value="compareceu">Compareceu</SelectItem>
-                          <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-                          <SelectItem value="em_tratamento">Em Tratamento</SelectItem>
+                          {leadStatuses?.map((status) => (
+                            <SelectItem key={status.id} value={status.name}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                                {status.title}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
