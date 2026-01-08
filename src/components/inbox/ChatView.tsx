@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageInput } from './MessageInput';
 import { MessageBubble } from './MessageBubble';
 import { Loader2 } from 'lucide-react';
+import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
 
 interface ChatViewProps {
   conversationId: string;
@@ -14,6 +15,8 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const { conversation, isLoading: conversationLoading } = useConversation(conversationId);
   const { messages, isLoading: messagesLoading } = useMessages(conversationId);
   const updateConversation = useUpdateConversation();
+  const { syncMessages } = useEvolutionAPI();
+  const { mutate: syncMessagesMutate, isPending: isSyncingMessages } = syncMessages;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll para a última mensagem
@@ -32,6 +35,23 @@ export function ChatView({ conversationId }: ChatViewProps) {
       });
     }
   }, [conversationId, conversation?.unread_count]);
+
+  useEffect(() => {
+    if (!conversation?.phone) return;
+
+    const syncNow = () => {
+      if (!isSyncingMessages) {
+        syncMessagesMutate(conversation.phone);
+      }
+    };
+
+    syncNow();
+    const interval = setInterval(syncNow, 15000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [conversation?.phone, isSyncingMessages, syncMessagesMutate]);
 
   if (conversationLoading) {
     return (
