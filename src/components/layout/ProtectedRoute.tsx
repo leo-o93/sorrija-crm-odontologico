@@ -6,7 +6,13 @@ import { useAutoLeadTransitions } from '@/hooks/useAutoLeadTransitions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
+  requiredRole?:
+    | 'admin'
+    | 'gerente'
+    | 'comercial'
+    | 'recepcao'
+    | 'dentista'
+    | Array<'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista'>;
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -32,7 +38,17 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/auth" replace />;
   }
 
-  if (requiredRole && userRole?.role !== requiredRole && userRole?.role !== 'admin') {
+  const requiredRoles = requiredRole
+    ? Array.isArray(requiredRole)
+      ? requiredRole
+      : [requiredRole]
+    : [];
+
+  if (
+    requiredRoles.length > 0 &&
+    userRole?.role !== 'admin' &&
+    !requiredRoles.includes(userRole?.role ?? '')
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
