@@ -47,7 +47,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   if (
     requiredRoles.length > 0 &&
     userRole?.role !== 'admin' &&
-    !requiredRoles.includes(userRole?.role ?? '')
+    !(userRole?.role && requiredRoles.includes(userRole.role))
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center">

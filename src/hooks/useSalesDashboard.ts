@@ -69,7 +69,7 @@ export function useSalesDashboard(startDate?: Date, endDate?: Date) {
       if (error) throw error;
       if (!data) throw new Error('No sales dashboard data');
 
-      return data as SalesDashboardData;
+      return data as unknown as SalesDashboardData;
     },
     enabled: !!currentOrganization?.id,
   });
