@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversation, useUpdateConversation } from '@/hooks/useConversations';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,8 +16,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const { messages, isLoading: messagesLoading } = useMessages(conversationId);
   const updateConversation = useUpdateConversation();
   const { syncMessages } = useEvolutionAPI();
-  const { mutate: syncMessagesMutate, isPending: isSyncingMessages } = syncMessages;
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Refs estáveis para evitar loops no useEffect
+  const syncRef = useRef(syncMessages);
+  syncRef.current = syncMessages;
 
   // Auto-scroll para a última mensagem
   useEffect(() => {
@@ -36,22 +39,24 @@ export function ChatView({ conversationId }: ChatViewProps) {
     }
   }, [conversationId, conversation?.unread_count]);
 
+  // Sync periódico com refs estáveis - evita loops
   useEffect(() => {
     if (!conversation?.phone) return;
 
     const syncNow = () => {
-      if (!isSyncingMessages) {
-        syncMessagesMutate(conversation.phone);
+      if (!syncRef.current.isPending) {
+        syncRef.current.mutate(conversation.phone);
       }
     };
 
+    // Sync inicial
     syncNow();
-    const interval = setInterval(syncNow, 15000);
+    
+    // Sync periódico a cada 30 segundos
+    const interval = setInterval(syncNow, 30000);
 
-    return () => {
-      clearInterval(interval);
-    };
-  }, [conversation?.phone, isSyncingMessages, syncMessagesMutate]);
+    return () => clearInterval(interval);
+  }, [conversation?.phone]);
 
   if (conversationLoading) {
     return (
