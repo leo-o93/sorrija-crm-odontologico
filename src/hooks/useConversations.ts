@@ -28,6 +28,9 @@ export interface Conversation {
     budget_total: number | null;
     budget_paid: number | null;
     registration_date: string;
+    temperature: string | null;
+    hot_substatus: string | null;
+    last_interaction_at: string | null;
     procedures?: {
       id: string;
       name: string;
@@ -68,6 +71,7 @@ export function useConversations(status: string = 'open', search: string = '') {
           leads(
             id, name, phone, interest_id, source_id, status, notes, 
             budget_total, budget_paid, registration_date,
+            temperature, hot_substatus, last_interaction_at,
             procedures:interest_id(id, name, category),
             sources:source_id(id, name, channel)
           ),
@@ -136,6 +140,7 @@ export function useConversation(conversationId: string | null) {
           leads(
             id, name, phone, interest_id, source_id, status, notes,
             budget_total, budget_paid, registration_date,
+            temperature, hot_substatus, last_interaction_at,
             procedures:interest_id(id, name, category),
             sources:source_id(id, name, channel)
           ),
