@@ -33,13 +33,14 @@ import { useEffect } from "react";
 
 const ruleSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  trigger_event: z.enum(["inactivity_timer", "substatus_timeout", "no_response"]),
+  trigger_event: z.enum(["inactivity_timer", "substatus_timeout", "no_response", "message_received"]),
   from_temperature: z.string().nullable(),
   from_substatus: z.string().nullable(),
-  timer_minutes: z.coerce.number().min(1, "Mínimo 1 minuto"),
+  timer_minutes: z.coerce.number().min(0).optional(),
   action_set_temperature: z.string().nullable(),
   action_clear_substatus: z.boolean(),
   action_set_substatus: z.string().nullable(),
+  condition_message_direction: z.string().nullable(),
 });
 
 type RuleFormValues = z.infer<typeof ruleSchema>;
@@ -56,6 +57,12 @@ const TRIGGER_EVENTS = [
   { value: "inactivity_timer", label: "Timer de Inatividade", description: "Sem interação do cliente" },
   { value: "substatus_timeout", label: "Timeout de Substatus", description: "Tempo limite de um substatus" },
   { value: "no_response", label: "Sem Resposta", description: "Cliente não respondeu após mensagem enviada" },
+  { value: "message_received", label: "Mensagem Recebida", description: "Quando o lead envia ou recebe mensagem" },
+];
+
+const MESSAGE_DIRECTIONS = [
+  { value: "in", label: "Entrada (lead enviou)" },
+  { value: "out", label: "Saída (agente enviou)" },
 ];
 
 const TEMPERATURES = [
@@ -87,8 +94,12 @@ export function TemperatureRuleForm({
       action_set_temperature: null,
       action_clear_substatus: false,
       action_set_substatus: null,
+      condition_message_direction: null,
     },
   });
+
+  const triggerEvent = form.watch("trigger_event");
+  const isMessageReceived = triggerEvent === "message_received";
 
   useEffect(() => {
     if (editingRule) {
@@ -97,10 +108,11 @@ export function TemperatureRuleForm({
         trigger_event: editingRule.trigger_event,
         from_temperature: editingRule.from_temperature,
         from_substatus: editingRule.from_substatus,
-        timer_minutes: editingRule.timer_minutes,
+        timer_minutes: editingRule.timer_minutes || 0,
         action_set_temperature: editingRule.action_set_temperature,
         action_clear_substatus: editingRule.action_clear_substatus,
         action_set_substatus: editingRule.action_set_substatus,
+        condition_message_direction: editingRule.condition_message_direction,
       });
     } else {
       form.reset({
@@ -112,6 +124,7 @@ export function TemperatureRuleForm({
         action_set_temperature: null,
         action_clear_substatus: false,
         action_set_substatus: null,
+        condition_message_direction: null,
       });
     }
   }, [editingRule, form, open]);
@@ -122,14 +135,17 @@ export function TemperatureRuleForm({
       trigger_event: values.trigger_event,
       from_temperature: values.from_temperature || null,
       from_substatus: values.from_substatus || null,
-      timer_minutes: values.timer_minutes,
+      timer_minutes: isMessageReceived ? 0 : (values.timer_minutes || 60),
       action_set_temperature: values.action_set_temperature || null,
       action_clear_substatus: values.action_clear_substatus,
       action_set_substatus: values.action_set_substatus || null,
+      condition_message_direction: isMessageReceived 
+        ? (values.condition_message_direction as 'in' | 'out' | null) 
+        : null,
     });
   };
 
-  const timerMinutes = form.watch("timer_minutes");
+  const timerMinutes = form.watch("timer_minutes") || 0;
   const formatTime = (minutes: number) => {
     if (minutes < 60) return `${minutes} min`;
     if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
@@ -254,27 +270,60 @@ export function TemperatureRuleForm({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="timer_minutes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tempo (minutos)</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input type="number" min={1} className="w-32" {...field} />
-                      <span className="text-sm text-muted-foreground">
-                        = {formatTime(timerMinutes)}
-                      </span>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Tempo de inatividade antes de aplicar a ação
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isMessageReceived && (
+              <FormField
+                control={form.control}
+                name="condition_message_direction"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Direção da Mensagem</FormLabel>
+                    <Select 
+                      onValueChange={(v) => field.onChange(v === "_any" ? null : v)} 
+                      value={field.value || "_any"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Qualquer" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="_any">Qualquer direção</SelectItem>
+                        {MESSAGE_DIRECTIONS.map((dir) => (
+                          <SelectItem key={dir.value} value={dir.value}>
+                            {dir.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>Filtrar por direção da mensagem</FormDescription>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {!isMessageReceived && (
+              <FormField
+                control={form.control}
+                name="timer_minutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tempo (minutos)</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" min={1} className="w-32" {...field} />
+                        <span className="text-sm text-muted-foreground">
+                          = {formatTime(timerMinutes)}
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Tempo de inatividade antes de aplicar a ação
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
               <h4 className="font-medium text-sm">Ações a Executar</h4>
