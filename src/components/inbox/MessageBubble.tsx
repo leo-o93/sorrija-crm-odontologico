@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Message } from '@/hooks/useMessages';
 import { cn } from '@/lib/utils';
 import { Check, CheckCheck, FileText, Download, Loader2 } from 'lucide-react';
@@ -16,6 +16,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState(false);
   const [mediaExpired, setMediaExpired] = useState(false);
+  const proxyAttempted = useRef(false);
 
   const getStatusIcon = () => {
     if (message.direction === 'in') return null;
@@ -33,13 +34,21 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
 
   const handleMediaError = async () => {
-    // Only try proxy if URL is from WhatsApp's temporary CDN
-    if (!mediaUrl?.includes('mmg.whatsapp.net') || isLoadingMedia || mediaError || mediaExpired) {
-      if (!mediaExpired) setMediaError(true);
+    // Prevent multiple proxy attempts
+    if (proxyAttempted.current || isLoadingMedia || mediaError || mediaExpired) {
+      if (!mediaExpired && !mediaError) setMediaError(true);
       return;
     }
 
+    // Only try proxy if URL is from WhatsApp's temporary CDN
+    if (!mediaUrl?.includes('mmg.whatsapp.net')) {
+      setMediaError(true);
+      return;
+    }
+
+    proxyAttempted.current = true;
     setIsLoadingMedia(true);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -56,7 +65,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       if (response.error) {
         // Parse error body to check for media_expired
         const errorBody = String(response.error.message || response.error || '');
-        if (errorBody.includes('media_expired') || errorBody.includes('410') || errorBody.includes('expirada')) {
+        const isExpired = errorBody.includes('media_expired') || 
+                          errorBody.includes('410') || 
+                          errorBody.includes('expirada') ||
+                          errorBody.includes('403');
+        
+        if (isExpired) {
           setMediaExpired(true);
           setMediaError(false);
         } else {
@@ -78,11 +92,25 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       }
     } catch (error: unknown) {
       // Handle any thrown errors - including FunctionsHttpError from SDK
-      const errorStr = String(error);
-      console.warn('Media proxy caught:', errorStr);
+      console.warn('Media proxy error:', error);
       
-      // Check if error indicates media expired (410 or media_expired in message)
-      if (errorStr.includes('media_expired') || errorStr.includes('410') || errorStr.includes('expirada')) {
+      // Try to extract error info from various error formats
+      let errorInfo = '';
+      if (error instanceof Error) {
+        errorInfo = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorInfo = JSON.stringify(error);
+      } else {
+        errorInfo = String(error);
+      }
+      
+      // Check if error indicates media expired
+      const isExpired = errorInfo.includes('media_expired') || 
+                        errorInfo.includes('410') || 
+                        errorInfo.includes('expirada') ||
+                        errorInfo.includes('403');
+      
+      if (isExpired) {
         setMediaExpired(true);
         setMediaError(false);
       } else {
@@ -229,7 +257,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         );
 
       case 'document':
-        return message.media_url && (
+        if (!message.media_url) {
+          return (
+            <div className="p-4 bg-muted/50 rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">Documento indisponível</p>
+            </div>
+          );
+        }
+        return (
           <a
             href={message.media_url}
             target="_blank"
