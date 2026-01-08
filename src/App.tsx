@@ -22,6 +22,7 @@ import Cadastros from "./pages/Cadastros";
 import Configuracoes from "./pages/Configuracoes";
 import Webhooks from "./pages/Webhooks";
 import Conversas from "./pages/Conversas";
+import RelatoriosIA from "./pages/RelatoriosIA";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -171,6 +172,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <Conversas />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/relatorios-ia"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RelatoriosIA />
             </AppLayout>
           </ProtectedRoute>
         }
