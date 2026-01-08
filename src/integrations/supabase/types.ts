@@ -221,8 +221,7 @@ export type Database = {
           enable_follow_up_alerts: boolean | null
           enable_no_show_alerts: boolean | null
           enable_substatus_timeout: boolean | null
-          hot_to_cold_days: number | null
-          hot_to_cold_hours: number | null
+          hot_to_cold_minutes: number | null
           id: string
           max_follow_up_attempts: number | null
           new_to_cold_minutes: number | null
@@ -244,8 +243,7 @@ export type Database = {
           enable_follow_up_alerts?: boolean | null
           enable_no_show_alerts?: boolean | null
           enable_substatus_timeout?: boolean | null
-          hot_to_cold_days?: number | null
-          hot_to_cold_hours?: number | null
+          hot_to_cold_minutes?: number | null
           id?: string
           max_follow_up_attempts?: number | null
           new_to_cold_minutes?: number | null
@@ -267,8 +265,7 @@ export type Database = {
           enable_follow_up_alerts?: boolean | null
           enable_no_show_alerts?: boolean | null
           enable_substatus_timeout?: boolean | null
-          hot_to_cold_days?: number | null
-          hot_to_cold_hours?: number | null
+          hot_to_cold_minutes?: number | null
           id?: string
           max_follow_up_attempts?: number | null
           new_to_cold_minutes?: number | null

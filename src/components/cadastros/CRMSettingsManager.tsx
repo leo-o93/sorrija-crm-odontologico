@@ -18,8 +18,7 @@ import { ptBR } from "date-fns/locale";
 const settingsSchema = z.object({
   // Timers de transição
   new_to_cold_minutes: z.coerce.number().min(1).max(43200),
-  hot_to_cold_days: z.coerce.number().min(0).max(365),
-  hot_to_cold_hours: z.coerce.number().min(0).max(23),
+  hot_to_cold_minutes: z.coerce.number().min(1).max(525600), // 1 min a 365 dias
   enable_auto_temperature: z.boolean(),
   
   // Substatus
@@ -55,8 +54,7 @@ export function CRMSettingsManager() {
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       new_to_cold_minutes: 1440,
-      hot_to_cold_days: 3,
-      hot_to_cold_hours: 0,
+      hot_to_cold_minutes: 4320,
       enable_auto_temperature: true,
       awaiting_response_minutes: 60,
       enable_auto_substatus: true,
@@ -78,8 +76,7 @@ export function CRMSettingsManager() {
     if (settings) {
       form.reset({
         new_to_cold_minutes: settings.new_to_cold_minutes,
-        hot_to_cold_days: settings.hot_to_cold_days,
-        hot_to_cold_hours: settings.hot_to_cold_hours,
+        hot_to_cold_minutes: settings.hot_to_cold_minutes,
         enable_auto_temperature: settings.enable_auto_temperature,
         awaiting_response_minutes: settings.awaiting_response_minutes,
         enable_auto_substatus: settings.enable_auto_substatus,
@@ -207,7 +204,7 @@ export function CRMSettingsManager() {
                 ${form.watch('new_to_cold_minutes')}min sem interação            ${form.watch('aguardando_to_cold_hours')}h sem resposta
                       │                                   │
                       ▼                                   ▼
-                    FRIO ◄──── ${form.watch('hot_to_cold_days')}d ${form.watch('hot_to_cold_hours')}h sem interação ────┘`}
+                    FRIO ◄──── ${form.watch('hot_to_cold_minutes')}min sem interação ────┘`}
               </pre>
             </div>
           </CardContent>
@@ -278,40 +275,32 @@ export function CRMSettingsManager() {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="hot_to_cold_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dias sem resposta</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={365} {...field} />
-                    </FormControl>
-                    <FormDescription>Número de dias</FormDescription>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="hot_to_cold_hours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Horas adicionais</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={23} {...field} />
-                    </FormControl>
-                    <FormDescription>Horas extras (0-23)</FormDescription>
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="hot_to_cold_minutes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Minutos como lead quente antes de esfriar</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={1} max={525600} className="w-24" {...field} />
+                      <span className="text-muted-foreground">minutos</span>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Após {field.value} minutos sem interação, o lead QUENTE será movido para FRIO automaticamente.
+                    {field.value >= 60 && ` (${Math.floor(field.value / 60)}h ${field.value % 60}min)`}
+                    {field.value >= 1440 && ` = ${Math.floor(field.value / 1440)} dia(s)`}
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
 
             <div className="rounded-lg bg-muted p-3 text-sm">
               <strong>Resumo:</strong> Lead QUENTE virará FRIO após{" "}
               <span className="font-mono text-primary">
-                {form.watch('hot_to_cold_days')} dias e {form.watch('hot_to_cold_hours')} horas
+                {form.watch('hot_to_cold_minutes')} minutos
+                {form.watch('hot_to_cold_minutes') >= 1440 && ` (${Math.floor(form.watch('hot_to_cold_minutes') / 1440)} dia(s))`}
               </span>{" "}
               sem interação do cliente.
             </div>
