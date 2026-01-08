@@ -6,6 +6,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const mapMessagePayload = (msg: any) => {
+  const direction = msg.key?.fromMe ? 'out' : 'in';
+  let type = 'text';
+  let contentText: string | null = null;
+  let mediaUrl: string | null = null;
+
+  if (msg.message?.conversation) {
+    contentText = msg.message.conversation;
+  } else if (msg.message?.extendedTextMessage?.text) {
+    contentText = msg.message.extendedTextMessage.text;
+  } else if (msg.message?.imageMessage) {
+    type = 'image';
+    mediaUrl = msg.message.imageMessage.url || null;
+    contentText = msg.message.imageMessage.caption || null;
+  } else if (msg.message?.videoMessage) {
+    type = 'video';
+    mediaUrl = msg.message.videoMessage.url || null;
+    contentText = msg.message.videoMessage.caption || null;
+  } else if (msg.message?.audioMessage) {
+    type = 'audio';
+    mediaUrl = msg.message.audioMessage.url || null;
+  } else if (msg.message?.documentMessage) {
+    type = 'document';
+    mediaUrl = msg.message.documentMessage.url || null;
+    contentText = msg.message.documentMessage.fileName || null;
+  }
+
+  return {
+    direction,
+    type,
+    content_text: contentText,
+    media_url: mediaUrl,
+    status: direction === 'out' ? 'sent' : 'received',
+    created_at: new Date((msg.messageTimestamp ?? 0) * 1000).toISOString(),
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -107,12 +144,8 @@ serve(async (req) => {
           if (messages.length > 0) {
             const messagesToInsert = messages.map((msg: any) => ({
               conversation_id: conv.id,
-              direction: msg.key.fromMe ? 'outgoing' : 'incoming',
-              type: msg.message?.conversation ? 'text' : 'media',
-              content_text: msg.message?.conversation || msg.message?.extendedTextMessage?.text,
+              ...mapMessagePayload(msg),
               provider_message_id: msg.key.id,
-              status: 'received',
-              created_at: new Date(msg.messageTimestamp * 1000).toISOString(),
               raw_payload: msg,
               organization_id: conv.organization_id,
             }));
@@ -128,6 +161,18 @@ serve(async (req) => {
               console.error(`Error inserting messages for ${conv.phone}:`, insertError);
               results.push({ phone: conv.phone, success: false, error: insertError.message });
             } else {
+              const latestMessageTimestamp = Math.max(
+                ...messages.map((msg: any) => (msg.messageTimestamp ?? 0) * 1000)
+              );
+
+              if (latestMessageTimestamp > 0) {
+                const latestMessageDate = new Date(latestMessageTimestamp).toISOString();
+                await supabase
+                  .from('conversations')
+                  .update({ last_message_at: latestMessageDate })
+                  .eq('id', conv.id);
+              }
+
               totalSynced += messages.length;
               results.push({ phone: conv.phone, success: true, synced: messages.length });
             }
@@ -228,12 +273,8 @@ serve(async (req) => {
     if (messages.length > 0 && conversationId) {
       const messagesToInsert = messages.map((msg: any) => ({
         conversation_id: conversationId,
-        direction: msg.key.fromMe ? 'outgoing' : 'incoming',
-        type: msg.message?.conversation ? 'text' : 'media',
-        content_text: msg.message?.conversation || msg.message?.extendedTextMessage?.text,
+        ...mapMessagePayload(msg),
         provider_message_id: msg.key.id,
-        status: 'received',
-        created_at: new Date(msg.messageTimestamp * 1000).toISOString(),
         raw_payload: msg,
         organization_id: conversation?.organization_id || organizationId,
       }));
@@ -248,6 +289,18 @@ serve(async (req) => {
       if (insertError) {
         console.error('Error inserting messages:', insertError);
         throw insertError;
+      }
+
+      const latestMessageTimestamp = Math.max(
+        ...messages.map((msg: any) => (msg.messageTimestamp ?? 0) * 1000)
+      );
+
+      if (latestMessageTimestamp > 0) {
+        const latestMessageDate = new Date(latestMessageTimestamp).toISOString();
+        await supabase
+          .from('conversations')
+          .update({ last_message_at: latestMessageDate })
+          .eq('id', conversationId);
       }
     }
 

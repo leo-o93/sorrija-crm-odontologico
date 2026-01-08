@@ -113,14 +113,15 @@ Deno.serve(async (req) => {
     const payload: EvolutionWebhookPayload = await req.json();
     console.log('Received Evolution webhook:', JSON.stringify(payload, null, 2));
 
-    // Filtrar apenas eventos de mensagens novas
-    const supportedEvents = ['messages.upsert'];
-    if (!supportedEvents.includes(payload.event)) {
+    // Filtrar apenas eventos de mensagens novas/atualizadas (case-insensitive)
+    const normalizedEvent = payload.event?.toLowerCase();
+    const supportedEvents = ['messages.upsert', 'messages.update'];
+    if (!normalizedEvent || !supportedEvents.includes(normalizedEvent)) {
       console.log(`Ignoring event type: ${payload.event}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Event ${payload.event} ignored - only processing messages.upsert` 
+          message: `Event ${payload.event} ignored - only processing messages.upsert/messages.update` 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
