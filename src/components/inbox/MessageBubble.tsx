@@ -34,8 +34,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   const handleMediaError = async () => {
     // Only try proxy if URL is from WhatsApp's temporary CDN
-    if (!mediaUrl?.includes('mmg.whatsapp.net') || isLoadingMedia || mediaError) {
-      setMediaError(true);
+    if (!mediaUrl?.includes('mmg.whatsapp.net') || isLoadingMedia || mediaError || mediaExpired) {
+      if (!mediaExpired) setMediaError(true);
       return;
     }
 
@@ -51,6 +51,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         body: { message_id: message.id },
       });
 
+      // Check for error in response (including HTTP errors)
+      if (response.error) {
+        // Parse error body to check for media_expired
+        const errorBody = response.error.message || '';
+        if (errorBody.includes('media_expired') || errorBody.includes('410')) {
+          setMediaExpired(true);
+          setMediaError(false);
+        } else {
+          setMediaError(true);
+        }
+        return;
+      }
+
       if (response.data?.url) {
         setMediaUrl(response.data.url);
         setMediaError(false);
@@ -61,9 +74,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       } else {
         setMediaError(true);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Media proxy error:', error);
-      setMediaError(true);
+      // Check if error message indicates media expired
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('media_expired') || errorMsg.includes('410')) {
+        setMediaExpired(true);
+        setMediaError(false);
+      } else {
+        setMediaError(true);
+      }
     } finally {
       setIsLoadingMedia(false);
     }
