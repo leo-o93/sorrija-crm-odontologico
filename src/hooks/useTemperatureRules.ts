@@ -9,13 +9,14 @@ export interface TemperatureTransitionRule {
   name: string;
   priority: number;
   active: boolean;
-  trigger_event: 'inactivity_timer' | 'substatus_timeout' | 'no_response';
+  trigger_event: 'inactivity_timer' | 'substatus_timeout' | 'no_response' | 'message_received';
   from_temperature: string | null;
   from_substatus: string | null;
   timer_minutes: number;
   action_set_temperature: string | null;
   action_clear_substatus: boolean;
   action_set_substatus: string | null;
+  condition_message_direction: 'in' | 'out' | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,13 +24,14 @@ export interface TemperatureTransitionRule {
 export interface CreateRuleInput {
   name: string;
   priority?: number;
-  trigger_event: 'inactivity_timer' | 'substatus_timeout' | 'no_response';
+  trigger_event: 'inactivity_timer' | 'substatus_timeout' | 'no_response' | 'message_received';
   from_temperature?: string | null;
   from_substatus?: string | null;
-  timer_minutes: number;
+  timer_minutes?: number;
   action_set_temperature?: string | null;
   action_clear_substatus?: boolean;
   action_set_substatus?: string | null;
+  condition_message_direction?: 'in' | 'out' | null;
 }
 
 export interface UpdateRuleInput extends Partial<CreateRuleInput> {
@@ -78,10 +80,18 @@ export function useCreateTemperatureRule() {
       const { data, error } = await supabase
         .from('temperature_transition_rules')
         .insert({
-          ...input,
+          name: input.name,
+          trigger_event: input.trigger_event,
+          from_temperature: input.from_temperature,
+          from_substatus: input.from_substatus,
+          timer_minutes: input.timer_minutes ?? 0,
+          action_set_temperature: input.action_set_temperature,
+          action_clear_substatus: input.action_clear_substatus,
+          action_set_substatus: input.action_set_substatus,
+          condition_message_direction: input.condition_message_direction,
           organization_id: currentOrganization.id,
           priority: input.priority ?? maxPriority + 1,
-        })
+        } as any)
         .select()
         .single();
       
@@ -173,6 +183,7 @@ export interface TestLeadConditions {
   temperature: string;
   substatus: string | null;
   minutesSinceInteraction: number;
+  messageDirection?: 'in' | 'out' | null;
 }
 
 export interface TestResult {
@@ -191,6 +202,8 @@ export function testTransitionRule(
 ): TestResult {
   const reasons: TestResult['reasons'] = [];
   let allPassed = true;
+  
+  const isMessageReceived = rule.trigger_event === 'message_received';
 
   // Verificar temperatura de origem
   if (rule.from_temperature) {
@@ -234,15 +247,40 @@ export function testTransitionRule(
     });
   }
 
-  // Verificar timer
-  const timerPassed = conditions.minutesSinceInteraction >= rule.timer_minutes;
-  if (!timerPassed) allPassed = false;
-  reasons.push({
-    condition: 'Timer',
-    passed: timerPassed,
-    expected: `≥ ${rule.timer_minutes} minutos`,
-    actual: `${conditions.minutesSinceInteraction} minutos`,
-  });
+  // Para message_received, verificar direção da mensagem ao invés de timer
+  if (isMessageReceived) {
+    if (rule.condition_message_direction) {
+      const passed = conditions.messageDirection === rule.condition_message_direction;
+      if (!passed) allPassed = false;
+      reasons.push({
+        condition: 'Direção',
+        passed,
+        expected: rule.condition_message_direction === 'in' ? 'Entrada' : 'Saída',
+        actual: conditions.messageDirection 
+          ? (conditions.messageDirection === 'in' ? 'Entrada' : 'Saída')
+          : 'Não definida',
+      });
+    } else {
+      reasons.push({
+        condition: 'Direção',
+        passed: true,
+        expected: 'Qualquer',
+        actual: conditions.messageDirection 
+          ? (conditions.messageDirection === 'in' ? 'Entrada' : 'Saída')
+          : 'Não definida',
+      });
+    }
+  } else {
+    // Verificar timer para outros eventos
+    const timerPassed = conditions.minutesSinceInteraction >= rule.timer_minutes;
+    if (!timerPassed) allPassed = false;
+    reasons.push({
+      condition: 'Timer',
+      passed: timerPassed,
+      expected: `≥ ${rule.timer_minutes} minutos`,
+      actual: `${conditions.minutesSinceInteraction} minutos`,
+    });
+  }
 
   return { matches: allPassed, reasons };
 }

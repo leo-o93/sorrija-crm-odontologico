@@ -95,6 +95,106 @@ function evaluateTriggerCondition(
   }
 }
 
+// Interface for transition rules
+interface TransitionRule {
+  id: string;
+  from_temperature: string | null;
+  from_substatus: string | null;
+  condition_message_direction: string | null;
+  action_set_temperature: string | null;
+  action_clear_substatus: boolean;
+  action_set_substatus: string | null;
+  priority: number;
+}
+
+// Function to apply message_received transition rules
+async function applyMessageReceivedRules(
+  supabase: any,
+  organizationId: string,
+  leadId: string,
+  currentTemperature: string,
+  currentSubstatus: string | null,
+  direction: string
+): Promise<void> {
+  try {
+    // Fetch active message_received rules for this organization
+    const { data: rules, error } = await supabase
+      .from('temperature_transition_rules')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('trigger_event', 'message_received')
+      .eq('active', true)
+      .order('priority', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching transition rules:', error);
+      return;
+    }
+
+    if (!rules || rules.length === 0) {
+      console.log('No message_received transition rules found');
+      return;
+    }
+
+    console.log(`Found ${rules.length} message_received rules to evaluate`);
+
+    for (const rule of rules as TransitionRule[]) {
+      // Check direction condition
+      if (rule.condition_message_direction && rule.condition_message_direction !== direction) {
+        console.log(`Rule ${rule.id} skipped: direction mismatch (expected: ${rule.condition_message_direction}, got: ${direction})`);
+        continue;
+      }
+
+      // Check temperature condition
+      if (rule.from_temperature && rule.from_temperature !== currentTemperature) {
+        console.log(`Rule ${rule.id} skipped: temperature mismatch (expected: ${rule.from_temperature}, got: ${currentTemperature})`);
+        continue;
+      }
+
+      // Check substatus condition
+      if (rule.from_substatus && rule.from_substatus !== currentSubstatus) {
+        console.log(`Rule ${rule.id} skipped: substatus mismatch (expected: ${rule.from_substatus}, got: ${currentSubstatus})`);
+        continue;
+      }
+
+      // Rule matches! Apply actions
+      console.log(`Rule matched: ${rule.id}`);
+      
+      const updateData: Record<string, any> = {};
+      
+      if (rule.action_set_temperature) {
+        updateData.temperature = rule.action_set_temperature;
+      }
+      
+      if (rule.action_clear_substatus) {
+        updateData.hot_substatus = null;
+      } else if (rule.action_set_substatus) {
+        updateData.hot_substatus = rule.action_set_substatus;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        console.log('Applying rule actions:', updateData);
+        
+        const { error: updateError } = await supabase
+          .from('leads')
+          .update(updateData)
+          .eq('id', leadId);
+
+        if (updateError) {
+          console.error('Error applying transition rule:', updateError);
+        } else {
+          console.log('Successfully applied transition rule');
+        }
+      }
+
+      // First matching rule wins
+      break;
+    }
+  } catch (err) {
+    console.error('Error in applyMessageReceivedRules:', err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -462,6 +562,11 @@ Deno.serve(async (req) => {
           temperature: result.lead_temperature,
           hot_substatus: result.lead_hot_substatus
         });
+
+        // Apply message_received transition rules for incoming messages
+        if (direction === 'in' && contactId) {
+          await applyMessageReceivedRules(supabase, organizationId, contactId, result.lead_temperature, result.lead_hot_substatus, direction);
+        }
       } else {
         console.error('No result from upsert_lead_by_phone');
         throw new Error('Failed to create or find lead');

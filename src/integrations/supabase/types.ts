@@ -1510,6 +1510,7 @@ export type Database = {
           action_set_substatus: string | null
           action_set_temperature: string | null
           active: boolean | null
+          condition_message_direction: string | null
           created_at: string | null
           from_substatus: string | null
           from_temperature: string | null
@@ -1526,6 +1527,7 @@ export type Database = {
           action_set_substatus?: string | null
           action_set_temperature?: string | null
           active?: boolean | null
+          condition_message_direction?: string | null
           created_at?: string | null
           from_substatus?: string | null
           from_temperature?: string | null
@@ -1542,6 +1544,7 @@ export type Database = {
           action_set_substatus?: string | null
           action_set_temperature?: string | null
           active?: boolean | null
+          condition_message_direction?: string | null
           created_at?: string | null
           from_substatus?: string | null
           from_temperature?: string | null

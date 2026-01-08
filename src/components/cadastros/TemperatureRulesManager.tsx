@@ -67,6 +67,7 @@ const TRIGGER_LABELS: Record<string, { label: string; icon: typeof Timer }> = {
   inactivity_timer: { label: "Inatividade", icon: Timer },
   substatus_timeout: { label: "Timeout Substatus", icon: Clock },
   no_response: { label: "Sem Resposta", icon: MessageCircle },
+  message_received: { label: "Mensagem Recebida", icon: MessageCircle },
 };
 
 const TEMPERATURE_COLORS: Record<string, string> = {
@@ -275,7 +276,8 @@ export function TemperatureRulesManager() {
     setTestConditions({
       temperature: rule.from_temperature || "novo",
       substatus: rule.from_substatus || null,
-      minutesSinceInteraction: rule.timer_minutes,
+      minutesSinceInteraction: rule.timer_minutes || 0,
+      messageDirection: rule.condition_message_direction || 'in',
     });
     setTestResult(null);
     setTestDialogOpen(true);
@@ -515,21 +517,45 @@ export function TemperatureRulesManager() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Minutos desde última interação</Label>
-              <Input
-                type="number"
-                min="0"
-                value={testConditions.minutesSinceInteraction}
-                onChange={(e) => {
-                  setTestConditions(prev => ({ 
-                    ...prev, 
-                    minutesSinceInteraction: parseInt(e.target.value) || 0 
-                  }));
-                  setTestResult(null);
-                }}
-              />
-            </div>
+            {testingRule?.trigger_event === 'message_received' ? (
+              <div className="space-y-2">
+                <Label>Direção da mensagem</Label>
+                <Select
+                  value={testConditions.messageDirection || 'in'}
+                  onValueChange={(value) => {
+                    setTestConditions(prev => ({ 
+                      ...prev, 
+                      messageDirection: value as 'in' | 'out'
+                    }));
+                    setTestResult(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in">Entrada (lead enviou)</SelectItem>
+                    <SelectItem value="out">Saída (agente enviou)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Minutos desde última interação</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={testConditions.minutesSinceInteraction}
+                  onChange={(e) => {
+                    setTestConditions(prev => ({ 
+                      ...prev, 
+                      minutesSinceInteraction: parseInt(e.target.value) || 0 
+                    }));
+                    setTestResult(null);
+                  }}
+                />
+              </div>
+            )}
 
             <Button onClick={runTest} className="w-full">
               <TestTube2 className="h-4 w-4 mr-2" />
