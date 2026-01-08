@@ -882,6 +882,35 @@ export type Database = {
           },
         ]
       }
+      lid_phone_mapping: {
+        Row: {
+          created_at: string | null
+          lid_id: string
+          organization_id: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string | null
+          lid_id: string
+          organization_id: string
+          phone: string
+        }
+        Update: {
+          created_at?: string | null
+          lid_id?: string
+          organization_id?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lid_phone_mapping_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_templates: {
         Row: {
           active: boolean | null
@@ -1590,6 +1619,23 @@ export type Database = {
       is_org_admin: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      upsert_lead_by_phone: {
+        Args: {
+          p_direction?: string
+          p_interest_id?: string
+          p_name: string
+          p_organization_id: string
+          p_phone: string
+          p_source_id?: string
+          p_temperature?: string
+        }
+        Returns: {
+          is_new: boolean
+          lead_hot_substatus: string
+          lead_id: string
+          lead_temperature: string
+        }[]
       }
     }
     Enums: {
