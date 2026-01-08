@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SourcesManager } from "@/components/cadastros/SourcesManager";
 import { ProceduresManager } from "@/components/cadastros/ProceduresManager";
@@ -8,6 +9,12 @@ import { CRMSettingsManager } from "@/components/cadastros/CRMSettingsManager";
 import { TemperatureRulesManager } from "@/components/cadastros/TemperatureRulesManager";
 
 export default function Cadastros() {
+  const [activeTab, setActiveTab] = useState("sources");
+
+  const handleNavigateToRules = () => {
+    setActiveTab("temperature-rules");
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -15,7 +22,7 @@ export default function Cadastros() {
         <p className="text-muted-foreground">Gerencie fontes, procedimentos, gatilhos e configurações do CRM</p>
       </div>
 
-      <Tabs defaultValue="sources" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="sources">Fontes</TabsTrigger>
           <TabsTrigger value="procedures">Procedimentos</TabsTrigger>
@@ -51,7 +58,7 @@ export default function Cadastros() {
         </TabsContent>
 
         <TabsContent value="crm-settings" className="space-y-4">
-          <CRMSettingsManager />
+          <CRMSettingsManager onNavigateToRules={handleNavigateToRules} />
         </TabsContent>
       </Tabs>
     </div>
