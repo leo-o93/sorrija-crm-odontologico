@@ -164,6 +164,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           );
         }
         
+        if (mediaExpired) {
+          return renderMediaExpired('video');
+        }
+        
+        if (mediaError) {
+          return (
+            <div className="p-4 bg-muted/50 rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">Vídeo indisponível</p>
+            </div>
+          );
+        }
+        
         return mediaUrl && (
           <div className="space-y-1">
             <video 
@@ -187,6 +199,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="flex items-center gap-2 p-3">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span className="text-sm">Carregando áudio...</span>
+            </div>
+          );
+        }
+        
+        if (mediaExpired) {
+          return renderMediaExpired('audio');
+        }
+        
+        if (mediaError) {
+          return (
+            <div className="p-4 bg-muted/50 rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">Áudio indisponível</p>
             </div>
           );
         }
