@@ -11,6 +11,7 @@ import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
 import Dashboard from "./pages/Dashboard";
+import PainelSistema from "./pages/PainelSistema";
 import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
 import Agenda from "./pages/Agenda";
@@ -54,6 +55,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <Dashboard />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/painel-sistema"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <PainelSistema />
             </AppLayout>
           </ProtectedRoute>
         }

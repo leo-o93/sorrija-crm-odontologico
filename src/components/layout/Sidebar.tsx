@@ -13,13 +13,15 @@ import {
   Briefcase,
   Target,
   Webhook,
-  Brain
+  Brain,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Painel do Sistema", href: "/painel-sistema", icon: Activity },
   { name: "CRM / Leads", href: "/crm", icon: Target },
   { name: "Conversas WhatsApp", href: "/conversas", icon: MessageSquare },
   { name: "Pacientes", href: "/pacientes", icon: Users },
