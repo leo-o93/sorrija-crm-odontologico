@@ -266,8 +266,9 @@ export default function CRM() {
     setIsDetailPanelOpen(true);
   };
 
-  const handleOpenConversation = (lead: Lead) => {
-    navigate('/conversas');
+  const handleOpenConversation = async (lead: Lead) => {
+    // Navigate to conversations with the lead's phone to open the correct conversation
+    navigate(`/conversas?phone=${encodeURIComponent(lead.phone)}`);
   };
 
   // Filter leads by search and temperature

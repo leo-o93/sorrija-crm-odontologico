@@ -516,29 +516,47 @@ Deno.serve(async (req) => {
       console.log('Created new conversation:', conversationId);
     }
 
-    // Create message
+    // Create message using UPSERT to prevent duplicate key errors
+    const messageData = {
+      conversation_id: conversationId,
+      direction: direction,
+      type: messageType,
+      content_text: messageText || null,
+      media_url: mediaUrl,
+      status: direction === 'in' ? 'received' : 'sent',
+      provider_message_id: payload.data.key.id,
+      raw_payload: payload,
+      organization_id: organizationId,
+    };
+
     const { data: newMessage, error: messageError } = await supabase
       .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        direction: direction,
-        type: messageType,
-        content_text: messageText || null,
-        media_url: mediaUrl,
-        status: direction === 'in' ? 'received' : 'sent',
-        provider_message_id: payload.data.key.id,
-        raw_payload: payload,
-        organization_id: organizationId,
+      .upsert(messageData, { 
+        onConflict: 'provider_message_id',
+        ignoreDuplicates: true 
       })
       .select()
       .single();
 
-    if (messageError) {
+    // If upsert returned no data (duplicate ignored), fetch the existing message
+    let messageId = newMessage?.id;
+    if (!newMessage && !messageError) {
+      const { data: existingMessage } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('provider_message_id', payload.data.key.id)
+        .single();
+      
+      messageId = existingMessage?.id;
+      console.log('Duplicate message ignored, existing ID:', messageId);
+    }
+
+    if (messageError && !messageError.message?.includes('duplicate')) {
       console.error('Error creating message:', messageError);
       throw messageError;
     }
 
-    console.log('Message processed successfully:', newMessage.id);
+    console.log('Message processed successfully:', messageId);
 
     return new Response(
       JSON.stringify({
@@ -546,7 +564,7 @@ Deno.serve(async (req) => {
         conversation_id: conversationId,
         lead_id: contactType === 'lead' ? contactId : null,
         patient_id: contactType === 'patient' ? contactId : null,
-        message_id: newMessage.id,
+        message_id: messageId,
         is_new_lead: isNewLead,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
