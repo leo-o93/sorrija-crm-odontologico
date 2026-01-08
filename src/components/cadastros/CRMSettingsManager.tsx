@@ -9,8 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCRMSettings, useUpdateCRMSettings } from "@/hooks/useCRMSettings";
-import { Settings, Clock, Bot, Bell, Thermometer, RotateCcw, Sparkles, MessageCircle, Timer } from "lucide-react";
+import { Settings, Clock, Bot, Bell, Thermometer, RotateCcw, Sparkles, MessageCircle, Timer, Play, Loader2, CheckCircle2 } from "lucide-react";
 import { useEffect } from "react";
+import { useAutoLeadTransitions } from "@/hooks/useAutoLeadTransitions";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const settingsSchema = z.object({
   // Timers de transição
@@ -46,6 +49,7 @@ type SettingsFormValues = z.infer<typeof settingsSchema>;
 export function CRMSettingsManager() {
   const { data: settings, isLoading } = useCRMSettings();
   const updateSettings = useUpdateCRMSettings();
+  const { runTransitions, lastResult, isRunning, lastRunAt } = useAutoLeadTransitions({ showToasts: true });
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -119,6 +123,63 @@ export function CRMSettingsManager() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
+        {/* Execução Automática de Transições */}
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" />
+              <CardTitle>Execução Automática de Transições</CardTitle>
+            </div>
+            <CardDescription>
+              O sistema executa transições a cada 5 minutos automaticamente. Você pode executar manualmente abaixo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {lastResult?.success ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium">
+                    Status: {isRunning ? 'Executando...' : lastResult?.success ? 'Última execução bem sucedida' : 'Aguardando'}
+                  </span>
+                </div>
+                {lastRunAt && (
+                  <p className="text-sm text-muted-foreground">
+                    Última execução: {format(lastRunAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {lastResult?.success && (lastResult.transitions_made > 0 || lastResult.substatuses_cleared > 0) && (
+                  <p className="text-sm text-muted-foreground">
+                    Resultado: {lastResult.transitions_made} transições, {lastResult.substatuses_cleared} substatus limpos
+                  </p>
+                )}
+              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => runTransitions()}
+                disabled={isRunning}
+              >
+                {isRunning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Executando...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Executar Agora
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         
         {/* Diagrama de Fluxo Visual */}
         <Card className="bg-muted/30">

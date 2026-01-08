@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Users, 
   DollarSign, 
@@ -21,12 +21,19 @@ import { useSalesDashboard } from "@/hooks/useSalesDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { useAutoLeadTransitions } from "@/hooks/useAutoLeadTransitions";
 
 export default function Dashboard() {
   const [startDate, setStartDate] = useState(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState(endOfMonth(new Date()));
   const { data: stats, isLoading } = useSalesDashboard(startDate, endDate);
   const { userRole } = useAuth();
+  const { runTransitions } = useAutoLeadTransitions();
+
+  // Run transitions when Dashboard mounts
+  useEffect(() => {
+    runTransitions();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (
