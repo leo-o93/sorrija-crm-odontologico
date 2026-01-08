@@ -38,3 +38,9 @@ verify_jwt = true
 
 [functions.media-proxy]
 verify_jwt = true
+
+[functions.ai-lead-analysis]
+verify_jwt = true
+
+[functions.ai-reports]
+verify_jwt = true
