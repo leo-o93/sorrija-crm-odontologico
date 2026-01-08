@@ -22,12 +22,19 @@ export function useAutoLeadTransitions(options?: {
   const [isRunning, setIsRunning] = useState(false);
   const [lastRunAt, setLastRunAt] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRunRef = useRef<number>(0);
 
   const runTransitions = useCallback(async (): Promise<TransitionResult> => {
     if (isRunning) {
       return { success: false, error: 'Already running' };
     }
 
+    const now = Date.now();
+    if (now - lastRunRef.current < 30000) {
+      return { success: false, error: 'Cooldown active' };
+    }
+
+    lastRunRef.current = now;
     setIsRunning(true);
     
     try {
