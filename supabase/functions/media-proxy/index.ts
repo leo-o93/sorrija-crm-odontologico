@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       .from('integration_settings')
       .select('settings')
       .eq('organization_id', organizationId)
-      .eq('type', 'whatsapp_evolution')
+      .eq('integration_type', 'whatsapp_evolution')
       .eq('active', true)
       .single();
 
@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const evolutionUrl = settings.settings?.api_url;
-    const evolutionKey = settings.settings?.api_key;
+    const evolutionUrl = settings.settings?.evolution_base_url;
+    const evolutionKey = settings.settings?.evolution_api_key;
 
     if (!evolutionUrl || !evolutionKey) {
       return new Response(JSON.stringify({ error: 'Evolution API not configured' }), { 
