@@ -193,7 +193,22 @@ Deno.serve(async (req) => {
     // Determine message direction
     const isFromMe = payload.data.key.fromMe;
     const direction = isFromMe ? 'out' : 'in';
-    console.log('Message direction:', direction);
+    
+    // Detailed logging for debugging message direction
+    console.log('📨 Message processing:', {
+      direction,
+      isFromMe,
+      event: payload.event,
+      instance: payload.instance,
+      remoteJid: payload.data.key.remoteJid,
+      messageId: payload.data.key.id
+    });
+    
+    if (isFromMe) {
+      console.log('📤 OUTBOUND MESSAGE: Sent from WhatsApp directly (not via CRM)');
+    } else {
+      console.log('📥 INBOUND MESSAGE: Received from contact');
+    }
 
     // Extract phone number - pode vir em senderPn (número real) ou remoteJid
     const remoteJid = payload.data.key.remoteJid;

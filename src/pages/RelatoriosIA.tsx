@@ -75,16 +75,20 @@ export default function RelatoriosIA() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                selected={{ from: dateRange.start, to: dateRange.end }}
-                onSelect={(range) => {
-                  if (range?.from && range?.to) {
-                    setDateRange({ start: range.from, end: range.to });
-                  }
-                }}
-                locale={ptBR}
-              />
+                <Calendar
+                  mode="range"
+                  selected={{ from: dateRange.start, to: dateRange.end }}
+                  onSelect={(range) => {
+                    if (range?.from) {
+                      setDateRange({ 
+                        start: range.from, 
+                        end: range.to || range.from 
+                      });
+                    }
+                  }}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
             </PopoverContent>
           </Popover>
 
