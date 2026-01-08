@@ -17,7 +17,7 @@ import { ptBR } from "date-fns/locale";
 
 const settingsSchema = z.object({
   // Timers de transição
-  new_to_cold_hours: z.coerce.number().min(1).max(720),
+  new_to_cold_minutes: z.coerce.number().min(1).max(43200),
   hot_to_cold_days: z.coerce.number().min(0).max(365),
   hot_to_cold_hours: z.coerce.number().min(0).max(23),
   enable_auto_temperature: z.boolean(),
@@ -54,7 +54,7 @@ export function CRMSettingsManager() {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      new_to_cold_hours: 24,
+      new_to_cold_minutes: 1440,
       hot_to_cold_days: 3,
       hot_to_cold_hours: 0,
       enable_auto_temperature: true,
@@ -77,7 +77,7 @@ export function CRMSettingsManager() {
   useEffect(() => {
     if (settings) {
       form.reset({
-        new_to_cold_hours: settings.new_to_cold_hours,
+        new_to_cold_minutes: settings.new_to_cold_minutes,
         hot_to_cold_days: settings.hot_to_cold_days,
         hot_to_cold_hours: settings.hot_to_cold_hours,
         enable_auto_temperature: settings.enable_auto_temperature,
@@ -204,7 +204,7 @@ export function CRMSettingsManager() {
                       │                    limpa    "aguardando_resposta"
                       │                   substatus       │
                       │                                   │
-                ${form.watch('new_to_cold_hours')}h sem interação             ${form.watch('aguardando_to_cold_hours')}h sem resposta
+                ${form.watch('new_to_cold_minutes')}min sem interação            ${form.watch('aguardando_to_cold_hours')}h sem resposta
                       │                                   │
                       ▼                                   ▼
                     FRIO ◄──── ${form.watch('hot_to_cold_days')}d ${form.watch('hot_to_cold_hours')}h sem interação ────┘`}
@@ -227,19 +227,20 @@ export function CRMSettingsManager() {
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="new_to_cold_hours"
+              name="new_to_cold_minutes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Horas como lead novo antes de esfriar</FormLabel>
+                  <FormLabel>Minutos como lead novo antes de esfriar</FormLabel>
                   <FormControl>
                     <div className="flex items-center gap-2">
-                      <Input type="number" min={1} max={720} className="w-24" {...field} />
-                      <span className="text-muted-foreground">horas</span>
+                      <Input type="number" min={1} max={43200} className="w-24" {...field} />
+                      <span className="text-muted-foreground">minutos</span>
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Após {field.value} horas sem interação, o lead NOVO será movido para FRIO automaticamente.
-                    {field.value >= 24 && ` (${Math.floor(field.value / 24)} dias e ${field.value % 24} horas)`}
+                    Após {field.value} minutos sem interação, o lead NOVO será movido para FRIO automaticamente.
+                    {field.value >= 60 && ` (${Math.floor(field.value / 60)}h ${field.value % 60}min)`}
+                    {field.value >= 1440 && ` = ${Math.floor(field.value / 1440)} dia(s)`}
                   </FormDescription>
                 </FormItem>
               )}

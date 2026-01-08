@@ -8,7 +8,7 @@ export interface CRMSettings {
   organization_id: string;
   
   // Configurações de temperatura automática - NOVO → FRIO
-  new_to_cold_hours: number;
+  new_to_cold_minutes: number;
   
   // Configurações de temperatura automática - QUENTE → FRIO
   hot_to_cold_days: number;
@@ -41,7 +41,7 @@ export interface CRMSettings {
 }
 
 export interface UpdateCRMSettingsInput {
-  new_to_cold_hours?: number;
+  new_to_cold_minutes?: number;
   hot_to_cold_days?: number;
   hot_to_cold_hours?: number;
   enable_auto_temperature?: boolean;
@@ -81,7 +81,7 @@ export function useCRMSettings() {
         return {
           id: '',
           organization_id: currentOrganization.id,
-          new_to_cold_hours: 24,
+          new_to_cold_minutes: 1440,
           hot_to_cold_days: 3,
           hot_to_cold_hours: 0,
           enable_auto_temperature: true,

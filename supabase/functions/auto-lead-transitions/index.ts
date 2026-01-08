@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         hot_to_cold_days, 
         hot_to_cold_hours, 
         enable_auto_temperature,
-        new_to_cold_hours,
+        new_to_cold_minutes,
         em_conversa_timeout_minutes,
         enable_substatus_timeout,
         aguardando_to_cold_hours
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         organization_id, 
         hot_to_cold_days, 
         hot_to_cold_hours,
-        new_to_cold_hours,
+        new_to_cold_minutes,
         em_conversa_timeout_minutes,
         enable_substatus_timeout,
         aguardando_to_cold_hours
@@ -62,13 +62,13 @@ Deno.serve(async (req) => {
       console.log(`Processing org ${organization_id}...`);
 
       // ============================================
-      // 1. NOVO → FRIO (timer separado)
+      // 1. NOVO → FRIO (timer em minutos)
       // ============================================
-      const newToColdHours = new_to_cold_hours || 24;
+      const newToColdMins = new_to_cold_minutes || 1440; // default 24h em minutos
       const newToColdThreshold = new Date();
-      newToColdThreshold.setHours(newToColdThreshold.getHours() - newToColdHours);
+      newToColdThreshold.setMinutes(newToColdThreshold.getMinutes() - newToColdMins);
 
-      console.log(`  NOVO→FRIO: threshold ${newToColdHours}h (since ${newToColdThreshold.toISOString()})`);
+      console.log(`  NOVO→FRIO: threshold ${newToColdMins}min (since ${newToColdThreshold.toISOString()})`);
 
       // Find new leads without interaction since threshold
       const { data: staleNewLeads, error: newLeadsError } = await supabase

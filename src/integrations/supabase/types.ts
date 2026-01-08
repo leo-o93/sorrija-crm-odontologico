@@ -225,7 +225,7 @@ export type Database = {
           hot_to_cold_hours: number | null
           id: string
           max_follow_up_attempts: number | null
-          new_to_cold_hours: number | null
+          new_to_cold_minutes: number | null
           organization_id: string
           updated_at: string | null
           use_ai_for_unmatched: boolean | null
@@ -248,7 +248,7 @@ export type Database = {
           hot_to_cold_hours?: number | null
           id?: string
           max_follow_up_attempts?: number | null
-          new_to_cold_hours?: number | null
+          new_to_cold_minutes?: number | null
           organization_id: string
           updated_at?: string | null
           use_ai_for_unmatched?: boolean | null
@@ -271,7 +271,7 @@ export type Database = {
           hot_to_cold_hours?: number | null
           id?: string
           max_follow_up_attempts?: number | null
-          new_to_cold_hours?: number | null
+          new_to_cold_minutes?: number | null
           organization_id?: string
           updated_at?: string | null
           use_ai_for_unmatched?: boolean | null
