@@ -1504,6 +1504,65 @@ export type Database = {
           },
         ]
       }
+      temperature_transition_rules: {
+        Row: {
+          action_clear_substatus: boolean | null
+          action_set_substatus: string | null
+          action_set_temperature: string | null
+          active: boolean | null
+          created_at: string | null
+          from_substatus: string | null
+          from_temperature: string | null
+          id: string
+          name: string
+          organization_id: string
+          priority: number | null
+          timer_minutes: number
+          trigger_event: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_clear_substatus?: boolean | null
+          action_set_substatus?: string | null
+          action_set_temperature?: string | null
+          active?: boolean | null
+          created_at?: string | null
+          from_substatus?: string | null
+          from_temperature?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          priority?: number | null
+          timer_minutes: number
+          trigger_event: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_clear_substatus?: boolean | null
+          action_set_substatus?: string | null
+          action_set_temperature?: string | null
+          active?: boolean | null
+          created_at?: string | null
+          from_substatus?: string | null
+          from_temperature?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          priority?: number | null
+          timer_minutes?: number
+          trigger_event?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "temperature_transition_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
