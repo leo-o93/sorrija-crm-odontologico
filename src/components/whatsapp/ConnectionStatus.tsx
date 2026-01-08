@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useEvolutionAPI } from '@/hooks/useEvolutionAPI';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,15 +11,7 @@ export function ConnectionStatus() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
 
-  useEffect(() => {
-    if (!isConfigured) return;
-
-    const interval = setInterval(() => {
-      refetchConnectionState();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [isConfigured, refetchConnectionState]);
+  // O hook useEvolutionAPI já faz refresh a cada 30 segundos via refetchInterval
 
   const handleGetQRCode = async () => {
     setIsLoadingQR(true);
@@ -51,9 +43,11 @@ export function ConnectionStatus() {
     );
   }
 
-  const isConnected = connectionState?.instance?.state === 'open';
-  const isConnecting = connectionState?.instance?.state === 'connecting';
-  const isDisconnected = connectionState?.instance?.state === 'close' || !connectionState;
+  // Suporta tanto resposta direta (connectionState.state) quanto aninhada (connectionState.instance.state)
+  const state = connectionState?.instance?.state || (connectionState as any)?.state;
+  const isConnected = state === 'open';
+  const isConnecting = state === 'connecting';
+  const isDisconnected = state === 'close' || !state;
 
   return (
     <Card className="p-6">
