@@ -92,8 +92,8 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
               {lead.procedures.name}
             </Badge>
           )}
-          {lead.temperature === "quente" && lead.hot_substatus && (
-            <HotSubstatusBadge substatus={lead.hot_substatus} size="sm" />
+          {(lead.scheduled || (lead.temperature === "quente" && lead.hot_substatus)) && (
+            <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="sm" />
           )}
         </div>
         <div className="flex gap-1">

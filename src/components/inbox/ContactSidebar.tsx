@@ -147,9 +147,10 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     temperature={conversation.leads.temperature} 
                     size="sm" 
                   />
-                  {conversation.leads.temperature === 'quente' && conversation.leads.hot_substatus && (
+                  {(conversation.leads.scheduled || (conversation.leads.temperature === 'quente' && conversation.leads.hot_substatus)) && (
                     <HotSubstatusBadge 
                       substatus={conversation.leads.hot_substatus} 
+                      scheduled={conversation.leads.scheduled}
                       size="sm" 
                     />
                   )}
@@ -202,8 +203,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                   {/* Current Status Display */}
                   <div className="flex flex-wrap items-center gap-2">
                     <TemperatureBadge temperature={conversation.leads.temperature} size="md" />
-                    {conversation.leads.hot_substatus && (
-                      <HotSubstatusBadge substatus={conversation.leads.hot_substatus} size="md" />
+                    {(conversation.leads.scheduled || conversation.leads.hot_substatus) && (
+                      <HotSubstatusBadge substatus={conversation.leads.hot_substatus} scheduled={conversation.leads.scheduled} size="md" />
                     )}
                   </div>
                   

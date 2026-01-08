@@ -92,8 +92,8 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 <div className="flex flex-wrap gap-2 items-center">
                   <Badge>{statusLabels[lead.status] || lead.status}</Badge>
                   <TemperatureBadge temperature={lead.temperature} />
-                  {lead.temperature === "quente" && lead.hot_substatus && (
-                    <HotSubstatusBadge substatus={lead.hot_substatus} size="md" />
+                  {(lead.scheduled || (lead.temperature === "quente" && lead.hot_substatus)) && (
+                    <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="md" />
                   )}
                 </div>
               </div>
