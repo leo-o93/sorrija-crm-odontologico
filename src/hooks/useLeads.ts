@@ -225,3 +225,105 @@ export function useDeleteLead() {
     },
   });
 }
+
+export function useDeleteLeadComplete() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (leadId: string) => {
+      // 1. Fetch conversations linked to this lead
+      const { data: conversations } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("lead_id", leadId);
+
+      const conversationIds = conversations?.map((c) => c.id) || [];
+
+      // 2. Delete messages from conversations
+      if (conversationIds.length > 0) {
+        const { error: messagesError } = await supabase
+          .from("messages")
+          .delete()
+          .in("conversation_id", conversationIds);
+        if (messagesError) throw messagesError;
+      }
+
+      // 3. Delete conversations
+      const { error: conversationsError } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("lead_id", leadId);
+      if (conversationsError) throw conversationsError;
+
+      // 4. Delete lead interactions
+      const { error: interactionsError } = await supabase
+        .from("lead_interactions")
+        .delete()
+        .eq("lead_id", leadId);
+      if (interactionsError) throw interactionsError;
+
+      // 5. Delete appointments
+      const { error: appointmentsError } = await supabase
+        .from("appointments")
+        .delete()
+        .eq("lead_id", leadId);
+      if (appointmentsError) throw appointmentsError;
+
+      // 6. Delete AI suggestions
+      const { error: aiSuggestionsError } = await supabase
+        .from("ai_suggestions")
+        .delete()
+        .eq("lead_id", leadId);
+      if (aiSuggestionsError) throw aiSuggestionsError;
+
+      // 7. Fetch and delete quotes and related items
+      const { data: quotes } = await supabase
+        .from("quotes")
+        .select("id")
+        .eq("lead_id", leadId);
+
+      const quoteIds = quotes?.map((q) => q.id) || [];
+
+      if (quoteIds.length > 0) {
+        // Delete quote payments
+        const { error: paymentsError } = await supabase
+          .from("quote_payments")
+          .delete()
+          .in("quote_id", quoteIds);
+        if (paymentsError) throw paymentsError;
+
+        // Delete quote items
+        const { error: itemsError } = await supabase
+          .from("quote_items")
+          .delete()
+          .in("quote_id", quoteIds);
+        if (itemsError) throw itemsError;
+
+        // Delete quotes
+        const { error: quotesError } = await supabase
+          .from("quotes")
+          .delete()
+          .in("id", quoteIds);
+        if (quotesError) throw quotesError;
+      }
+
+      // 8. Finally, delete the lead
+      const { error: leadError } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", leadId);
+      if (leadError) throw leadError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Lead e todos os dados relacionados excluídos com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao excluir lead e dados relacionados");
+    },
+  });
+}
