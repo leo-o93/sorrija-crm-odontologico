@@ -4,6 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +37,9 @@ import {
   useReorderTemperatureRules,
   TemperatureTransitionRule,
   CreateRuleInput,
+  testTransitionRule,
+  TestLeadConditions,
+  TestResult,
 } from "@/hooks/useTemperatureRules";
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -39,6 +58,9 @@ import {
   GripVertical,
   ChevronDown,
   ChevronUp,
+  TestTube2,
+  Check,
+  X,
 } from "lucide-react";
 
 const TRIGGER_LABELS: Record<string, { label: string; icon: typeof Timer }> = {
@@ -65,9 +87,10 @@ interface SortableRuleItemProps {
   onEdit: (rule: TemperatureTransitionRule) => void;
   onDelete: (rule: TemperatureTransitionRule) => void;
   onToggleActive: (rule: TemperatureTransitionRule) => void;
+  onTest: (rule: TemperatureTransitionRule) => void;
 }
 
-function SortableRuleItem({ rule, index, onEdit, onDelete, onToggleActive }: SortableRuleItemProps) {
+function SortableRuleItem({ rule, index, onEdit, onDelete, onToggleActive, onTest }: SortableRuleItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rule.id,
   });
@@ -135,6 +158,15 @@ function SortableRuleItem({ rule, index, onEdit, onDelete, onToggleActive }: Sor
         </div>
       </div>
 
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onTest(rule)}
+        title="Testar regra"
+      >
+        <TestTube2 className="h-4 w-4" />
+      </Button>
+
       <Switch
         checked={rule.active}
         onCheckedChange={() => onToggleActive(rule)}
@@ -176,6 +208,16 @@ export function TemperatureRulesManager() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState<TemperatureTransitionRule | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+
+  // Estado para teste de regra
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testingRule, setTestingRule] = useState<TemperatureTransitionRule | null>(null);
+  const [testConditions, setTestConditions] = useState<TestLeadConditions>({
+    temperature: "novo",
+    substatus: null,
+    minutesSinceInteraction: 0,
+  });
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   const activeRules = rules?.filter(r => r.active) || [];
   const inactiveRules = rules?.filter(r => !r.active) || [];
@@ -226,6 +268,23 @@ export function TemperatureRulesManager() {
         },
       });
     }
+  };
+
+  const handleTest = (rule: TemperatureTransitionRule) => {
+    setTestingRule(rule);
+    setTestConditions({
+      temperature: rule.from_temperature || "novo",
+      substatus: rule.from_substatus || null,
+      minutesSinceInteraction: rule.timer_minutes,
+    });
+    setTestResult(null);
+    setTestDialogOpen(true);
+  };
+
+  const runTest = () => {
+    if (!testingRule) return;
+    const result = testTransitionRule(testingRule, testConditions);
+    setTestResult(result);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -308,6 +367,7 @@ export function TemperatureRulesManager() {
                           onEdit={handleEdit}
                           onDelete={handleDelete}
                           onToggleActive={handleToggleActive}
+                          onTest={handleTest}
                         />
                       ))}
                     </div>
@@ -340,6 +400,14 @@ export function TemperatureRulesManager() {
                             <span className="font-medium">{rule.name}</span>
                           </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleTest(rule)}
+                          title="Testar regra"
+                        >
+                          <TestTube2 className="h-4 w-4" />
+                        </Button>
                         <Switch
                           checked={rule.active}
                           onCheckedChange={() => handleToggleActive(rule)}
@@ -389,6 +457,142 @@ export function TemperatureRulesManager() {
         title="Excluir Regra"
         itemName={ruleToDelete?.name}
       />
+
+      {/* Dialog de Teste */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TestTube2 className="h-5 w-5" />
+              Testar Regra
+            </DialogTitle>
+            <DialogDescription>
+              Simule as condições de um lead para verificar se a regra "{testingRule?.name}" seria aplicada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Temperatura atual do lead</Label>
+              <Select
+                value={testConditions.temperature}
+                onValueChange={(value) => {
+                  setTestConditions(prev => ({ ...prev, temperature: value }));
+                  setTestResult(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="novo">NOVO</SelectItem>
+                  <SelectItem value="quente">QUENTE</SelectItem>
+                  <SelectItem value="frio">FRIO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Substatus atual do lead</Label>
+              <Select
+                value={testConditions.substatus || "none"}
+                onValueChange={(value) => {
+                  setTestConditions(prev => ({ 
+                    ...prev, 
+                    substatus: value === "none" ? null : value 
+                  }));
+                  setTestResult(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  <SelectItem value="em_conversa">Em Conversa</SelectItem>
+                  <SelectItem value="aguardando_resposta">Aguardando Resposta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Minutos desde última interação</Label>
+              <Input
+                type="number"
+                min="0"
+                value={testConditions.minutesSinceInteraction}
+                onChange={(e) => {
+                  setTestConditions(prev => ({ 
+                    ...prev, 
+                    minutesSinceInteraction: parseInt(e.target.value) || 0 
+                  }));
+                  setTestResult(null);
+                }}
+              />
+            </div>
+
+            <Button onClick={runTest} className="w-full">
+              <TestTube2 className="h-4 w-4 mr-2" />
+              Executar Teste
+            </Button>
+
+            {testResult && (
+              <div className={`p-4 rounded-lg border ${testResult.matches ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  {testResult.matches ? (
+                    <>
+                      <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="font-semibold text-green-700 dark:text-green-300">Regra APLICARIA</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <span className="font-semibold text-red-700 dark:text-red-300">Regra NÃO aplicaria</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  {testResult.reasons.map((reason, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      {reason.passed ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      )}
+                      <span className={reason.passed ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
+                        {reason.condition}: {reason.actual} (esperado: {reason.expected})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {testResult.matches && testingRule && (
+                  <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Ação executada:</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <ArrowRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      {testingRule.action_set_temperature && (
+                        <Badge className={`text-xs ${TEMPERATURE_COLORS[testingRule.action_set_temperature]}`}>
+                          {testingRule.action_set_temperature.toUpperCase()}
+                        </Badge>
+                      )}
+                      {testingRule.action_clear_substatus && (
+                        <Badge variant="outline" className="text-xs">Limpar substatus</Badge>
+                      )}
+                      {testingRule.action_set_substatus && (
+                        <Badge variant="secondary" className="text-xs">
+                          Substatus: {testingRule.action_set_substatus}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
