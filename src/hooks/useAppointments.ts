@@ -145,39 +145,51 @@ export function useUpdateAppointment() {
 
       if (error) throw error;
 
-      // Se o status mudou para completed ou cancelled, verificar se deve atualizar lead
-      if (data.lead_id && (input.status === 'completed' || input.status === 'cancelled')) {
-        // Buscar próximo agendamento ativo para o lead
-        const { data: nextAppointment } = await supabase
-          .from("appointments")
-          .select("appointment_date")
-          .eq("lead_id", data.lead_id)
-          .eq("status", "scheduled")
-          .neq("id", id)
-          .order("appointment_date", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (nextAppointment) {
-          // Atualizar appointment_date do lead com o próximo agendamento
+      if (data.lead_id) {
+        if (data.status === "scheduled") {
           await supabase
             .from("leads")
             .update({
               scheduled: true,
-              appointment_date: nextAppointment.appointment_date?.split('T')[0],
+              appointment_date: data.appointment_date?.split("T")[0] ?? null,
               updated_at: new Date().toISOString(),
             })
             .eq("id", data.lead_id);
-        } else {
-          // Sem mais agendamentos, desmarcar
-          await supabase
-            .from("leads")
-            .update({
-              scheduled: false,
-              appointment_date: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", data.lead_id);
+        }
+
+        if (data.status === "completed" || data.status === "cancelled") {
+          // Buscar próximo agendamento ativo para o lead
+          const { data: nextAppointment } = await supabase
+            .from("appointments")
+            .select("appointment_date")
+            .eq("lead_id", data.lead_id)
+            .eq("status", "scheduled")
+            .neq("id", id)
+            .order("appointment_date", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (nextAppointment) {
+            // Atualizar appointment_date do lead com o próximo agendamento
+            await supabase
+              .from("leads")
+              .update({
+                scheduled: true,
+                appointment_date: nextAppointment.appointment_date?.split('T')[0],
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", data.lead_id);
+          } else {
+            // Sem mais agendamentos, desmarcar
+            await supabase
+              .from("leads")
+              .update({
+                scheduled: false,
+                appointment_date: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", data.lead_id);
+          }
         }
       }
 
