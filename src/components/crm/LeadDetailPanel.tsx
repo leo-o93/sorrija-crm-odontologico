@@ -1,5 +1,5 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Lead, useDeleteLead } from "@/hooks/useLeads";
+import { Lead, useDeleteLeadComplete } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock } from "lucide-react";
@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { LeadForm } from "./LeadForm";
 import { ConvertToPatientDialog } from "@/components/pacientes/ConvertToPatientDialog";
-import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { ConfirmDeleteLeadDialog } from "./ConfirmDeleteLeadDialog";
 import { TemperatureBadge } from "./TemperatureBadge";
 import { HotSubstatusBadge } from "./HotSubstatusBadge";
 import { TemperatureActions } from "./TemperatureActions";
@@ -43,7 +43,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   const [isEditing, setIsEditing] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const deleteLead = useDeleteLead();
+  const deleteLeadComplete = useDeleteLeadComplete();
 
   if (!lead) return null;
 
@@ -62,7 +62,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   };
 
   const handleDelete = () => {
-    deleteLead.mutate(lead.id, {
+    deleteLeadComplete.mutate(lead.id, {
       onSuccess: () => {
         onOpenChange(false);
         setIsDeleteDialogOpen(false);
@@ -342,12 +342,13 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
         leadName={lead.name}
       />
 
-      <ConfirmDeleteDialog
+      <ConfirmDeleteLeadDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         onConfirm={handleDelete}
-        itemName={lead.name}
-        title="Excluir Lead"
+        leadId={lead.id}
+        leadName={lead.name}
+        isDeleting={deleteLeadComplete.isPending}
       />
     </Sheet>
   );

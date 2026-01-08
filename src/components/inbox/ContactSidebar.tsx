@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
-import { useUpdateLeadStatus } from '@/hooks/useLeads';
+import { useUpdateLeadStatus, useDeleteLeadComplete } from '@/hooks/useLeads';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { ConvertToPatientDialog } from '@/components/pacientes/ConvertToPatientDialog';
@@ -18,7 +18,8 @@ import { ConversationActions } from './ConversationActions';
 import { TemperatureBadge } from '@/components/crm/TemperatureBadge';
 import { HotSubstatusBadge } from '@/components/crm/HotSubstatusBadge';
 import { TemperatureActions } from '@/components/crm/TemperatureActions';
-import { Repeat, XCircle } from 'lucide-react';
+import { ConfirmDeleteLeadDialog } from '@/components/crm/ConfirmDeleteLeadDialog';
+import { Repeat, XCircle, Trash2 } from 'lucide-react';
 import {
   ExternalLink,
   User,
@@ -48,6 +49,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const navigate = useNavigate();
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
     temperature: true,
     actions: true,
@@ -59,6 +61,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   });
 
   const updateLeadStatus = useUpdateLeadStatus();
+  const deleteLeadComplete = useDeleteLeadComplete();
   const { data: leadStatuses } = useLeadStatuses();
   const contact = conversation.contact_type === 'lead' ? conversation.leads : conversation.patients;
 
@@ -302,6 +305,15 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                       <UserPlus className="w-4 h-4 mr-2" />
                       Converter para Paciente
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="w-full text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Excluir Lead
+                    </Button>
                   </>
                 )}
                 {conversation.contact_type === 'patient' && (
@@ -533,6 +545,21 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             onOpenChange={setShowScheduleDialog}
             leadId={conversation.lead_id}
             contactName={conversation.leads?.name || 'Lead'}
+          />
+          <ConfirmDeleteLeadDialog
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            onConfirm={() => {
+              deleteLeadComplete.mutate(conversation.lead_id!, {
+                onSuccess: () => {
+                  setShowDeleteDialog(false);
+                  navigate('/conversas');
+                },
+              });
+            }}
+            leadId={conversation.lead_id}
+            leadName={conversation.leads?.name || 'Lead'}
+            isDeleting={deleteLeadComplete.isPending}
           />
         </>
       )}
