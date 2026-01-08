@@ -11,6 +11,9 @@ interface TransitionResult {
   error?: string;
 }
 
+// Global cooldown to prevent duplicate executions across component instances
+let globalLastRun = 0;
+
 export function useAutoLeadTransitions(options?: { 
   runOnMount?: boolean;
   intervalMinutes?: number;
@@ -18,23 +21,33 @@ export function useAutoLeadTransitions(options?: {
 }) {
   const { runOnMount = false, intervalMinutes = 5, showToasts = false } = options || {};
   const { currentOrganization } = useOrganization();
+  
+  // All useState hooks first (consistent order)
   const [lastResult, setLastResult] = useState<TransitionResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [lastRunAt, setLastRunAt] = useState<Date | null>(null);
+  
+  // All useRef hooks second (consistent order)
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastRunRef = useRef<number>(0);
+  const isRunningRef = useRef(false);
+
+  // Sync isRunning state with ref for use in callback
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
 
   const runTransitions = useCallback(async (): Promise<TransitionResult> => {
-    if (isRunning) {
+    if (isRunningRef.current) {
       return { success: false, error: 'Already running' };
     }
 
     const now = Date.now();
-    if (now - lastRunRef.current < 30000) {
-      return { success: false, error: 'Cooldown active' };
+    // Global cooldown of 30 seconds between all instances
+    if (now - globalLastRun < 30000) {
+      return { success: false, error: 'Global cooldown active' };
     }
 
-    lastRunRef.current = now;
+    globalLastRun = now;
     setIsRunning(true);
     
     try {

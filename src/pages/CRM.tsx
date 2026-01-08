@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,6 @@ import { TemperatureBadge, getTemperatureColor } from "@/components/crm/Temperat
 import { HotSubstatusBadge } from "@/components/crm/HotSubstatusBadge";
 import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
 import { cn } from "@/lib/utils";
-import { useAutoLeadTransitions } from "@/hooks/useAutoLeadTransitions";
 
 interface SortableLeadCardProps {
   lead: Lead;
@@ -204,12 +203,6 @@ export default function CRM() {
   const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [temperatureFilter, setTemperatureFilter] = useState<string | null>(null);
-  const { runTransitions } = useAutoLeadTransitions();
-
-  // Run transitions when CRM page mounts
-  useEffect(() => {
-    runTransitions();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
