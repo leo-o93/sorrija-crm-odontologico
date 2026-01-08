@@ -5,6 +5,7 @@ import { LeadStatusesManager } from "@/components/cadastros/LeadStatusesManager"
 import { InterestTriggersManager } from "@/components/cadastros/InterestTriggersManager";
 import { MessageTemplatesManager } from "@/components/cadastros/MessageTemplatesManager";
 import { CRMSettingsManager } from "@/components/cadastros/CRMSettingsManager";
+import { TemperatureRulesManager } from "@/components/cadastros/TemperatureRulesManager";
 
 export default function Cadastros() {
   return (
@@ -20,6 +21,7 @@ export default function Cadastros() {
           <TabsTrigger value="procedures">Procedimentos</TabsTrigger>
           <TabsTrigger value="lead-statuses">Status de Leads</TabsTrigger>
           <TabsTrigger value="triggers">Gatilhos</TabsTrigger>
+          <TabsTrigger value="temperature-rules">Regras de Transição</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="crm-settings">Config. CRM</TabsTrigger>
         </TabsList>
@@ -38,6 +40,10 @@ export default function Cadastros() {
 
         <TabsContent value="triggers" className="space-y-4">
           <InterestTriggersManager />
+        </TabsContent>
+
+        <TabsContent value="temperature-rules" className="space-y-4">
+          <TemperatureRulesManager />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
