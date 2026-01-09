@@ -36,9 +36,10 @@ interface OrganizationFormProps {
   initialValues?: Partial<OrganizationFormValues>;
   onSubmit: (values: OrganizationFormValues) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
-export function OrganizationForm({ initialValues, onSubmit, onCancel }: OrganizationFormProps) {
+export function OrganizationForm({ initialValues, onSubmit, onCancel, isSubmitting = false }: OrganizationFormProps) {
   const isEditing = !!initialValues?.name;
 
   const form = useForm<OrganizationFormValues>({
@@ -212,11 +213,11 @@ export function OrganizationForm({ initialValues, onSubmit, onCancel }: Organiza
         )}
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit">
-            {isEditing ? 'Salvar alterações' : 'Criar organização'}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Criar organização'}
           </Button>
         </div>
       </form>
