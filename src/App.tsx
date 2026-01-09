@@ -111,10 +111,11 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Financeiro - Only admin can access */}
       <Route
         path="/financeiro"
         element={
-          <ProtectedRoute requiredRole={["admin", "gerente"]}>
+          <ProtectedRoute requiredRole="admin">
             <AppLayout>
               <Financeiro />
             </AppLayout>
@@ -151,30 +152,33 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Cadastros - All authenticated users can access */}
       <Route
         path="/cadastros"
         element={
-          <ProtectedRoute requiredRole={["admin", "gerente"]}>
+          <ProtectedRoute>
             <AppLayout>
               <Cadastros />
             </AppLayout>
           </ProtectedRoute>
         }
       />
+      {/* Configurações - Only admin can access */}
       <Route
         path="/configuracoes"
         element={
-          <ProtectedRoute requiredRole={["admin", "gerente"]}>
+          <ProtectedRoute requiredRole="admin">
             <AppLayout>
               <Configuracoes />
             </AppLayout>
           </ProtectedRoute>
         }
       />
+      {/* Webhooks - Only admin can access */}
       <Route
         path="/webhooks"
         element={
-          <ProtectedRoute requiredRole={["admin", "gerente"]}>
+          <ProtectedRoute requiredRole="admin">
             <AppLayout>
               <Webhooks />
             </AppLayout>
@@ -201,10 +205,11 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Admin - Super Admin only */}
       <Route
         path="/admin"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute superAdminOnly>
             <AppLayout>
               <Admin />
             </AppLayout>

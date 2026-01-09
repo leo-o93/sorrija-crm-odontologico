@@ -9,11 +9,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useSuperAdmin } from "@/contexts/SuperAdminContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export function OrganizationSwitcher() {
   const { currentOrganization, availableOrganizations, isLoading, switchOrganization } = useOrganization();
+  const { isSuperAdmin } = useSuperAdmin();
 
   if (isLoading) {
     return (
@@ -33,8 +35,9 @@ export function OrganizationSwitcher() {
     );
   }
 
-  // Se só há uma organização, mostrar sem dropdown
-  if (availableOrganizations.length <= 1) {
+  // Only Super Admin can switch organizations
+  // Non-super admins always see their organization fixed (no dropdown)
+  if (!isSuperAdmin || availableOrganizations.length <= 1) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border">
         <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -48,6 +51,7 @@ export function OrganizationSwitcher() {
     );
   }
 
+  // Super Admin with multiple organizations - show dropdown
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

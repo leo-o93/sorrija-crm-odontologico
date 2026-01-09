@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
         if (newUser?.user) {
           console.log('Admin user created:', newUser.user.id);
 
-          // Criar perfil do usuário
+          // Criar perfil do usuário com role 'admin'
           const { error: profileError } = await supabase.from('profiles').insert({
             id: newUser.user.id,
             full_name: adminFullName,
@@ -328,6 +328,10 @@ Deno.serve(async (req) => {
       const organizationId = pathParts[0];
       const { email, role } = await req.json();
 
+      // Validate role
+      const validRoles = ['admin', 'usuario'];
+      const normalizedRole = validRoles.includes(role) ? role : 'usuario';
+
       const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
       if (listError) throw listError;
 
@@ -344,7 +348,7 @@ Deno.serve(async (req) => {
         .insert({
           organization_id: organizationId,
           user_id: targetUser.id,
-          role,
+          role: normalizedRole,
           active: true,
         })
         .select()
@@ -357,7 +361,7 @@ Deno.serve(async (req) => {
         action: 'add_member',
         targetType: 'organization_member',
         targetId: data.id,
-        details: { organizationId, email, role },
+        details: { organizationId, email, role: normalizedRole },
         req,
       });
 

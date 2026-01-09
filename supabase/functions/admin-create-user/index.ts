@@ -9,12 +9,12 @@ interface CreateUserRequest {
   fullName: string;
   email: string;
   password: string;
-  role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
+  role: 'admin' | 'usuario';
   organizationId: string;
 }
 
 // Input validation helpers
-const VALID_ROLES = ['admin', 'gerente', 'comercial', 'recepcao', 'dentista'] as const;
+const VALID_ROLES = ['admin', 'usuario'] as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_NAME_LENGTH = 100;
@@ -69,7 +69,7 @@ function validateInput(data: unknown): CreateUserRequest {
     throw new Error('Password must contain at least one letter and one number');
   }
 
-  // Validate role
+  // Validate role - accept new simplified roles
   if (typeof role !== 'string' || !VALID_ROLES.includes(role as typeof VALID_ROLES[number])) {
     throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
   }
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     const rawData = await req.json();
     const { fullName, email, password, role, organizationId } = validateInput(rawData);
 
-    // Check if user is admin/gerente of the target organization
+    // Check if user is admin of the target organization
     const { data: memberCheck, error: memberError } = await supabaseClient
       .from('organization_members')
       .select('role')
@@ -135,8 +135,9 @@ Deno.serve(async (req) => {
       throw new Error('You are not a member of this organization');
     }
 
-    if (memberCheck.role !== 'admin' && memberCheck.role !== 'gerente') {
-      throw new Error('Insufficient permissions - must be admin or gerente of this organization');
+    // Only admin can create users
+    if (memberCheck.role !== 'admin') {
+      throw new Error('Insufficient permissions - must be admin of this organization');
     }
 
     console.log(`Creating user: ${email} with role: ${role}`);
@@ -158,26 +159,23 @@ Deno.serve(async (req) => {
 
     console.log(`User created successfully: ${newUser.user.id}`);
 
-    // The trigger handle_new_user will automatically create the profile and user_role
-    // Update profile role if not recepcao
-    if (role !== 'recepcao') {
-      const { error: profileError } = await supabaseClient
-        .from('profiles')
-        .update({ role })
-        .eq('id', newUser.user.id);
+    // Update profile role
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update({ role })
+      .eq('id', newUser.user.id);
 
-      if (profileError) {
-        console.error('Error updating profile role:', profileError);
-      }
+    if (profileError) {
+      console.error('Error updating profile role:', profileError);
+    }
 
-      const { error: roleUpdateError } = await supabaseClient
-        .from('user_roles')
-        .update({ role })
-        .eq('user_id', newUser.user.id);
+    const { error: roleUpdateError } = await supabaseClient
+      .from('user_roles')
+      .update({ role })
+      .eq('user_id', newUser.user.id);
 
-      if (roleUpdateError) {
-        console.error('Error updating user role:', roleUpdateError);
-      }
+    if (roleUpdateError) {
+      console.error('Error updating user role:', roleUpdateError);
     }
 
     // Add user to the organization with the specified role

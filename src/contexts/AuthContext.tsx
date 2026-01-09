@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface UserRole {
-  role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
+  role: 'admin' | 'usuario';
 }
 
 interface AuthContextType {
@@ -63,6 +63,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserRole = async (userId: string) => {
     try {
+      // First try to get role from organization_members (preferred)
+      const { data: orgMemberData, error: orgMemberError } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (!orgMemberError && orgMemberData) {
+        // Map old roles to new simplified roles
+        const role = orgMemberData.role;
+        const normalizedRole: 'admin' | 'usuario' = role === 'admin' ? 'admin' : 'usuario';
+        setUserRole({ role: normalizedRole });
+        return;
+      }
+
+      // Fallback to user_roles table
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -70,7 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) throw error;
-      setUserRole(data);
+      
+      // Map old roles to new simplified roles
+      const role = data?.role;
+      const normalizedRole: 'admin' | 'usuario' = role === 'admin' ? 'admin' : 'usuario';
+      setUserRole({ role: normalizedRole });
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole(null);
