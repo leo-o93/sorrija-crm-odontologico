@@ -3,26 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-
-interface Organization {
-  id: string;
-  evolution_instance: string;
-  name: string;
-  settings: any;
-  active: boolean | null;
-  created_at: string | null;
-  updated_at: string | null;
-  logo_url?: string | null;
-  trade_name?: string | null;
-  document?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  address?: any | null;
-  business_hours?: any | null;
-  timezone?: string | null;
-  welcome_message?: string | null;
-  message_signature?: string | null;
-}
+import type { Organization } from '@/types/organization';
 
 interface OrganizationContextType {
   currentOrganization: Organization | null;

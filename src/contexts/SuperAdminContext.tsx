@@ -1,14 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Organization {
-  id: string;
-  name: string;
-  evolution_instance?: string | null;
-  active?: boolean | null;
-  settings?: Record<string, unknown> | null;
-}
+import type { Organization } from '@/types/organization';
 
 interface AuditLog {
   id: string;
