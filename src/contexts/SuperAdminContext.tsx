@@ -207,14 +207,17 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
 
   const addMember = async (orgId: string, email: string, role: string) => {
     await callAdminFunction(`/${orgId}/members`, 'POST', { email, role });
+    await loadUsers();
   };
 
   const removeMember = async (orgId: string, userId: string) => {
     await callAdminFunction(`/${orgId}/members/${userId}`, 'DELETE');
+    await loadUsers();
   };
 
   const updateMember = async (orgId: string, userId: string, data: { role: string; active: boolean }) => {
     await callAdminFunction(`/${orgId}/members/${userId}`, 'PUT', data);
+    await loadUsers();
   };
 
   const loadUsers = async () => {
