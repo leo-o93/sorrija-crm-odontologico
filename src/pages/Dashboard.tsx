@@ -126,7 +126,7 @@ export default function Dashboard() {
       </div>
 
       {/* Multi-Organization Comparison (só para admins) */}
-      {(userRole?.role === 'admin' || userRole?.role === 'gerente') && (
+      {userRole?.role === 'admin' && (
         <MultiOrgComparison />
       )}
 

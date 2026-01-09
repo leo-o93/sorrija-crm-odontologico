@@ -28,11 +28,16 @@ export function UsersManager() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithAuth | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    fullName: string;
+    email: string;
+    password: string;
+    role: 'admin' | 'usuario';
+  }>({
     fullName: '',
     email: '',
     password: '',
-    role: 'usuario' as const,
+    role: 'usuario',
   });
 
   // Check if current user is admin of current organization

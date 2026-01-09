@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import type { Organization } from '@/types/organization';
 
 interface AuditLog {
@@ -54,9 +53,25 @@ const getFunctionsBaseUrl = () => {
 };
 
 export function SuperAdminProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get user directly from supabase to avoid circular dependency with AuthContext
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    
+    getUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
