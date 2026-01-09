@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import { OrganizationMembers } from '@/components/admin/OrganizationMembers';
+import { toast } from 'sonner';
 
 export function OrganizationsTable() {
   const { organizations, createOrganization, updateOrganization, deleteOrganization } = useSuperAdmin();
@@ -36,7 +37,19 @@ export function OrganizationsTable() {
     if (selectedOrg) {
       await updateOrganization(selectedOrg.id, payload);
     } else {
-      await createOrganization(payload);
+      const result = await createOrganization(payload);
+      
+      // Mostrar mensagem específica se admin foi criado
+      if (result?.adminCreated) {
+        toast.success(
+          `Administrador criado: ${result.adminCreated.email}`,
+          { description: 'O usuário pode fazer login com as credenciais fornecidas.' }
+        );
+      } else if (result?.adminError) {
+        toast.warning('Organização criada, mas houve erro ao criar o admin', {
+          description: result.adminError
+        });
+      }
     }
 
     setIsDialogOpen(false);
