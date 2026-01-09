@@ -1,3 +1,5 @@
+// EvolutionContext - provides Evolution API configuration
+// Requires OrganizationProvider as a parent
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "./OrganizationContext";
