@@ -17,11 +17,52 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { organizationId } = await req.json();
+    if (!organizationId) {
+      return new Response(
+        JSON.stringify({ error: 'Organization ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied: not a member of this organization' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Buscar configuração da Evolution API (mais recente)
     const { data: config, error: configError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('organization_id', organizationId)
       .eq('active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -70,15 +111,16 @@ serve(async (req) => {
         status: 'novo_lead',
         first_contact_channel: 'whatsapp',
         first_contact_date: new Date().toISOString(),
+        organization_id: organizationId,
       }));
 
     if (leadsToUpsert.length > 0) {
       const { error: upsertError } = await supabase
-        .from('leads')
-        .upsert(leadsToUpsert, {
-          onConflict: 'phone',
-          ignoreDuplicates: false,
-        });
+      .from('leads')
+      .upsert(leadsToUpsert, {
+        onConflict: 'phone,organization_id',
+        ignoreDuplicates: false,
+      });
 
       if (upsertError) {
         console.error('Error upserting leads:', upsertError);

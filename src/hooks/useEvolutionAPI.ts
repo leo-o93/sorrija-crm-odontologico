@@ -91,7 +91,13 @@ export function useEvolutionAPI() {
 
   const syncContacts = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('sync-whatsapp-contacts');
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
+      const { data, error } = await supabase.functions.invoke('sync-whatsapp-contacts', {
+        body: { organizationId: currentOrganization.id },
+      });
       
       if (error) throw error;
       return data;
@@ -107,8 +113,12 @@ export function useEvolutionAPI() {
 
   const syncMessages = useMutation({
     mutationFn: async ({ phone, silent = false }: { phone: string; silent?: boolean }) => {
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
       const { data, error } = await supabase.functions.invoke('sync-message-history', {
-        body: { phone, limit: 100 }
+        body: { phone, limit: 100, organizationId: currentOrganization.id }
       });
       
       if (error) throw error;
@@ -134,8 +144,12 @@ export function useEvolutionAPI() {
 
   const syncAllMessages = useMutation({
     mutationFn: async () => {
+      if (!currentOrganization?.id) {
+        throw new Error('Nenhuma organização selecionada');
+      }
+
       const { data, error } = await supabase.functions.invoke('sync-message-history', {
-        body: { syncAll: true, limit: 100 }
+        body: { syncAll: true, limit: 100, organizationId: currentOrganization.id }
       });
       
       if (error) throw error;

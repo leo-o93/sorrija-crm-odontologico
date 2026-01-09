@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { usePaginatedQuery, PaginationOptions } from "@/hooks/usePaginatedQuery";
 
 export interface Webhook {
   id: string;
@@ -93,4 +94,16 @@ export function useWebhooks() {
     deleteWebhook: deleteWebhook.mutate,
     updateWebhookStatus: updateWebhookStatus.mutate,
   };
+}
+
+export function useWebhooksPaginated(options: PaginationOptions) {
+  const { currentOrganization } = useOrganization();
+
+  return usePaginatedQuery<Webhook>({
+    table: "webhooks",
+    select: "*",
+    organizationId: currentOrganization?.id,
+    options,
+    queryKey: ["webhooks-paginated", currentOrganization?.id, options],
+  });
 }

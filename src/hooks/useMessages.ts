@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { usePaginatedQuery, PaginationOptions } from '@/hooks/usePaginatedQuery';
 
 export interface Message {
   id: string;
@@ -128,5 +129,17 @@ export function useSendMessage() {
       console.error('Error sending message:', error);
       toast.error('Erro ao enviar mensagem');
     },
+  });
+}
+
+export function useMessagesPaginated(options: PaginationOptions) {
+  const { currentOrganization } = useOrganization();
+
+  return usePaginatedQuery<Message>({
+    table: 'messages',
+    select: '*',
+    organizationId: currentOrganization?.id,
+    options,
+    queryKey: ['messages-paginated', currentOrganization?.id, options],
   });
 }
