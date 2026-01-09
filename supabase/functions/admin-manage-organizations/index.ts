@@ -280,9 +280,10 @@ Deno.serve(async (req) => {
       const organizationId = pathParts[0];
       console.log('Fetching members for organization:', organizationId);
       
-      const { data, error: membersError } = await supabase
+      // Buscar membros da organização
+      const { data: membersData, error: membersError } = await supabase
         .from('organization_members')
-        .select('id, user_id, role, active, profiles:user_id(full_name)')
+        .select('id, user_id, role, active')
         .eq('organization_id', organizationId);
 
       if (membersError) {
@@ -290,9 +291,35 @@ Deno.serve(async (req) => {
         throw membersError;
       }
       
-      console.log('Members found:', data?.length);
+      // Buscar perfis separadamente para evitar problemas de FK
+      const userIds = membersData?.map(m => m.user_id) || [];
+      let profilesMap: Record<string, string> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+          
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        } else {
+          profilesMap = (profilesData || []).reduce((acc, p) => {
+            acc[p.id] = p.full_name;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+      
+      // Combinar dados
+      const members = (membersData || []).map(m => ({
+        ...m,
+        profiles: { full_name: profilesMap[m.user_id] || 'Usuário sem perfil' }
+      }));
+      
+      console.log('Members found:', members.length);
 
-      return new Response(JSON.stringify({ members: data || [] }), {
+      return new Response(JSON.stringify({ members }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
