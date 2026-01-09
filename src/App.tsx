@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { EvolutionProvider } from "@/contexts/EvolutionContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +26,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Webhooks from "./pages/Webhooks";
 import Conversas from "./pages/Conversas";
 import RelatoriosIA from "./pages/RelatoriosIA";
+import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -199,6 +201,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Admin />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -211,11 +223,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <OrganizationProvider>
-            <EvolutionProvider>
-              <AppRoutes />
-            </EvolutionProvider>
-          </OrganizationProvider>
+          <SuperAdminProvider>
+            <OrganizationProvider>
+              <EvolutionProvider>
+                <AppRoutes />
+              </EvolutionProvider>
+            </OrganizationProvider>
+          </SuperAdminProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

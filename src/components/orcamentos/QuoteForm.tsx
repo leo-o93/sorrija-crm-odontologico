@@ -14,14 +14,19 @@ import { useProcedures } from "@/hooks/useProcedures";
 import { useLeads } from "@/hooks/useLeads";
 import { usePatients } from "@/hooks/usePatients";
 
+const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
+
 const quoteSchema = z.object({
   contact_type: z.enum(["lead", "patient", "new"]),
   lead_id: z.string().optional(),
   patient_id: z.string().optional(),
   contact_name: z.string().min(1, "Nome é obrigatório"),
-  contact_phone: z.string().min(1, "Telefone é obrigatório"),
+  contact_phone: z.string().min(1, "Telefone é obrigatório").regex(phoneRegex, "Telefone inválido"),
   contact_email: z.string().email("Email inválido").optional().or(z.literal("")),
-  valid_until: z.string().optional(),
+  valid_until: z
+    .string()
+    .optional()
+    .refine((value) => !value || !Number.isNaN(Date.parse(value)), { message: "Data inválida" }),
   notes: z.string().optional(),
 });
 
@@ -109,6 +114,10 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
 
   const onSubmit = async (data: QuoteFormValues) => {
     if (items.length === 0 || items.some((item) => !item.procedure_name)) {
+      return;
+    }
+
+    if (items.some((item) => item.quantity <= 0 || item.unit_price <= 0)) {
       return;
     }
 

@@ -33,6 +33,12 @@ import { useLeads } from "@/hooks/useLeads";
 import { useProcedures } from "@/hooks/useProcedures";
 import type { Appointment } from "@/hooks/useAppointments";
 
+const isWithinBusinessHours = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const total = hours * 60 + minutes;
+  return total >= 8 * 60 && total <= 18 * 60;
+};
+
 const formSchema = z.object({
   appointment_date: z.date({
     required_error: "Data e hora são obrigatórias",
@@ -46,6 +52,17 @@ const formSchema = z.object({
 }).refine((data) => data.patient_id || data.lead_id, {
   message: "Selecione um paciente ou lead",
   path: ["patient_id"],
+}).refine((data) => {
+  const appointmentDateTime = new Date(data.appointment_date);
+  const [hours, minutes] = data.appointment_time.split(":");
+  appointmentDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10));
+  return appointmentDateTime > new Date();
+}, {
+  message: "Agendamento deve ser no futuro",
+  path: ["appointment_time"],
+}).refine((data) => isWithinBusinessHours(data.appointment_time), {
+  message: "Horário deve estar dentro do expediente",
+  path: ["appointment_time"],
 });
 
 interface AppointmentFormProps {

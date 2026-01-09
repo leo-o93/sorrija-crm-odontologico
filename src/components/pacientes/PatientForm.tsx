@@ -8,16 +8,45 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Patient, useCreatePatient, useUpdatePatient } from "@/hooks/usePatients";
 import { Loader2 } from "lucide-react";
 
+const isValidCpf = (value: string) => {
+  const cpf = value.replace(/[^\d]+/g, '');
+  if (!cpf || cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+  let rev = 11 - (sum % 11);
+  rev = rev >= 10 ? 0 : rev;
+  if (rev !== Number(cpf[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+  rev = 11 - (sum % 11);
+  rev = rev >= 10 ? 0 : rev;
+  return rev === Number(cpf[10]);
+};
+
 const patientFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().min(1, "Telefone é obrigatório"),
-  birth_date: z.string().optional(),
-  cpf: z.string().optional(),
+  birth_date: z.string().optional().refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+    message: "Data inválida",
+  }),
+  cpf: z
+    .string()
+    .optional()
+    .refine((value) => !value || isValidCpf(value), { message: "CPF inválido" }),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  zip_code: z.string().optional(),
+  zip_code: z
+    .string()
+    .optional()
+    .refine((value) => !value || /^\d{5}-?\d{3}$/.test(value), { message: "CEP inválido" }),
   medical_history: z.string().optional(),
   allergies: z.string().optional(),
   medications: z.string().optional(),

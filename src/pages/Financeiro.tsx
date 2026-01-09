@@ -6,6 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { FinancialDashboard } from "@/components/financeiro/FinancialDashboard";
 import { TransactionForm } from "@/components/financeiro/TransactionForm";
 import { TransactionList } from "@/components/financeiro/TransactionList";
+import { AccountsReceivable } from "@/components/financeiro/AccountsReceivable";
+import { AccountsPayable } from "@/components/financeiro/AccountsPayable";
+import { CashFlowProjection } from "@/components/financeiro/CashFlowProjection";
+import { FinancialReports } from "@/components/financeiro/FinancialReports";
+import { SuppliersManager } from "@/components/financeiro/SuppliersManager";
+import { RecurringPaymentsManager } from "@/components/financeiro/RecurringPaymentsManager";
 import { Plus } from "lucide-react";
 
 export default function Financeiro() {
@@ -38,7 +44,12 @@ export default function Financeiro() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="transactions">Lançamentos</TabsTrigger>
-          <TabsTrigger value="accounts">Contas</TabsTrigger>
+          <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>
+          <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>
+          <TabsTrigger value="cashflow">Fluxo de Caixa</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+          <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-4">
@@ -51,17 +62,28 @@ export default function Financeiro() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="accounts" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Contas a Receber</h3>
-              <p className="text-muted-foreground">Em construção</p>
-            </Card>
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Contas a Pagar</h3>
-              <p className="text-muted-foreground">Em construção</p>
-            </Card>
-          </div>
+        <TabsContent value="receivable" className="space-y-4">
+          <AccountsReceivable />
+        </TabsContent>
+
+        <TabsContent value="payable" className="space-y-4">
+          <AccountsPayable />
+        </TabsContent>
+
+        <TabsContent value="cashflow" className="space-y-4">
+          <CashFlowProjection />
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-4">
+          <FinancialReports />
+        </TabsContent>
+
+        <TabsContent value="suppliers" className="space-y-4">
+          <SuppliersManager />
+        </TabsContent>
+
+        <TabsContent value="recurring" className="space-y-4">
+          <RecurringPaymentsManager />
         </TabsContent>
       </Tabs>
     </div>

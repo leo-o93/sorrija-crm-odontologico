@@ -9,15 +9,16 @@ import {
   PieChart, 
   MessageSquare, 
   Settings,
-  User,
   Briefcase,
   Target,
   Webhook,
   Brain,
-  Activity
+  Activity,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
+import { useSuperAdmin } from "@/contexts/SuperAdminContext";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -38,6 +39,8 @@ const navigation = [
 ];
 
 export function Sidebar() {
+  const { isSuperAdmin } = useSuperAdmin();
+  const adminItem = { name: "Admin", href: "/admin", icon: Shield };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg flex flex-col">
@@ -67,6 +70,24 @@ export function Sidebar() {
               </NavLink>
             </li>
           ))}
+          {isSuperAdmin && (
+            <li>
+              <NavLink
+                to={adminItem.href}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-sidebar-accent text-gold shadow-md"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-gold"
+                  )
+                }
+              >
+                <adminItem.icon className="h-5 w-5 flex-shrink-0" />
+                <span>{adminItem.name}</span>
+              </NavLink>
+            </li>
+          )}
         </ul>
       </nav>
 

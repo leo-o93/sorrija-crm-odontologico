@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppConfig } from "@/components/settings/WhatsAppConfig";
 import { UsersManager } from "@/components/settings/UsersManager";
+import { GeneralSettings } from "@/components/settings/GeneralSettings";
 
 export default function Configuracoes() {
   return (
@@ -18,7 +19,7 @@ export default function Configuracoes() {
         </TabsList>
         
         <TabsContent value="general" className="space-y-4">
-          <p className="text-muted-foreground">Configurações gerais em breve</p>
+          <GeneralSettings />
         </TabsContent>
         
         <TabsContent value="integrations" className="space-y-4">
