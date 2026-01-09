@@ -38,7 +38,16 @@ export function RecurringPaymentsManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
-  const [formState, setFormState] = useState({
+  const [formState, setFormState] = useState<{
+    description: string;
+    amount: number;
+    frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+    day_of_month: number;
+    start_date: string;
+    end_date: string;
+    next_due_date: string;
+    active: boolean;
+  }>({
     description: '',
     amount: 0,
     frequency: 'monthly',
@@ -126,7 +135,7 @@ export function RecurringPaymentsManager() {
                   <Label>Frequência</Label>
                   <Select
                     value={formState.frequency}
-                    onValueChange={(value) => setFormState({ ...formState, frequency: value })}
+                    onValueChange={(value: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly') => setFormState({ ...formState, frequency: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
