@@ -403,8 +403,11 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    const stack = error instanceof Error ? error.stack : undefined;
     console.error('Error in admin-manage-organizations:', message);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    if (stack) console.error('Stack trace:', stack);
+    return new Response(JSON.stringify({ error: message, details: String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
