@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       ai_suggestions: {
         Row: {
           created_at: string | null
@@ -396,7 +432,9 @@ export type Database = {
           payment_date: string | null
           payment_method_id: string | null
           quote_id: string | null
+          recurring_payment_id: string | null
           status: string
+          supplier_id: string | null
           transaction_date: string
           type: string
           updated_at: string
@@ -415,7 +453,9 @@ export type Database = {
           payment_date?: string | null
           payment_method_id?: string | null
           quote_id?: string | null
+          recurring_payment_id?: string | null
           status?: string
+          supplier_id?: string | null
           transaction_date?: string
           type: string
           updated_at?: string
@@ -434,7 +474,9 @@ export type Database = {
           payment_date?: string | null
           payment_method_id?: string | null
           quote_id?: string | null
+          recurring_payment_id?: string | null
           status?: string
+          supplier_id?: string | null
           transaction_date?: string
           type?: string
           updated_at?: string
@@ -473,6 +515,20 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_recurring_payment_id_fkey"
+            columns: ["recurring_payment_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1072,30 +1128,60 @@ export type Database = {
       organizations: {
         Row: {
           active: boolean | null
+          address: Json | null
+          business_hours: Json | null
           created_at: string | null
+          document: string | null
+          email: string | null
           evolution_instance: string
           id: string
+          logo_url: string | null
+          message_signature: string | null
           name: string
+          phone: string | null
           settings: Json | null
+          timezone: string | null
+          trade_name: string | null
           updated_at: string | null
+          welcome_message: string | null
         }
         Insert: {
           active?: boolean | null
+          address?: Json | null
+          business_hours?: Json | null
           created_at?: string | null
+          document?: string | null
+          email?: string | null
           evolution_instance: string
           id?: string
+          logo_url?: string | null
+          message_signature?: string | null
           name: string
+          phone?: string | null
           settings?: Json | null
+          timezone?: string | null
+          trade_name?: string | null
           updated_at?: string | null
+          welcome_message?: string | null
         }
         Update: {
           active?: boolean | null
+          address?: Json | null
+          business_hours?: Json | null
           created_at?: string | null
+          document?: string | null
+          email?: string | null
           evolution_instance?: string
           id?: string
+          logo_url?: string | null
+          message_signature?: string | null
           name?: string
+          phone?: string | null
           settings?: Json | null
+          timezone?: string | null
+          trade_name?: string | null
           updated_at?: string | null
+          welcome_message?: string | null
         }
         Relationships: []
       }
@@ -1469,6 +1555,95 @@ export type Database = {
           },
         ]
       }
+      recurring_payments: {
+        Row: {
+          active: boolean | null
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          day_of_month: number | null
+          description: string
+          end_date: string | null
+          frequency: string
+          id: string
+          last_generated_date: string | null
+          next_due_date: string
+          organization_id: string
+          payment_method_id: string | null
+          start_date: string
+          supplier_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          description: string
+          end_date?: string | null
+          frequency: string
+          id?: string
+          last_generated_date?: string | null
+          next_due_date: string
+          organization_id: string
+          payment_method_id?: string | null
+          start_date: string
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          description?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          last_generated_date?: string | null
+          next_due_date?: string
+          organization_id?: string
+          payment_method_id?: string | null
+          start_date?: string
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_payments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           active: boolean
@@ -1497,6 +1672,83 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sources_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      super_admins: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          active: boolean | null
+          address: string | null
+          category: string | null
+          created_at: string | null
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          payment_terms: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address?: string | null
+          category?: string | null
+          created_at?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          payment_terms?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address?: string | null
+          category?: string | null
+          created_at?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          payment_terms?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1655,6 +1907,10 @@ export type Database = {
     }
     Functions: {
       cleanup_old_webhooks: { Args: never; Returns: undefined }
+      create_default_transition_rules: {
+        Args: { org_id: string }
+        Returns: undefined
+      }
       generate_quote_number: { Args: never; Returns: string }
       get_user_organization_ids: {
         Args: { _user_id?: string }
@@ -1679,6 +1935,7 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_super_admin: { Args: never; Returns: boolean }
       upsert_lead_by_phone:
         | {
             Args: {
