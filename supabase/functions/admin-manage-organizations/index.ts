@@ -112,25 +112,117 @@ Deno.serve(async (req) => {
 
     if (req.method === 'POST' && pathParts.length === 0) {
       const payload = await req.json();
-      const { data, error: createError } = await supabase
+      
+      // Extrair dados do admin do payload
+      const { createAdmin, adminFullName, adminEmail, adminPassword, ...orgData } = payload;
+
+      // Criar organização
+      const { data: newOrg, error: createError } = await supabase
         .from('organizations')
-        .insert(payload)
+        .insert(orgData)
         .select()
         .single();
 
       if (createError) throw createError;
 
-      await supabase.rpc('create_default_transition_rules', { org_id: data.id });
+      // Criar regras de transição padrão
+      await supabase.rpc('create_default_transition_rules', { org_id: newOrg.id });
+
+      let createdAdminInfo = null;
+
+      // Se solicitado, criar usuário admin para a organização
+      if (createAdmin && adminEmail && adminPassword && adminFullName) {
+        console.log('Creating admin user for organization:', newOrg.id, adminEmail);
+
+        const { data: newUser, error: userError } = await supabase.auth.admin.createUser({
+          email: adminEmail,
+          password: adminPassword,
+          email_confirm: true,
+          user_metadata: { full_name: adminFullName },
+        });
+
+        if (userError) {
+          console.error('Error creating admin user:', userError);
+          // Retornar erro mas manter a organização criada
+          return new Response(JSON.stringify({ 
+            organization: newOrg, 
+            adminError: userError.message,
+            message: 'Organização criada, mas houve erro ao criar o usuário admin'
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 201,
+          });
+        }
+
+        if (newUser?.user) {
+          console.log('Admin user created:', newUser.user.id);
+
+          // Criar perfil do usuário
+          const { error: profileError } = await supabase.from('profiles').insert({
+            id: newUser.user.id,
+            full_name: adminFullName,
+            role: 'admin',
+            active: true,
+          });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          }
+
+          // Criar role do usuário
+          const { error: roleError } = await supabase.from('user_roles').insert({
+            user_id: newUser.user.id,
+            role: 'admin',
+          });
+
+          if (roleError) {
+            console.error('Error creating user role:', roleError);
+          }
+
+          // Adicionar como membro admin da organização
+          const { error: memberError } = await supabase.from('organization_members').insert({
+            organization_id: newOrg.id,
+            user_id: newUser.user.id,
+            role: 'admin',
+            active: true,
+          });
+
+          if (memberError) {
+            console.error('Error adding member:', memberError);
+          }
+
+          createdAdminInfo = {
+            userId: newUser.user.id,
+            email: adminEmail,
+            fullName: adminFullName,
+          };
+
+          // Log de auditoria para criação do admin
+          await logAudit({
+            adminUserId: user.id,
+            action: 'create_org_admin',
+            targetType: 'user',
+            targetId: newUser.user.id,
+            details: { organizationId: newOrg.id, email: adminEmail, fullName: adminFullName },
+            req,
+          });
+        }
+      }
+
+      // Log de auditoria para criação da organização
       await logAudit({
         adminUserId: user.id,
         action: 'create_organization',
         targetType: 'organization',
-        targetId: data.id,
-        details: payload,
+        targetId: newOrg.id,
+        details: { ...orgData, adminCreated: !!createdAdminInfo },
         req,
       });
 
-      return new Response(JSON.stringify({ organization: data }), {
+      return new Response(JSON.stringify({ 
+        organization: newOrg,
+        adminCreated: createdAdminInfo,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 201,
       });
@@ -277,6 +369,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in admin-manage-organizations:', message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -34,81 +34,105 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Buscar memberships do usuário
-      const { data: memberships, error: memberError } = await supabase
-        .from('organization_members')
-        .select('organization_id, organizations(*)')
-        .eq('user_id', user.id)
-        .eq('active', true);
+      // Verificar se é Super Admin
+      const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
 
-      if (memberError) throw memberError;
-
-      // Se não tem membership, tentar criar organização baseado na integration_settings
-      if (!memberships || memberships.length === 0) {
-        const { data: settings } = await supabase
-          .from('integration_settings')
-          .select('settings')
-          .eq('integration_type', 'whatsapp_evolution')
+      if (isSuperAdmin) {
+        // Super Admin vê TODAS as organizações ativas
+        const { data: allOrgs, error: orgsError } = await supabase
+          .from('organizations')
+          .select('*')
           .eq('active', true)
-          .single();
+          .order('name');
 
-        const evolutionInstance = settings?.settings && typeof settings.settings === 'object' 
-          ? (settings.settings as any).evolution_instance 
-          : null;
+        if (orgsError) throw orgsError;
 
-        if (evolutionInstance) {
-          // Criar organização para essa instância
-          const { data: newOrg, error: orgError } = await supabase
-            .from('organizations')
-            .insert({
-              evolution_instance: evolutionInstance,
-              name: `Organização ${evolutionInstance}`,
-            })
-            .select()
-            .single();
-
-          if (orgError) {
-            // Se já existe, buscar
-            const { data: existingOrg } = await supabase
-              .from('organizations')
-              .select('*')
-              .eq('evolution_instance', evolutionInstance)
-              .single();
-
-            if (existingOrg) {
-              // Adicionar usuário como membro
-              await supabase.from('organization_members').insert({
-                organization_id: existingOrg.id,
-                user_id: user.id,
-              });
-              setCurrentOrganization(existingOrg);
-              setAvailableOrganizations([existingOrg]);
-            }
-          } else if (newOrg) {
-            // Adicionar usuário como membro
-            await supabase.from('organization_members').insert({
-              organization_id: newOrg.id,
-              user_id: user.id,
-            });
-            setCurrentOrganization(newOrg);
-            setAvailableOrganizations([newOrg]);
-          }
-        }
-      } else {
-        // Extrair organizações dos memberships
-        const orgs = memberships
-          .map(m => m.organizations as Organization | null)
-          .filter((org): org is Organization => org !== null && org.active === true);
-
-        setAvailableOrganizations(orgs);
+        setAvailableOrganizations(allOrgs || []);
 
         // Usar organização salva em localStorage ou primeira disponível
         const savedOrgId = localStorage.getItem('currentOrganizationId');
         const selectedOrg = savedOrgId 
-          ? orgs.find(o => o.id === savedOrgId) 
-          : orgs[0];
+          ? (allOrgs || []).find(o => o.id === savedOrgId) 
+          : (allOrgs || [])[0];
 
-        setCurrentOrganization(selectedOrg || orgs[0]);
+        setCurrentOrganization(selectedOrg || (allOrgs || [])[0]);
+      } else {
+        // Buscar memberships do usuário (lógica normal)
+        const { data: memberships, error: memberError } = await supabase
+          .from('organization_members')
+          .select('organization_id, organizations(*)')
+          .eq('user_id', user.id)
+          .eq('active', true);
+
+        if (memberError) throw memberError;
+
+        // Se não tem membership, tentar criar organização baseado na integration_settings
+        if (!memberships || memberships.length === 0) {
+          const { data: settings } = await supabase
+            .from('integration_settings')
+            .select('settings')
+            .eq('integration_type', 'whatsapp_evolution')
+            .eq('active', true)
+            .single();
+
+          const evolutionInstance = settings?.settings && typeof settings.settings === 'object' 
+            ? (settings.settings as any).evolution_instance 
+            : null;
+
+          if (evolutionInstance) {
+            // Criar organização para essa instância
+            const { data: newOrg, error: orgError } = await supabase
+              .from('organizations')
+              .insert({
+                evolution_instance: evolutionInstance,
+                name: `Organização ${evolutionInstance}`,
+              })
+              .select()
+              .single();
+
+            if (orgError) {
+              // Se já existe, buscar
+              const { data: existingOrg } = await supabase
+                .from('organizations')
+                .select('*')
+                .eq('evolution_instance', evolutionInstance)
+                .single();
+
+              if (existingOrg) {
+                // Adicionar usuário como membro
+                await supabase.from('organization_members').insert({
+                  organization_id: existingOrg.id,
+                  user_id: user.id,
+                });
+                setCurrentOrganization(existingOrg);
+                setAvailableOrganizations([existingOrg]);
+              }
+            } else if (newOrg) {
+              // Adicionar usuário como membro
+              await supabase.from('organization_members').insert({
+                organization_id: newOrg.id,
+                user_id: user.id,
+              });
+              setCurrentOrganization(newOrg);
+              setAvailableOrganizations([newOrg]);
+            }
+          }
+        } else {
+          // Extrair organizações dos memberships
+          const orgs = memberships
+            .map(m => m.organizations as Organization | null)
+            .filter((org): org is Organization => org !== null && org.active === true);
+
+          setAvailableOrganizations(orgs);
+
+          // Usar organização salva em localStorage ou primeira disponível
+          const savedOrgId = localStorage.getItem('currentOrganizationId');
+          const selectedOrg = savedOrgId 
+            ? orgs.find(o => o.id === savedOrgId) 
+            : orgs[0];
+
+          setCurrentOrganization(selectedOrg || orgs[0]);
+        }
       }
     } catch (error) {
       console.error('Error loading organizations:', error);

@@ -22,12 +22,22 @@ interface GlobalStats {
   inactiveOrganizations: number;
 }
 
+interface CreateOrgResult {
+  organization: Organization;
+  adminCreated?: {
+    userId: string;
+    email: string;
+    fullName: string;
+  };
+  adminError?: string;
+}
+
 interface SuperAdminContextType {
   isSuperAdmin: boolean;
   isLoading: boolean;
   organizations: Organization[];
   loadOrganizations: () => Promise<void>;
-  createOrganization: (data: Record<string, unknown>) => Promise<void>;
+  createOrganization: (data: Record<string, unknown>) => Promise<CreateOrgResult | null>;
   updateOrganization: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteOrganization: (id: string) => Promise<void>;
   getOrganizationMembers: (orgId: string) => Promise<any[]>;
@@ -127,9 +137,15 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const createOrganization = async (data: Record<string, unknown>) => {
-    await callAdminFunction('', 'POST', data);
-    await loadOrganizations();
+  const createOrganization = async (data: Record<string, unknown>): Promise<CreateOrgResult | null> => {
+    try {
+      const result = await callAdminFunction('', 'POST', data);
+      await loadOrganizations();
+      return result as CreateOrgResult;
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      return null;
+    }
   };
 
   const updateOrganization = async (id: string, data: Record<string, unknown>) => {
