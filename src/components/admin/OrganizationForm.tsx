@@ -141,6 +141,9 @@ export function OrganizationForm({ initialValues, onSubmit, onCancel, isSubmitti
           <>
             <Separator className="my-4" />
             <h3 className="text-sm font-semibold text-foreground">Administrador da Organização</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              O administrador terá acesso completo à organização (exceto painel Super Admin).
+            </p>
             
             <FormField
               control={form.control}

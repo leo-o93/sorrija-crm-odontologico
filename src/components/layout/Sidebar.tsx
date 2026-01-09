@@ -19,28 +19,50 @@ import {
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
 import { useSuperAdmin } from "@/contexts/SuperAdminContext";
+import { useAuth } from "@/contexts/AuthContext";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Painel do Sistema", href: "/painel-sistema", icon: Activity },
-  { name: "CRM / Leads", href: "/crm", icon: Target },
-  { name: "Conversas WhatsApp", href: "/conversas", icon: MessageSquare },
-  { name: "Pacientes", href: "/pacientes", icon: Users },
-  { name: "Agenda", href: "/agenda", icon: Calendar },
-  { name: "Orçamentos", href: "/orcamentos", icon: FileText },
-  { name: "Financeiro", href: "/financeiro", icon: DollarSign },
-  { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
-  { name: "Relatórios IA", href: "/relatorios-ia", icon: Brain },
-  { name: "Indicadores", href: "/indicadores", icon: PieChart },
-  { name: "Marketing", href: "/marketing", icon: Target },
-  { name: "Webhooks", href: "/webhooks", icon: Webhook },
-  { name: "Cadastros", href: "/cadastros", icon: Briefcase },
-  { name: "Configurações", href: "/configuracoes", icon: Settings },
+// All navigation items
+const allNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, restrictedTo: null },
+  { name: "Painel do Sistema", href: "/painel-sistema", icon: Activity, restrictedTo: null },
+  { name: "CRM / Leads", href: "/crm", icon: Target, restrictedTo: null },
+  { name: "Conversas WhatsApp", href: "/conversas", icon: MessageSquare, restrictedTo: null },
+  { name: "Pacientes", href: "/pacientes", icon: Users, restrictedTo: null },
+  { name: "Agenda", href: "/agenda", icon: Calendar, restrictedTo: null },
+  { name: "Orçamentos", href: "/orcamentos", icon: FileText, restrictedTo: null },
+  { name: "Financeiro", href: "/financeiro", icon: DollarSign, restrictedTo: 'admin' as const },
+  { name: "Relatórios", href: "/relatorios", icon: BarChart3, restrictedTo: null },
+  { name: "Relatórios IA", href: "/relatorios-ia", icon: Brain, restrictedTo: null },
+  { name: "Indicadores", href: "/indicadores", icon: PieChart, restrictedTo: null },
+  { name: "Marketing", href: "/marketing", icon: Target, restrictedTo: null },
+  { name: "Webhooks", href: "/webhooks", icon: Webhook, restrictedTo: 'admin' as const },
+  { name: "Cadastros", href: "/cadastros", icon: Briefcase, restrictedTo: null },
+  { name: "Configurações", href: "/configuracoes", icon: Settings, restrictedTo: 'admin' as const },
 ];
+
+const adminItem = { name: "Admin", href: "/admin", icon: Shield };
 
 export function Sidebar() {
   const { isSuperAdmin } = useSuperAdmin();
-  const adminItem = { name: "Admin", href: "/admin", icon: Shield };
+  const { userRole } = useAuth();
+
+  // Get visible navigation items based on user role
+  const getVisibleNavItems = () => {
+    // Super Admin sees everything
+    if (isSuperAdmin) {
+      return allNavigation;
+    }
+
+    // Admin sees everything except /admin page (which is handled separately)
+    if (userRole?.role === 'admin') {
+      return allNavigation;
+    }
+
+    // Usuario sees only non-restricted pages
+    return allNavigation.filter(item => item.restrictedTo === null);
+  };
+
+  const visibleNavItems = getVisibleNavItems();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg flex flex-col">
@@ -52,7 +74,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-3">
-          {navigation.map((item) => (
+          {visibleNavItems.map((item) => (
             <li key={item.name}>
               <NavLink
                 to={item.href}
@@ -70,6 +92,7 @@ export function Sidebar() {
               </NavLink>
             </li>
           ))}
+          {/* Admin item only for Super Admin */}
           {isSuperAdmin && (
             <li>
               <NavLink

@@ -17,7 +17,7 @@ interface UserWithAuth {
   id: string;
   full_name: string;
   email: string;
-  role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista';
+  role: 'admin' | 'usuario';
   active: boolean;
   created_at: string;
 }
@@ -32,10 +32,10 @@ export function UsersManager() {
     fullName: '',
     email: '',
     password: '',
-    role: 'recepcao' as const,
+    role: 'usuario' as const,
   });
 
-  // Check if current user is admin/gerente of current organization
+  // Check if current user is admin of current organization
   const { data: currentUserRole } = useQuery({
     queryKey: ['current-user-org-role', currentOrganization?.id],
     queryFn: async () => {
@@ -58,7 +58,7 @@ export function UsersManager() {
     enabled: !!currentOrganization?.id,
   });
 
-  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'gerente';
+  const isAdmin = currentUserRole === 'admin';
 
   const { data: users, isLoading } = useQuery<UserWithAuth[]>({
     queryKey: ['organization-users', currentOrganization?.id],
@@ -96,7 +96,7 @@ export function UsersManager() {
       toast.success('Usuário criado com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['organization-users'] });
       setIsCreateDialogOpen(false);
-      setFormData({ fullName: '', email: '', password: '', role: 'recepcao' });
+      setFormData({ fullName: '', email: '', password: '', role: 'usuario' });
     },
     onError: (error: any) => {
       toast.error('Erro ao criar usuário: ' + error.message);
@@ -104,12 +104,12 @@ export function UsersManager() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista' }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'usuario' }) => {
       if (!currentOrganization?.id) {
         throw new Error('Nenhuma organização selecionada');
       }
 
-      // Update role in organization_members (not profiles/user_roles)
+      // Update role in organization_members
       const { error } = await supabase
         .from('organization_members')
         .update({ role })
@@ -154,10 +154,12 @@ export function UsersManager() {
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       admin: 'Administrador',
-      gerente: 'Gerente',
-      comercial: 'Comercial',
-      recepcao: 'Recepção',
-      dentista: 'Dentista',
+      usuario: 'Usuário',
+      // Legacy roles mapping
+      gerente: 'Usuário',
+      comercial: 'Usuário',
+      recepcao: 'Usuário',
+      dentista: 'Usuário',
     };
     return labels[role] || role;
   };
@@ -165,10 +167,7 @@ export function UsersManager() {
   const getRoleBadgeVariant = (role: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       admin: 'destructive',
-      gerente: 'default',
-      comercial: 'secondary',
-      recepcao: 'outline',
-      dentista: 'secondary',
+      usuario: 'secondary',
     };
     return variants[role] || 'default';
   };
@@ -319,19 +318,19 @@ export function UsersManager() {
               <Label htmlFor="role">Função</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: any) => setFormData({ ...formData, role: value })}
+                onValueChange={(value: 'admin' | 'usuario') => setFormData({ ...formData, role: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recepcao">Recepção</SelectItem>
-                  <SelectItem value="comercial">Comercial</SelectItem>
-                  <SelectItem value="dentista">Dentista</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="usuario">Usuário</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Administrador: acesso completo. Usuário: sem acesso a Financeiro, Configurações e Webhooks.
+              </p>
             </div>
           </div>
 
@@ -368,7 +367,7 @@ export function UsersManager() {
               <Label htmlFor="editRole">Função</Label>
               <Select
                 value={selectedUser?.role}
-                onValueChange={(value: any) =>
+                onValueChange={(value: 'admin' | 'usuario') =>
                   setSelectedUser(selectedUser ? { ...selectedUser, role: value } : null)
                 }
               >
@@ -376,13 +375,13 @@ export function UsersManager() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recepcao">Recepção</SelectItem>
-                  <SelectItem value="comercial">Comercial</SelectItem>
-                  <SelectItem value="dentista">Dentista</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="usuario">Usuário</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Administrador: acesso completo. Usuário: sem acesso a Financeiro, Configurações e Webhooks.
+              </p>
             </div>
           </div>
 

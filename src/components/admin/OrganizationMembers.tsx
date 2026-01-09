@@ -19,7 +19,7 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
   const { getOrganizationMembers, addMember, removeMember } = useSuperAdmin();
   const [members, setMembers] = useState<any[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('recepcao');
+  const [role, setRole] = useState('usuario');
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
       await addMember(organizationId, email, role);
       toast.success('Membro adicionado com sucesso');
       setEmail('');
-      setRole('recepcao');
+      setRole('usuario');
       await loadMembers();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Tente novamente';
@@ -108,10 +108,12 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
   const getRoleLabel = (role: string) => {
     const roles: Record<string, string> = {
       admin: 'Administrador',
-      gerente: 'Gerente',
-      comercial: 'Comercial',
-      recepcao: 'Recepção',
-      dentista: 'Dentista',
+      usuario: 'Usuário',
+      // Legacy roles mapping
+      gerente: 'Usuário',
+      comercial: 'Usuário',
+      recepcao: 'Usuário',
+      dentista: 'Usuário',
     };
     return roles[role] || role;
   };
@@ -139,10 +141,7 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="gerente">Gerente</SelectItem>
-                <SelectItem value="comercial">Comercial</SelectItem>
-                <SelectItem value="recepcao">Recepção</SelectItem>
-                <SelectItem value="dentista">Dentista</SelectItem>
+                <SelectItem value="usuario">Usuário</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleAdd} disabled={isAddingMember}>
