@@ -13,7 +13,9 @@ export function GlobalUsersManager() {
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
             <TableHead>Organizações</TableHead>
+            <TableHead>Criado em</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
@@ -21,7 +23,7 @@ export function GlobalUsersManager() {
         <TableBody>
           {(users || []).length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                 Nenhum usuário encontrado.
               </TableCell>
             </TableRow>
@@ -30,11 +32,13 @@ export function GlobalUsersManager() {
               <TableRow key={user.id}>
                 <TableCell>{user.full_name || user.id}</TableCell>
                 <TableCell>{user.email || '-'}</TableCell>
+                <TableCell>{user.role || '-'}</TableCell>
                 <TableCell>
                   {user.organizations.length > 0
                     ? user.organizations.map((org) => `${org.organization_name || org.organization_id} (${org.role})`).join(', ')
                     : '-'}
                 </TableCell>
+                <TableCell>{new Date(user.created_at).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell>{user.banned_until ? 'Bloqueado' : 'Ativo'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
