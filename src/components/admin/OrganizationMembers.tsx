@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,6 +43,7 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Membros da organização</DialogTitle>
+          <DialogDescription>Gerencie os membros e suas permissões nesta organização.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-2 md:grid-cols-3">
