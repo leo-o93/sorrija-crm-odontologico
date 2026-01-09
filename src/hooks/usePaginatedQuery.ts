@@ -47,7 +47,7 @@ export function usePaginatedQuery<T>({
         };
       }
 
-      let query = supabase
+      let query = (supabase as any)
         .from(table)
         .select(select, { count: 'exact' })
         .eq('organization_id', organizationId);

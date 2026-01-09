@@ -51,7 +51,7 @@ export function useNotifications() {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      let query = supabase
+      let query = (supabase as any)
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)

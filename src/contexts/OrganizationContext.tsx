@@ -9,9 +9,19 @@ interface Organization {
   evolution_instance: string;
   name: string;
   settings: any;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
+  active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  logo_url?: string | null;
+  trade_name?: string | null;
+  document?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: any | null;
+  business_hours?: any | null;
+  timezone?: string | null;
+  welcome_message?: string | null;
+  message_signature?: string | null;
 }
 
 interface OrganizationContextType {
@@ -105,8 +115,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       } else {
         // Extrair organizações dos memberships
         const orgs = memberships
-          .map(m => m.organizations)
-          .filter((org): org is Organization => org !== null && org.active);
+          .map(m => m.organizations as Organization | null)
+          .filter((org): org is Organization => org !== null && org.active === true);
 
         setAvailableOrganizations(orgs);
 

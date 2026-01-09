@@ -29,10 +29,10 @@ export default function PainelSistema() {
 
   const logs = useMemo(() => {
     return (stats.recentWebhooks || []).map((webhook: any) => ({
-      id: webhook.id,
-      level: webhook.status === "failed" ? "error" : webhook.status === "processed" ? "info" : "warning",
-      message: webhook.path || webhook.origin || "Webhook recebido",
-      source: webhook.origin || "Webhook",
+      id: webhook.id as string,
+      level: (webhook.status === "failed" ? "error" : webhook.status === "processed" ? "info" : "warning") as 'info' | 'warning' | 'error',
+      message: (webhook.path || webhook.origin || "Webhook recebido") as string,
+      source: (webhook.origin || "Webhook") as string,
       timestamp: format(new Date(webhook.created_at), "HH:mm:ss"),
     }));
   }, [stats.recentWebhooks]);
