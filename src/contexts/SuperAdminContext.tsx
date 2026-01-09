@@ -257,7 +257,28 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
 export function useSuperAdmin() {
   const context = useContext(SuperAdminContext);
   if (!context) {
-    throw new Error('useSuperAdmin must be used within a SuperAdminProvider');
+    // Return safe defaults when outside provider (e.g., during hot reload)
+    return {
+      isSuperAdmin: false,
+      isLoading: true,
+      organizations: [],
+      loadOrganizations: async () => {},
+      createOrganization: async () => null,
+      updateOrganization: async () => false,
+      deleteOrganization: async () => false,
+      getOrganizationMembers: async () => [],
+      addMember: async () => false,
+      removeMember: async () => false,
+      auditLogs: [],
+      globalStats: {
+        organizations: 0,
+        users: 0,
+        leads: 0,
+        messages: 0,
+        activeOrganizations: 0,
+        inactiveOrganizations: 0,
+      },
+    };
   }
   return context;
 }
