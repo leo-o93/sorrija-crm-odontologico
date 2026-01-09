@@ -38,11 +38,11 @@ interface SuperAdminContextType {
   organizations: Organization[];
   loadOrganizations: () => Promise<void>;
   createOrganization: (data: Record<string, unknown>) => Promise<CreateOrgResult | null>;
-  updateOrganization: (id: string, data: Record<string, unknown>) => Promise<void>;
-  deleteOrganization: (id: string) => Promise<void>;
+  updateOrganization: (id: string, data: Record<string, unknown>) => Promise<boolean>;
+  deleteOrganization: (id: string) => Promise<boolean>;
   getOrganizationMembers: (orgId: string) => Promise<any[]>;
-  addMember: (orgId: string, email: string, role: string) => Promise<void>;
-  removeMember: (orgId: string, userId: string) => Promise<void>;
+  addMember: (orgId: string, email: string, role: string) => Promise<boolean>;
+  removeMember: (orgId: string, userId: string) => Promise<boolean>;
   auditLogs: AuditLog[];
   globalStats: GlobalStats;
 }
@@ -144,31 +144,60 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return result as CreateOrgResult;
     } catch (error) {
       console.error('Error creating organization:', error);
-      return null;
+      throw error;
     }
   };
 
-  const updateOrganization = async (id: string, data: Record<string, unknown>) => {
-    await callAdminFunction(`/${id}`, 'PUT', data);
-    await loadOrganizations();
+  const updateOrganization = async (id: string, data: Record<string, unknown>): Promise<boolean> => {
+    try {
+      await callAdminFunction(`/${id}`, 'PUT', data);
+      await loadOrganizations();
+      return true;
+    } catch (error) {
+      console.error('Error updating organization:', error);
+      throw error;
+    }
   };
 
-  const deleteOrganization = async (id: string) => {
-    await callAdminFunction(`/${id}`, 'DELETE');
-    await loadOrganizations();
+  const deleteOrganization = async (id: string): Promise<boolean> => {
+    try {
+      await callAdminFunction(`/${id}`, 'DELETE');
+      await loadOrganizations();
+      return true;
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      throw error;
+    }
   };
 
   const getOrganizationMembers = async (orgId: string) => {
-    const result = await callAdminFunction(`/${orgId}/members`, 'GET');
-    return result.members || [];
+    try {
+      const result = await callAdminFunction(`/${orgId}/members`, 'GET');
+      return result.members || [];
+    } catch (error) {
+      console.error('Error getting organization members:', error);
+      throw error;
+    }
   };
 
-  const addMember = async (orgId: string, email: string, role: string) => {
-    await callAdminFunction(`/${orgId}/members`, 'POST', { email, role });
+  const addMember = async (orgId: string, email: string, role: string): Promise<boolean> => {
+    try {
+      await callAdminFunction(`/${orgId}/members`, 'POST', { email, role });
+      return true;
+    } catch (error) {
+      console.error('Error adding member:', error);
+      throw error;
+    }
   };
 
-  const removeMember = async (orgId: string, userId: string) => {
-    await callAdminFunction(`/${orgId}/members/${userId}`, 'DELETE');
+  const removeMember = async (orgId: string, userId: string): Promise<boolean> => {
+    try {
+      await callAdminFunction(`/${orgId}/members/${userId}`, 'DELETE');
+      return true;
+    } catch (error) {
+      console.error('Error removing member:', error);
+      throw error;
+    }
   };
 
   useEffect(() => {

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Users } from 'lucide-react';
+import { Pencil, Users, Loader2, Power } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import { OrganizationMembers } from '@/components/admin/OrganizationMembers';
@@ -16,6 +17,8 @@ export function OrganizationsTable() {
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [membersOrgId, setMembersOrgId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deactivatingOrgId, setDeactivatingOrgId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return organizations.filter((org) => org.name?.toLowerCase().includes(search.toLowerCase()));
@@ -34,26 +37,53 @@ export function OrganizationsTable() {
       settings,
     };
 
-    if (selectedOrg) {
-      await updateOrganization(selectedOrg.id, payload);
-    } else {
-      const result = await createOrganization(payload);
-      
-      // Mostrar mensagem específica se admin foi criado
-      if (result?.adminCreated) {
-        toast.success(
-          `Administrador criado: ${result.adminCreated.email}`,
-          { description: 'O usuário pode fazer login com as credenciais fornecidas.' }
-        );
-      } else if (result?.adminError) {
-        toast.warning('Organização criada, mas houve erro ao criar o admin', {
-          description: result.adminError
-        });
+    setIsSubmitting(true);
+    try {
+      if (selectedOrg) {
+        await updateOrganization(selectedOrg.id, payload);
+        toast.success('Organização atualizada com sucesso');
+      } else {
+        const result = await createOrganization(payload);
+        
+        if (result?.adminCreated) {
+          toast.success(
+            `Administrador criado: ${result.adminCreated.email}`,
+            { description: 'O usuário pode fazer login com as credenciais fornecidas.' }
+          );
+        } else if (result?.adminError) {
+          toast.warning('Organização criada, mas houve erro ao criar o admin', {
+            description: result.adminError
+          });
+        } else {
+          toast.success('Organização criada com sucesso');
+        }
       }
-    }
 
-    setIsDialogOpen(false);
-    setSelectedOrg(null);
+      setIsDialogOpen(false);
+      setSelectedOrg(null);
+    } catch (error) {
+      toast.error(selectedOrg ? 'Erro ao atualizar organização' : 'Erro ao criar organização', {
+        description: error instanceof Error ? error.message : 'Tente novamente',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeactivate = async (orgId: string, orgName: string) => {
+    setDeactivatingOrgId(orgId);
+    try {
+      await deleteOrganization(orgId);
+      toast.success('Organização desativada', {
+        description: `${orgName} foi desativada com sucesso.`,
+      });
+    } catch (error) {
+      toast.error('Erro ao desativar organização', {
+        description: error instanceof Error ? error.message : 'Tente novamente',
+      });
+    } finally {
+      setDeactivatingOrgId(null);
+    }
   };
 
   return (
@@ -89,6 +119,7 @@ export function OrganizationsTable() {
               }
               onSubmit={handleSubmit}
               onCancel={() => setIsDialogOpen(false)}
+              isSubmitting={isSubmitting}
             />
           </DialogContent>
         </Dialog>
@@ -115,7 +146,11 @@ export function OrganizationsTable() {
               <TableRow key={org.id}>
                 <TableCell className="font-medium">{org.name}</TableCell>
                 <TableCell>{org.evolution_instance || '-'}</TableCell>
-                <TableCell>{org.active ? 'Ativa' : 'Inativa'}</TableCell>
+                <TableCell>
+                  <span className={org.active ? 'text-green-600' : 'text-muted-foreground'}>
+                    {org.active ? 'Ativa' : 'Inativa'}
+                  </span>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
@@ -125,15 +160,55 @@ export function OrganizationsTable() {
                         setSelectedOrg(org);
                         setIsDialogOpen(true);
                       }}
+                      title="Editar"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setMembersOrgId(org.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMembersOrgId(org.id)}
+                      title="Gerenciar membros"
+                    >
                       <Users className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteOrganization(org.id)}>
-                      Desativar
-                    </Button>
+                    {org.active && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deactivatingOrgId === org.id}
+                            title="Desativar"
+                          >
+                            {deactivatingOrgId === org.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Power className="h-4 w-4 text-destructive" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar desativação</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja desativar a organização{' '}
+                              <strong>{org.name}</strong>? Os membros não poderão mais acessar os
+                              dados desta organização.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeactivate(org.id, org.name)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Desativar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
