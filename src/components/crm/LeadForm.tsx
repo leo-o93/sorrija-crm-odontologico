@@ -11,9 +11,12 @@ import { useProcedures } from "@/hooks/useProcedures";
 import { useCreateLead, useUpdateLead, Lead } from "@/hooks/useLeads";
 import { Loader2 } from "lucide-react";
 
+const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
+
 const leadFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").max(20),
+  phone: z.string().min(10, "Telefone é obrigatório").regex(phoneRegex, "Telefone inválido"),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
   source_id: z.string().optional(),
   interest_id: z.string().optional(),
   notes: z.string().optional(),
@@ -39,6 +42,7 @@ export function LeadForm({ lead, onSuccess, onCancel }: LeadFormProps) {
     defaultValues: {
       name: lead?.name || "",
       phone: lead?.phone || "",
+      email: lead?.email || "",
       source_id: lead?.source_id || undefined,
       interest_id: lead?.interest_id || undefined,
       notes: lead?.notes || "",
@@ -53,6 +57,7 @@ export function LeadForm({ lead, onSuccess, onCancel }: LeadFormProps) {
       await createLead.mutateAsync({
         name: data.name,
         phone: data.phone,
+        email: data.email || undefined,
         source_id: data.source_id,
         interest_id: data.interest_id,
         notes: data.notes,
@@ -89,6 +94,20 @@ export function LeadForm({ lead, onSuccess, onCancel }: LeadFormProps) {
               <FormLabel>Telefone *</FormLabel>
               <FormControl>
                 <Input placeholder="(31) 9 8280-8133" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="email@exemplo.com" type="email" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

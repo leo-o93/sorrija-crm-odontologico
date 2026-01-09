@@ -72,7 +72,14 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, limit = 50, syncAll = false } = await req.json();
+    const { phone, limit = 50, syncAll = false, organizationId } = await req.json();
+
+    if (!organizationId) {
+      return new Response(
+        JSON.stringify({ error: 'Organization ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!syncAll && !phone) {
       throw new Error('Phone number is required when syncAll is false');
@@ -83,11 +90,44 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied: not a member of this organization' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Buscar configuração da Evolution API (mais recente)
     const { data: config, error: configError } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'whatsapp_evolution')
+      .eq('organization_id', organizationId)
       .eq('active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -112,7 +152,8 @@ serve(async (req) => {
       const { data: conversations, error: convListError } = await supabase
         .from('conversations')
         .select('phone, id, evolution_instance, organization_id')
-        .eq('evolution_instance', settings.evolution_instance);
+        .eq('evolution_instance', settings.evolution_instance)
+        .eq('organization_id', organizationId);
 
       if (convListError) throw convListError;
 
@@ -276,21 +317,12 @@ serve(async (req) => {
     const messages = extractMessages(responseData);
     console.log(`Found ${messages.length} messages for ${phone}`);
 
-    // Find organization for this instance
-    const { data: organization } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('evolution_instance', settings.evolution_instance)
-      .single();
-
-    const organizationId = organization?.id;
-
     // Buscar ou criar conversa
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .select('id, organization_id')
       .eq('phone', phone)
-      .eq('organization_id', organizationId || '')
+      .eq('organization_id', organizationId)
       .maybeSingle();
 
     let conversationId = conversation?.id;

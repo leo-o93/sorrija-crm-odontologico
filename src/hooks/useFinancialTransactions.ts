@@ -16,6 +16,8 @@ export interface FinancialTransaction {
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   quote_id: string | null;
   patient_id: string | null;
+  supplier_id?: string | null;
+  recurring_payment_id?: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -23,6 +25,7 @@ export interface FinancialTransaction {
   expense_categories?: { name: string; color: string; icon: string };
   payment_methods?: { name: string };
   patients?: { name: string };
+  suppliers?: { name: string };
 }
 
 export function useFinancialTransactions(filters?: {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { usePaginatedQuery, PaginationOptions } from '@/hooks/usePaginatedQuery';
 
 export interface Conversation {
   id: string;
@@ -196,5 +197,31 @@ export function useUpdateConversation() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation'] });
     },
+  });
+}
+
+export function useConversationsPaginated(options: PaginationOptions) {
+  const { currentOrganization } = useOrganization();
+
+  return usePaginatedQuery<Conversation>({
+    table: 'conversations',
+    select: `
+      *,
+      leads(
+        id, name, phone, interest_id, source_id, status, notes, 
+        budget_total, budget_paid, registration_date,
+        temperature, hot_substatus, last_interaction_at,
+        follow_up_count, no_show_count, lost_reason, next_follow_up_date, scheduled,
+        procedures:interest_id(id, name, category),
+        sources:source_id(id, name, channel)
+      ),
+      patients(
+        id, name, email, phone, birth_date, 
+        medical_history, allergies, medications, notes
+      )
+    `,
+    organizationId: currentOrganization?.id,
+    options,
+    queryKey: ['conversations-paginated', currentOrganization?.id, options],
   });
 }

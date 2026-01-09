@@ -2,11 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { usePaginatedQuery, PaginationOptions } from "@/hooks/usePaginatedQuery";
 
 export interface Lead {
   id: string;
   name: string;
   phone: string;
+  email?: string | null;
   registration_date: string;
   source_id: string | null;
   interest_id: string | null;
@@ -125,6 +127,7 @@ export function useUpdateLeadStatus() {
 export interface CreateLeadInput {
   name: string;
   phone: string;
+  email?: string;
   source_id?: string;
   interest_id?: string;
   notes?: string;
@@ -161,6 +164,7 @@ export interface UpdateLeadInput {
   id: string;
   name?: string;
   phone?: string;
+  email?: string;
   source_id?: string;
   interest_id?: string;
   notes?: string;
@@ -201,6 +205,22 @@ export function useUpdateLead() {
     onError: (error: any) => {
       toast.error(error.message || "Erro ao atualizar lead");
     },
+  });
+}
+
+export function useLeadsPaginated(options: PaginationOptions) {
+  const { currentOrganization } = useOrganization();
+
+  return usePaginatedQuery<Lead>({
+    table: "leads",
+    select: `
+      *,
+      sources (name),
+      procedures (name)
+    `,
+    organizationId: currentOrganization?.id,
+    options,
+    queryKey: ["leads-paginated", currentOrganization?.id, options],
   });
 }
 

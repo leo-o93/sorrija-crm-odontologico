@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         role,
         active,
         created_at,
-        profiles!inner(
+        profiles(
           id,
           full_name
         )

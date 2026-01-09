@@ -28,9 +28,15 @@ const transactionSchema = z.object({
   type: z.enum(["receita", "despesa"]),
   category_id: z.string().min(1, "Selecione uma categoria"),
   payment_method_id: z.string().optional(),
-  amount: z.string().min(1, "Valor é obrigatório"),
+  amount: z
+    .string()
+    .min(1, "Valor é obrigatório")
+    .refine((value) => Number(value) > 0, "O valor deve ser positivo"),
   description: z.string().optional(),
-  transaction_date: z.string().min(1, "Data é obrigatória"),
+  transaction_date: z
+    .string()
+    .min(1, "Data é obrigatória")
+    .refine((value) => !Number.isNaN(Date.parse(value)), "Data inválida"),
   status: z.enum(["pending", "paid", "overdue", "cancelled"]),
   notes: z.string().optional(),
 });

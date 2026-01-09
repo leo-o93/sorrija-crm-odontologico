@@ -1,11 +1,11 @@
-import { Bell, Search, Settings, MessageSquare } from "lucide-react";
+import { Search, Settings, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEvolutionAPI } from "@/hooks/useEvolutionAPI";
 import { Badge } from "@/components/ui/badge";
 import { UserMenu } from "./UserMenu";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
-import { NotificationCenter } from "./NotificationCenter";
+import { NotificationBell } from "./NotificationBell";
 
 export function Header() {
   const { connectionState } = useEvolutionAPI();
@@ -42,7 +42,7 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <NotificationCenter />
+          <NotificationBell />
 
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
