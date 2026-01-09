@@ -278,12 +278,19 @@ Deno.serve(async (req) => {
 
     if (req.method === 'GET' && pathParts.length === 2 && pathParts[1] === 'members') {
       const organizationId = pathParts[0];
+      console.log('Fetching members for organization:', organizationId);
+      
       const { data, error: membersError } = await supabase
         .from('organization_members')
-        .select('id, user_id, role, active, profiles(full_name)')
+        .select('id, user_id, role, active, profiles:user_id(full_name)')
         .eq('organization_id', organizationId);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+        throw membersError;
+      }
+      
+      console.log('Members found:', data?.length);
 
       return new Response(JSON.stringify({ members: data || [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
