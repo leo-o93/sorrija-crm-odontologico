@@ -50,19 +50,29 @@ serve(async (req) => {
       );
     }
 
-    const { data: membership } = await supabase
-      .from('organization_members')
-      .select('id, role')
+    // Verificar se é Super Admin
+    const { data: superAdmin } = await supabase
+      .from('super_admins')
+      .select('id')
       .eq('user_id', user.id)
-      .eq('organization_id', organizationId)
-      .eq('active', true)
       .maybeSingle();
 
-    if (!membership) {
-      return new Response(
-        JSON.stringify({ error: 'Access denied: not a member of this organization' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Se não for super admin, verificar membership
+    if (!superAdmin) {
+      const { data: membership } = await supabase
+        .from('organization_members')
+        .select('id, role')
+        .eq('user_id', user.id)
+        .eq('organization_id', organizationId)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (!membership) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied: not a member of this organization' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Buscar configuração da Evolution API para a organização
