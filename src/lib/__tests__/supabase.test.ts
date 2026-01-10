@@ -86,7 +86,8 @@ describe('parseDateTime', () => {
   it('should parse Excel serial date with time fraction', () => {
     // 45651.5 = 2024-12-25 12:00 (midday)
     const result = parseDateTime(45651.5);
-    expect(result).toContain('2024-12-25');
+    expect(result).not.toBeNull();
+    expect(result?.split('T')[0]).toBe('2024-12-25');
   });
 
   it('should return null for invalid input', () => {
