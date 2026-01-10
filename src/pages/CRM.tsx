@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, useDroppable, pointerWithin, rectIntersection } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -410,7 +410,7 @@ export default function CRM() {
       {columns.length > 0 ? (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
