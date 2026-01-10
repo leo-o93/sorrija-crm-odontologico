@@ -24,13 +24,9 @@ export function UserMenu() {
     const labels: Record<string, string> = {
       admin: 'Administrador',
       usuario: 'Usuário',
-      // Legacy roles (mantidos para compatibilidade)
-      gerente: 'Gerente',
-      comercial: 'Comercial',
-      recepcao: 'Recepção',
-      dentista: 'Dentista',
     };
-    return labels[role] || role;
+    // Qualquer role legado será exibido como 'Usuário'
+    return labels[role] || 'Usuário';
   };
 
   return (

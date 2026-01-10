@@ -60,13 +60,9 @@ export function GlobalUsersManager() {
     const roles: Record<string, string> = {
       admin: 'Administrador',
       usuario: 'Usuário',
-      // Legacy roles (mantidos para compatibilidade)
-      gerente: 'Gerente',
-      comercial: 'Comercial',
-      recepcao: 'Recepção',
-      dentista: 'Dentista',
     };
-    return roles[role] || role;
+    // Qualquer role legado será exibido como 'Usuário'
+    return roles[role] || 'Usuário';
   };
 
   if (isLoading) {
