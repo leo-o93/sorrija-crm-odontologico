@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { UserPlus, Edit, Loader2 } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 
 interface UserWithAuth {
   id: string;
@@ -24,6 +25,7 @@ interface UserWithAuth {
 
 export function UsersManager() {
   const { currentOrganization } = useOrganization();
+  const { isSuperAdmin } = useSuperAdmin();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -63,7 +65,8 @@ export function UsersManager() {
     enabled: !!currentOrganization?.id,
   });
 
-  const isAdmin = currentUserRole === 'admin';
+  // Super Admin também tem acesso de admin
+  const isAdmin = currentUserRole === 'admin' || isSuperAdmin;
 
   const { data: users, isLoading } = useQuery<UserWithAuth[]>({
     queryKey: ['organization-users', currentOrganization?.id],
