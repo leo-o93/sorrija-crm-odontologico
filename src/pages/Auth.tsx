@@ -7,11 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import logo from '@/assets/sorri-ja-logo.jpeg';
 
 const signUpSchema = z.object({
   fullName: z.string().trim().min(1, 'Nome completo é obrigatório'),
   email: z.string().trim().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string()
+    .min(8, 'Senha deve ter no mínimo 8 caracteres')
+    .regex(/[a-zA-Z]/, 'Senha deve conter ao menos uma letra')
+    .regex(/[0-9]/, 'Senha deve conter ao menos um número'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -169,7 +173,7 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <img
-            src="/src/assets/sorri-ja-logo.jpeg"
+            src={logo}
             alt="Sorri Já"
             className="h-16 mx-auto mb-4 rounded-lg"
           />

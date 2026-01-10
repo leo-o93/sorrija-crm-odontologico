@@ -19,6 +19,7 @@ import { LeadImport } from "@/components/crm/LeadImport";
 import { TemperatureBadge, getTemperatureColor } from "@/components/crm/TemperatureBadge";
 import { HotSubstatusBadge } from "@/components/crm/HotSubstatusBadge";
 import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
+import { LeadTimer } from "@/components/crm/LeadTimer";
 import { cn } from "@/lib/utils";
 
 interface SortableLeadCardProps {
@@ -86,7 +87,7 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
         </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-0 space-y-2">
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 items-center">
           {lead.procedures && (
             <Badge variant="secondary" className="text-xs py-0 px-2">
               {lead.procedures.name}
@@ -95,6 +96,11 @@ function SortableLeadCard({ lead, onViewDetails, onOpenConversation }: SortableL
           {(lead.scheduled || (lead.temperature === "quente" && lead.hot_substatus)) && (
             <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="sm" />
           )}
+          <LeadTimer 
+            lastInteractionAt={lead.last_interaction_at} 
+            createdAt={lead.created_at}
+            showIcon={true}
+          />
         </div>
         <div className="flex gap-1">
           <Button size="sm" variant="outline" className="h-7 px-2" onClick={makeCall} title="Ligar">

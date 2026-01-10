@@ -59,6 +59,8 @@ export function GlobalUsersManager() {
   const getRoleLabel = (role: string) => {
     const roles: Record<string, string> = {
       admin: 'Administrador',
+      usuario: 'Usuário',
+      // Legacy roles (mantidos para compatibilidade)
       gerente: 'Gerente',
       comercial: 'Comercial',
       recepcao: 'Recepção',

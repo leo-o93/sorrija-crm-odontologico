@@ -56,8 +56,9 @@ Deno.serve(async (req) => {
       throw new Error('User is not a member of this organization');
     }
 
-    if (memberCheck.role !== 'admin' && memberCheck.role !== 'gerente') {
-      throw new Error('Insufficient permissions - must be admin or gerente');
+    // Only admin can list users (gerente removed from system)
+    if (memberCheck.role !== 'admin') {
+      throw new Error('Insufficient permissions - must be admin');
     }
 
     // Get all members of this organization with their profiles
