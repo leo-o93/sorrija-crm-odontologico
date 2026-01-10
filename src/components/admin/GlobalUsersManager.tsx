@@ -5,6 +5,17 @@ import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 
 export function GlobalUsersManager() {
   const { users, resetUserPassword, setUserBlocked } = useSuperAdmin();
+  const getRoleLabel = (role?: string | null) => {
+    const labels: Record<string, string> = {
+      admin: 'Administrador',
+      gerente: 'Gerente',
+      comercial: 'Comercial',
+      recepcao: 'Recepção',
+      dentista: 'Dentista',
+      usuario: 'Usuário',
+    };
+    return role ? labels[role] || role : '-';
+  };
 
   return (
     <Card className="p-4">
@@ -32,10 +43,12 @@ export function GlobalUsersManager() {
               <TableRow key={user.id}>
                 <TableCell>{user.full_name || user.id}</TableCell>
                 <TableCell>{user.email || '-'}</TableCell>
-                <TableCell>{user.role || '-'}</TableCell>
+                <TableCell>{getRoleLabel(user.role)}</TableCell>
                 <TableCell>
                   {user.organizations.length > 0
-                    ? user.organizations.map((org) => `${org.organization_name || org.organization_id} (${org.role})`).join(', ')
+                    ? user.organizations
+                        .map((org) => `${org.organization_name || org.organization_id} (${getRoleLabel(org.role)})`)
+                        .join(', ')
                     : '-'}
                 </TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString('pt-BR')}</TableCell>

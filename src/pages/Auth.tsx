@@ -7,11 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import logo from '@/assets/sorri-ja-logo.jpeg';
 
 const signUpSchema = z.object({
   fullName: z.string().trim().min(1, 'Nome completo é obrigatório'),
   email: z.string().trim().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter no mínimo 8 caracteres')
+    .regex(/[A-Za-z]/, 'Senha deve conter ao menos uma letra')
+    .regex(/[0-9]/, 'Senha deve conter ao menos um número'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -79,7 +84,7 @@ export default function Auth() {
         if (error.message.includes('User already registered')) {
           toast.error('Este email já está cadastrado');
         } else if (error.message.includes('Password')) {
-          toast.error('Senha muito fraca. Use no mínimo 6 caracteres');
+          toast.error('Senha muito fraca. Use no mínimo 8 caracteres, letra e número');
         } else {
           toast.error('Erro ao criar conta: ' + error.message);
         }
@@ -168,11 +173,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img
-            src="/src/assets/sorri-ja-logo.jpeg"
-            alt="Sorri Já"
-            className="h-16 mx-auto mb-4 rounded-lg"
-          />
+          <img src={logo} alt="Sorri Já" className="h-16 mx-auto mb-4 rounded-lg" />
           <CardTitle>Bem-vindo ao Sorri Já</CardTitle>
           <CardDescription>Sistema de Gestão Odontológica</CardDescription>
         </CardHeader>
@@ -207,7 +208,7 @@ export default function Auth() {
                   id="password"
                   name="password"
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres, letra e número"
                   required
                 />
               </div>

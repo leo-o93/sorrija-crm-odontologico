@@ -27,6 +27,7 @@ export function UserMenu() {
       comercial: 'Comercial',
       recepcao: 'Recepção',
       dentista: 'Dentista',
+      usuario: 'Usuário',
     };
     return labels[role] || role;
   };
