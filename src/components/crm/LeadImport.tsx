@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Upload, Loader2, CheckCircle, AlertCircle, Download, Info } from "lucide-react";
 import * as XLSX from "xlsx";
-import { supabase, formatPhone, parseDate, parseCurrency } from "@/lib/supabase";
+import { supabase, formatPhone, parseDate, parseDateTime, parseCurrency } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useSources } from "@/hooks/useSources";
 import { useProcedures } from "@/hooks/useProcedures";
@@ -177,18 +177,18 @@ export function LeadImport() {
           const leadData = {
             name: row["NOME"]?.toString().trim(),
             phone: formatPhone(row["TELEFONE"]?.toString() || ""),
-            registration_date: parseDate(row["DATA"]?.toString()) || new Date().toISOString().split('T')[0],
+            registration_date: parseDate(row["DATA"]) || new Date().toISOString().split('T')[0],
             source_id: source?.id || null,
             interest_id: interest?.id || null,
             first_contact_channel: row["1º CONTATO"]?.toString() || null,
-            first_contact_date: parseDate(row["DATA 1º CONTATO"]?.toString()) || null,
+            first_contact_date: parseDateTime(row["DATA 1º CONTATO"]) || null,
             second_contact_channel: row["2º CONTATO"]?.toString() || null,
-            second_contact_date: parseDate(row["DATA 2º CONTATO"]?.toString()) || null,
+            second_contact_date: parseDateTime(row["DATA 2º CONTATO"]) || null,
             third_contact_channel: row["3º CONTATO"]?.toString() || null,
-            third_contact_date: parseDate(row["DATA 3º CONTATO"]?.toString()) || null,
+            third_contact_date: parseDateTime(row["DATA 3º CONTATO"]) || null,
             scheduled: row["AGENDOU?"]?.toString().toLowerCase() === "sim",
             scheduled_on_attempt: row["AGENDOU EM QUAL TENTATIVA?"]?.toString() || null,
-            appointment_date: parseDate(row["DATA CONSULTA"]?.toString()) || null,
+            appointment_date: parseDate(row["DATA CONSULTA"]) || null,
             evaluation_result: row["RESULTADO AVALIAÇÃO"]?.toString() || null,
             status: status,
             budget_total: parseCurrency(row["ORÇAMENTO"]?.toString() || ""),

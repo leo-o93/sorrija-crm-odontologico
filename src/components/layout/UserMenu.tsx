@@ -23,6 +23,8 @@ export function UserMenu() {
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       admin: 'Administrador',
+      usuario: 'Usuário',
+      // Legacy roles (mantidos para compatibilidade)
       gerente: 'Gerente',
       comercial: 'Comercial',
       recepcao: 'Recepção',

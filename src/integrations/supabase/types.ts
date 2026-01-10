@@ -1950,6 +1950,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_send_messages: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_old_webhooks: { Args: never; Returns: undefined }
       create_default_transition_rules: {
         Args: { org_id: string }
@@ -1973,6 +1977,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_active_member: {
+        Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       is_org_admin: {

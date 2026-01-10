@@ -163,7 +163,8 @@ Deno.serve(async (req) => {
     }
 
     // Verify user has appropriate role to send messages
-    const allowedRoles = ['admin', 'gerente', 'recepcao', 'comercial'];
+    // 'usuario' role can send messages (replaces old roles: gerente, recepcao, comercial)
+    const allowedRoles = ['admin', 'usuario'];
     if (!allowedRoles.includes(membership.role)) {
       return new Response(
         JSON.stringify({ error: 'Insufficient permissions to send messages' }),
