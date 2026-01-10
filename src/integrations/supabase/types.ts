@@ -1965,6 +1965,13 @@ export type Database = {
         Returns: string[]
       }
       has_operational_role: { Args: { _user_id: string }; Returns: boolean }
+      has_org_role: {
+        Args: {
+          org_id: string
+          required_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
