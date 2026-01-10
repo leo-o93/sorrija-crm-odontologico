@@ -109,13 +109,9 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
     const roles: Record<string, string> = {
       admin: 'Administrador',
       usuario: 'Usuário',
-      // Legacy roles mapping
-      gerente: 'Usuário',
-      comercial: 'Usuário',
-      recepcao: 'Usuário',
-      dentista: 'Usuário',
     };
-    return roles[role] || role;
+    // Qualquer role legado será exibido como 'Usuário'
+    return roles[role] || 'Usuário';
   };
 
   return (

@@ -122,22 +122,33 @@ Deno.serve(async (req) => {
     const rawData = await req.json();
     const { fullName, email, password, role, organizationId } = validateInput(rawData);
 
-    // Check if user is admin of the target organization
-    const { data: memberCheck, error: memberError } = await supabaseClient
-      .from('organization_members')
-      .select('role')
+    // Check if user is Super Admin
+    const { data: superAdmin } = await supabaseClient
+      .from('super_admins')
+      .select('id')
       .eq('user_id', user.id)
-      .eq('organization_id', organizationId)
-      .eq('active', true)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !memberCheck) {
-      throw new Error('You are not a member of this organization');
-    }
+    const isSuperAdmin = !!superAdmin;
 
-    // Only admin can create users
-    if (memberCheck.role !== 'admin') {
-      throw new Error('Insufficient permissions - must be admin of this organization');
+    // If not super admin, check organization membership
+    if (!isSuperAdmin) {
+      const { data: memberCheck, error: memberError } = await supabaseClient
+        .from('organization_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('organization_id', organizationId)
+        .eq('active', true)
+        .single();
+
+      if (memberError || !memberCheck) {
+        throw new Error('You are not a member of this organization');
+      }
+
+      // Only admin can create users
+      if (memberCheck.role !== 'admin') {
+        throw new Error('Insufficient permissions - must be admin of this organization');
+      }
     }
 
     console.log(`Creating user: ${email} with role: ${role}`);

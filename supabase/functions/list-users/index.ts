@@ -43,22 +43,33 @@ Deno.serve(async (req) => {
 
     console.log(`Listing users for organization: ${organizationId} by user: ${user.id}`);
 
-    // Check if the requesting user is admin/gerente of this organization
-    const { data: memberCheck, error: memberError } = await supabaseClient
-      .from('organization_members')
-      .select('role')
+    // Check if user is Super Admin
+    const { data: superAdmin } = await supabaseClient
+      .from('super_admins')
+      .select('id')
       .eq('user_id', user.id)
-      .eq('organization_id', organizationId)
-      .eq('active', true)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !memberCheck) {
-      throw new Error('User is not a member of this organization');
-    }
+    const isSuperAdmin = !!superAdmin;
 
-    // Only admin can list users (gerente removed from system)
-    if (memberCheck.role !== 'admin') {
-      throw new Error('Insufficient permissions - must be admin');
+    // If not super admin, check organization membership
+    if (!isSuperAdmin) {
+      const { data: memberCheck, error: memberError } = await supabaseClient
+        .from('organization_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('organization_id', organizationId)
+        .eq('active', true)
+        .single();
+
+      if (memberError || !memberCheck) {
+        throw new Error('User is not a member of this organization');
+      }
+
+      // Only admin can list users
+      if (memberCheck.role !== 'admin') {
+        throw new Error('Insufficient permissions - must be admin');
+      }
     }
 
     // Get all members of this organization with their profiles
