@@ -15,8 +15,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-const allowedAdminEmail = 'leodeoliveira93@gmail.com';
-
 const getUserFromRequest = async (req: Request) => {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
@@ -82,13 +80,6 @@ Deno.serve(async (req) => {
     if (error || !user) {
       return new Response(JSON.stringify({ error: error?.message || 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (user.email?.toLowerCase() !== allowedAdminEmail) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

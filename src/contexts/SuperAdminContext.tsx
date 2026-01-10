@@ -96,12 +96,6 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    if (user.email?.toLowerCase() !== 'leodeoliveira93@gmail.com') {
-      setIsSuperAdmin(false);
-      setIsLoading(false);
-      return;
-    }
-
     const { data } = await supabase.rpc('is_super_admin');
     setIsSuperAdmin(!!data);
     setIsLoading(false);
