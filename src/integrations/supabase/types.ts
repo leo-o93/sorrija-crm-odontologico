@@ -802,6 +802,7 @@ export type Database = {
           budget_paid: number | null
           budget_total: number | null
           created_at: string
+          email: string | null
           evaluation_result: string | null
           first_contact_channel: string | null
           first_contact_date: string | null
@@ -838,6 +839,7 @@ export type Database = {
           budget_paid?: number | null
           budget_total?: number | null
           created_at?: string
+          email?: string | null
           evaluation_result?: string | null
           first_contact_channel?: string | null
           first_contact_date?: string | null
@@ -874,6 +876,7 @@ export type Database = {
           budget_paid?: number | null
           budget_total?: number | null
           created_at?: string
+          email?: string | null
           evaluation_result?: string | null
           first_contact_channel?: string | null
           first_contact_date?: string | null
