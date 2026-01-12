@@ -659,7 +659,7 @@ Deno.serve(async (req) => {
         .from('messages')
         .select('id')
         .eq('provider_message_id', payload.data.key.id)
-        .single();
+        .maybeSingle();
       
       messageId = existingMessage?.id;
       console.log('Duplicate message ignored, existing ID:', messageId);
