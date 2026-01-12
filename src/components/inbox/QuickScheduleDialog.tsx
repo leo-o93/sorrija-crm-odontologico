@@ -78,7 +78,11 @@ export function QuickScheduleDialog({
               mode="single"
               selected={date}
               onSelect={setDate}
-              disabled={(date) => date < new Date()}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date < today;
+              }}
               className={cn("rounded-md border pointer-events-auto")}
               locale={ptBR}
             />
