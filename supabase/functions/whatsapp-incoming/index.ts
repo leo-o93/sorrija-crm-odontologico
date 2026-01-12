@@ -650,7 +650,7 @@ Deno.serve(async (req) => {
         ignoreDuplicates: true 
       })
       .select()
-      .single();
+      .maybeSingle();
 
     // If upsert returned no data (duplicate ignored), fetch the existing message
     let messageId = newMessage?.id;

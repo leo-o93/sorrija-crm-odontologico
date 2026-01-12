@@ -113,15 +113,13 @@ export function useUpdateTemperatureRule() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateRuleInput & { id: string }) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('temperature_transition_rules')
         .update(input)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
       
       if (error) throw error;
-      return data;
+      return { id, ...input };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['temperature-rules'] });
