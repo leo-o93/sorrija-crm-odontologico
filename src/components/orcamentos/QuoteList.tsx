@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileText, Search } from "lucide-react";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotes, useQuote } from "@/hooks/useQuotes";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { generateQuotePDF } from "./QuotePDFGenerator";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface QuoteListProps {
   onViewQuote?: (quoteId: string) => void;
@@ -36,11 +38,33 @@ const statusLabels: Record<string, string> = {
 export function QuoteList({ onViewQuote }: QuoteListProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [pdfQuoteId, setPdfQuoteId] = useState<string | null>(null);
+  const { currentOrganization } = useOrganization();
 
   const { data: quotes, isLoading } = useQuotes({
     status: statusFilter === "all" ? undefined : statusFilter,
     search: searchQuery,
   });
+
+  const { data: pdfQuote } = useQuote(pdfQuoteId || "");
+
+  const handleGeneratePDF = (quoteId: string) => {
+    const quote = quotes?.find(q => q.id === quoteId);
+    if (quote) {
+      // Fetch full quote data including items
+      setPdfQuoteId(quoteId);
+    }
+  };
+
+  // Effect to generate PDF when quote data is loaded
+  if (pdfQuote && pdfQuoteId === pdfQuote.id) {
+    generateQuotePDF(pdfQuote, {
+      name: currentOrganization?.name || "Clínica Odontológica",
+      phone: currentOrganization?.phone || undefined,
+      email: currentOrganization?.email || undefined,
+    });
+    setPdfQuoteId(null);
+  }
 
   if (isLoading) {
     return (
@@ -157,7 +181,11 @@ export function QuoteList({ onViewQuote }: QuoteListProps) {
                         <Eye className="h-4 w-4 mr-2" />
                         Ver Detalhes
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleGeneratePDF(quote.id)}
+                      >
                         <FileText className="h-4 w-4 mr-2" />
                         PDF
                       </Button>

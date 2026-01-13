@@ -4,9 +4,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus } from "lucide-react";
 import { QuoteForm } from "@/components/orcamentos/QuoteForm";
 import { QuoteList } from "@/components/orcamentos/QuoteList";
+import { QuoteDetailDialog } from "@/components/orcamentos/QuoteDetailDialog";
+import { generateQuotePDF } from "@/components/orcamentos/QuotePDFGenerator";
+import { useQuote } from "@/hooks/useQuotes";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export default function Orcamentos() {
   const [isNewQuoteDialogOpen, setIsNewQuoteDialogOpen] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { currentOrganization } = useOrganization();
+  
+  const { data: selectedQuote } = useQuote(selectedQuoteId || "");
+
+  const handleViewQuote = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    setIsDetailOpen(true);
+  };
+
+  const handleGeneratePDF = (quoteId: string) => {
+    if (selectedQuote && selectedQuote.id === quoteId) {
+      generateQuotePDF(selectedQuote, {
+        name: currentOrganization?.name || "Clínica Odontológica",
+        phone: currentOrganization?.phone || undefined,
+        email: currentOrganization?.email || undefined,
+      });
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -33,7 +57,14 @@ export default function Orcamentos() {
         </Dialog>
       </div>
 
-      <QuoteList />
+      <QuoteList onViewQuote={handleViewQuote} />
+      
+      <QuoteDetailDialog
+        quoteId={selectedQuoteId}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onGeneratePDF={handleGeneratePDF}
+      />
     </div>
   );
 }

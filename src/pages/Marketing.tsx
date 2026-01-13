@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { 
   MessageSquare, 
   Users, 
@@ -21,12 +22,13 @@ import {
   Target,
   Loader2,
   CheckCircle,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { useMessageTemplates } from "@/hooks/useMessageTemplates";
 import { useLeads } from "@/hooks/useLeads";
 import { useProcedures } from "@/hooks/useProcedures";
-import { toast } from "sonner";
+import { useCampaignSend } from "@/hooks/useCampaignSend";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -41,6 +43,7 @@ export default function Marketing() {
   const { data: templates, isLoading: loadingTemplates } = useMessageTemplates();
   const { data: leads, isLoading: loadingLeads } = useLeads();
   const { data: procedures } = useProcedures();
+  const { sendCampaign, isSending, progress } = useCampaignSend();
 
   // Filter leads based on criteria
   const filteredLeads = useMemo(() => {
@@ -88,23 +91,12 @@ export default function Marketing() {
     );
   };
 
-  const handleQueueCampaign = () => {
-    if (selectedLeads.length === 0) {
-      toast.error("Selecione ao menos um lead");
-      return;
+  const handleStartCampaign = async () => {
+    const result = await sendCampaign(selectedLeads, selectedTemplate);
+    if (result && result.success) {
+      setSelectedLeads([]);
+      setSelectedTemplate("");
     }
-    
-    if (!selectedTemplate) {
-      toast.error("Selecione um template de mensagem");
-      return;
-    }
-    
-    // For now, just show a success message - actual sending would require queue implementation
-    toast.success(`Campanha agendada para ${selectedLeads.length} leads`, {
-      description: "As mensagens serão enviadas em sequência."
-    });
-    
-    setSelectedLeads([]);
   };
 
   const getTemperatureLabel = (temp: string) => {
@@ -376,12 +368,42 @@ export default function Marketing() {
                   <Button 
                     className="w-full" 
                     size="lg"
-                    onClick={handleQueueCampaign}
-                    disabled={!selectedTemplate}
+                    onClick={handleStartCampaign}
+                    disabled={!selectedTemplate || isSending}
                   >
-                    <Send className="h-4 w-4 mr-2" />
-                    Agendar Envio para {selectedLeads.length} Leads
+                    {isSending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando... {progress ? `${progress.sent}/${progress.total}` : ''}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Iniciar Envio para {selectedLeads.length} Leads
+                      </>
+                    )}
                   </Button>
+
+                  {progress && (
+                    <div className="mt-4 space-y-2">
+                      <Progress value={(progress.sent / progress.total) * 100} />
+                      <p className="text-sm text-center text-muted-foreground">
+                        {progress.sent} de {progress.total} mensagens enviadas
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-2 p-4 bg-amber-50 border border-amber-200 rounded-lg mt-4">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium">Técnicas anti-bloqueio ativas:</p>
+                      <ul className="list-disc list-inside mt-1 text-xs">
+                        <li>Delay aleatório de 6-13 segundos entre mensagens</li>
+                        <li>Pausa extra a cada 10-15 mensagens</li>
+                        <li>Ordem de envio randomizada</li>
+                      </ul>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>
