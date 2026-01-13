@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.ai-reports]
 verify_jwt = true
+
+[functions.campaign-send]
+verify_jwt = true

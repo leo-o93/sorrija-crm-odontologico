@@ -55,7 +55,12 @@ export function useAccountsReceivable() {
       const grouped = items.reduce<ReceivableGroups>(
         (acc, item) => {
           const dueDate = toDate(item.due_date);
-          if (!dueDate) return acc;
+          
+          // Include items without due_date in "next30Days" as a fallback
+          if (!dueDate) {
+            acc.next30Days.push(item);
+            return acc;
+          }
 
           const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -66,6 +71,9 @@ export function useAccountsReceivable() {
           } else if (diffDays <= 7) {
             acc.next7Days.push(item);
           } else if (diffDays <= 30) {
+            acc.next30Days.push(item);
+          } else {
+            // Include items with due_date > 30 days in next30Days as well
             acc.next30Days.push(item);
           }
 
