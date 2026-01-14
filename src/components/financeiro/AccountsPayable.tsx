@@ -11,25 +11,28 @@ import { useAccountsPayable } from '@/hooks/useAccountsPayable';
 import { useUpdateTransaction } from '@/hooks/useFinancialTransactions';
 
 export function AccountsPayable() {
-  const { data } = useAccountsPayable();
+  const { data, isLoading } = useAccountsPayable();
   const updateTransaction = useUpdateTransaction();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
 
   const filtered = useMemo(() => {
-    if (!data) return [];
-    return data.filter((item) => {
+    if (!data?.items) return [];
+    return data.items.filter((item) => {
       const matchesSearch =
         item.suppliers?.name?.toLowerCase().includes(search.toLowerCase()) ||
         item.description?.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = status === 'all' ? true : item.status === status;
       return matchesSearch && matchesStatus;
     });
-  }, [data, search, status]);
+  }, [data?.items, search, status]);
 
   const totals = useMemo(() => {
-    return filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  }, [filtered]);
+    const total = filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const overdue = data?.grouped.overdue.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0;
+    const upcoming = total - overdue;
+    return { total, overdue, upcoming };
+  }, [filtered, data?.grouped.overdue]);
 
   const handlePay = (id: string) => {
     updateTransaction.mutate({
@@ -39,15 +42,25 @@ export function AccountsPayable() {
     });
   };
 
-  const getBadgeVariant = (dueDate?: string | null) => {
+  const getBadgeVariant = (dueDate?: string | null, itemStatus?: string) => {
     if (!dueDate) return 'secondary';
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const date = new Date(dueDate);
-    if (date < today) return 'destructive';
+    date.setHours(0, 0, 0, 0);
+    if (date < today || itemStatus === 'overdue') return 'destructive';
     const diffDays = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays <= 7) return 'default';
     return 'secondary';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -67,12 +80,24 @@ export function AccountsPayable() {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pending">Pendente</SelectItem>
               <SelectItem value="scheduled">Agendado</SelectItem>
-              <SelectItem value="paid">Pago</SelectItem>
+              <SelectItem value="overdue">Vencido</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <Card className="px-4 py-2 text-sm text-muted-foreground">
-          Total a pagar: <span className="font-semibold text-foreground">R$ {totals.toFixed(2)}</span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Total a pagar</p>
+          <p className="text-2xl font-semibold">R$ {totals.total.toFixed(2)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Vencido</p>
+          <p className="text-2xl font-semibold text-destructive">R$ {totals.overdue.toFixed(2)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">A vencer</p>
+          <p className="text-2xl font-semibold text-emerald-500">R$ {totals.upcoming.toFixed(2)}</p>
         </Card>
       </div>
 
@@ -98,11 +123,17 @@ export function AccountsPayable() {
               </TableRow>
             ) : (
               filtered.map((item) => {
-                const dueDate = item.due_date ? format(new Date(item.due_date), 'dd/MM/yyyy') : '-';
-                const isOverdue = item.due_date ? new Date(item.due_date) < new Date() : false;
-                const isDueSoon = item.due_date
-                  ? new Date(item.due_date).getTime() - new Date().getTime() <= 7 * 24 * 60 * 60 * 1000
-                  : false;
+                const dueDate = item.due_date ? format(new Date(item.due_date), 'dd/MM/yyyy') : 'Sem vencimento';
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const itemDueDate = item.due_date ? new Date(item.due_date) : null;
+                if (itemDueDate) itemDueDate.setHours(0, 0, 0, 0);
+                
+                const isOverdue = itemDueDate ? itemDueDate < today : false;
+                const diffDays = itemDueDate 
+                  ? Math.floor((itemDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                  : null;
+                const isDueSoon = diffDays !== null && diffDays >= 0 && diffDays <= 7;
 
                 return (
                   <TableRow key={item.id}>
@@ -111,8 +142,8 @@ export function AccountsPayable() {
                     <TableCell>{item.description || '-'}</TableCell>
                     <TableCell>{dueDate}</TableCell>
                     <TableCell>
-                      <Badge variant={getBadgeVariant(item.due_date)}>
-                        {isOverdue ? 'Vencido' : item.status}
+                      <Badge variant={getBadgeVariant(item.due_date, item.status)}>
+                        {isOverdue ? 'Vencido' : item.status === 'scheduled' ? 'Agendado' : 'Pendente'}
                       </Badge>
                       {isDueSoon && !isOverdue && (
                         <span className="ml-2 text-xs text-yellow-600 inline-flex items-center">
