@@ -19,6 +19,7 @@ export interface ReceivableGroups {
   today: AccountsReceivableItem[];
   next7Days: AccountsReceivableItem[];
   next30Days: AccountsReceivableItem[];
+  noDueDate: AccountsReceivableItem[];
 }
 
 export function useAccountsReceivable() {
@@ -30,7 +31,7 @@ export function useAccountsReceivable() {
       if (!currentOrganization?.id) {
         return {
           items: [],
-          grouped: { overdue: [], today: [], next7Days: [], next30Days: [] },
+          grouped: { overdue: [], today: [], next7Days: [], next30Days: [], noDueDate: [] },
         };
       }
 
@@ -43,25 +44,24 @@ export function useAccountsReceivable() {
         `)
         .eq('organization_id', currentOrganization.id)
         .eq('type', 'receita')
-        .in('status', ['pending', 'partial'])
-        .order('due_date', { ascending: true });
+        .in('status', ['pending', 'partial', 'overdue'])
+        .order('due_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 
       const items = (data || []) as AccountsReceivableItem[];
       const today = new Date();
-      const toDate = (value?: string | null) => (value ? new Date(value) : null);
+      today.setHours(0, 0, 0, 0);
 
       const grouped = items.reduce<ReceivableGroups>(
         (acc, item) => {
-          const dueDate = toDate(item.due_date);
-          
-          // Include items without due_date in "next30Days" as a fallback
-          if (!dueDate) {
-            acc.next30Days.push(item);
+          if (!item.due_date) {
+            acc.noDueDate.push(item);
             return acc;
           }
 
+          const dueDate = new Date(item.due_date);
+          dueDate.setHours(0, 0, 0, 0);
           const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
           if (diffDays < 0) {
@@ -73,13 +73,12 @@ export function useAccountsReceivable() {
           } else if (diffDays <= 30) {
             acc.next30Days.push(item);
           } else {
-            // Include items with due_date > 30 days in next30Days as well
             acc.next30Days.push(item);
           }
 
           return acc;
         },
-        { overdue: [], today: [], next7Days: [], next30Days: [] }
+        { overdue: [], today: [], next7Days: [], next30Days: [], noDueDate: [] }
       );
 
       return { items, grouped };
