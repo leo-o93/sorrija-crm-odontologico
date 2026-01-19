@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Phone, MessageCircle, Plus, Search, Eye, GripVertical } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -144,6 +144,7 @@ function DroppableColumn({
 }
 export default function CRM() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     data: leads,
     isLoading: isLoadingLeads
@@ -157,8 +158,15 @@ export default function CRM() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [temperatureFilter, setTemperatureFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+    }
+  }, [searchParams]);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
       distance: 8

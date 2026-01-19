@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +11,17 @@ import { PatientForm } from "@/components/pacientes/PatientForm";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Pacientes() {
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) {
+      setSearch(urlSearch);
+    }
+  }, [searchParams]);
   
   const { data: patients, isLoading } = usePatients({ search, active: true });
 
