@@ -1,0 +1,299 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface ImportRecord {
+  phone: string;
+  name: string | null;
+  email: string | null;
+  source_name: string | null;
+  registration_date: string | null;
+  cpf: string | null;
+  birth_date: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  notes: string | null;
+  budget_paid: number | null;
+  total_atendimentos: number;
+  total_agendamentos: number;
+  medical_history: string | null;
+}
+
+interface ImportRequest {
+  organization_id: string;
+  records: ImportRecord[];
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { organization_id, records }: ImportRequest = await req.json();
+
+    if (!organization_id || !records || !Array.isArray(records)) {
+      return new Response(
+        JSON.stringify({ error: "Missing organization_id or records" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has access to organization
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", organization_id)
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .single();
+
+    const { data: isSuperAdmin } = await supabase
+      .from("super_admins")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership && !isSuperAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Access denied to organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch existing sources for this organization
+    const { data: existingSources } = await supabase
+      .from("sources")
+      .select("id, name")
+      .eq("organization_id", organization_id);
+
+    const sourceMap = new Map<string, string>();
+    existingSources?.forEach(s => {
+      sourceMap.set(s.name.toUpperCase().trim(), s.id);
+    });
+
+    // Fetch default lead status
+    const { data: defaultStatus } = await supabase
+      .from("lead_statuses")
+      .select("name")
+      .eq("organization_id", organization_id)
+      .eq("is_default", true)
+      .single();
+
+    const defaultStatusName = defaultStatus?.name || "novo_lead";
+
+    // Process records
+    const results = {
+      leads_created: 0,
+      leads_updated: 0,
+      patients_created: 0,
+      sources_created: 0,
+      errors: [] as string[],
+    };
+
+    for (const record of records) {
+      try {
+        // Skip invalid records
+        if (!record.phone || record.phone.length < 10) {
+          results.errors.push(`Invalid phone: ${record.phone}`);
+          continue;
+        }
+
+        // Skip marketing/test records
+        if (record.name && /^\(\w+\)\s*MARKETING$/i.test(record.name)) {
+          continue;
+        }
+
+        // Get or create source
+        let sourceId: string | null = null;
+        if (record.source_name) {
+          const sourceKey = record.source_name.toUpperCase().trim();
+          if (sourceMap.has(sourceKey)) {
+            sourceId = sourceMap.get(sourceKey)!;
+          } else {
+            // Create new source
+            const { data: newSource, error: sourceError } = await supabase
+              .from("sources")
+              .insert({
+                name: record.source_name.trim(),
+                channel: "other",
+                organization_id,
+                active: true,
+              })
+              .select("id")
+              .single();
+
+            if (newSource && !sourceError) {
+              sourceMap.set(sourceKey, newSource.id);
+              sourceId = newSource.id;
+              results.sources_created++;
+            }
+          }
+        }
+
+        // Determine if this is a patient (has atendimentos or complete patient data)
+        const isPatient = record.total_atendimentos > 0 || 
+          (record.cpf && record.birth_date && record.address);
+
+        // Determine lead status and temperature
+        let status = defaultStatusName;
+        let temperature = "novo";
+
+        if (isPatient) {
+          status = "fechado";
+          temperature = "quente";
+        } else if (record.total_agendamentos > 0) {
+          status = "agendado";
+          temperature = "quente";
+        }
+
+        // Check if lead already exists
+        const { data: existingLead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("phone", record.phone)
+          .eq("organization_id", organization_id)
+          .single();
+
+        let leadId: string;
+
+        if (existingLead) {
+          // Update existing lead
+          const { error: updateError } = await supabase
+            .from("leads")
+            .update({
+              name: record.name || undefined,
+              email: record.email || undefined,
+              source_id: sourceId || undefined,
+              notes: record.notes || undefined,
+              budget_paid: record.budget_paid || undefined,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingLead.id);
+
+          if (updateError) {
+            results.errors.push(`Error updating lead ${record.phone}: ${updateError.message}`);
+            continue;
+          }
+
+          leadId = existingLead.id;
+          results.leads_updated++;
+        } else {
+          // Create new lead
+          const { data: newLead, error: insertError } = await supabase
+            .from("leads")
+            .insert({
+              phone: record.phone,
+              name: record.name || "Sem nome",
+              email: record.email,
+              source_id: sourceId,
+              organization_id,
+              status,
+              temperature,
+              registration_date: record.registration_date || new Date().toISOString().split("T")[0],
+              notes: record.notes,
+              budget_paid: record.budget_paid,
+            })
+            .select("id")
+            .single();
+
+          if (insertError || !newLead) {
+            results.errors.push(`Error creating lead ${record.phone}: ${insertError?.message}`);
+            continue;
+          }
+
+          leadId = newLead.id;
+          results.leads_created++;
+        }
+
+        // Create patient if applicable
+        if (isPatient) {
+          // Check if patient already exists
+          const { data: existingPatient } = await supabase
+            .from("patients")
+            .select("id")
+            .eq("phone", record.phone)
+            .eq("organization_id", organization_id)
+            .single();
+
+          if (!existingPatient) {
+            const { error: patientError } = await supabase
+              .from("patients")
+              .insert({
+                phone: record.phone,
+                name: record.name || "Sem nome",
+                email: record.email,
+                cpf: record.cpf,
+                birth_date: record.birth_date,
+                address: record.address,
+                city: record.city,
+                state: record.state,
+                zip_code: record.zip_code,
+                emergency_contact_name: record.emergency_contact_name,
+                emergency_contact_phone: record.emergency_contact_phone,
+                medical_history: record.medical_history,
+                notes: record.notes,
+                lead_id: leadId,
+                organization_id,
+                active: true,
+              });
+
+            if (patientError) {
+              results.errors.push(`Error creating patient ${record.phone}: ${patientError.message}`);
+            } else {
+              results.patients_created++;
+            }
+          }
+        }
+      } catch (recordError: unknown) {
+        const errMsg = recordError instanceof Error ? recordError.message : String(recordError);
+        results.errors.push(`Error processing ${record.phone}: ${errMsg}`);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        results,
+        processed: records.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: unknown) {
+    console.error("Import error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return new Response(
+      JSON.stringify({ error: errMsg }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
