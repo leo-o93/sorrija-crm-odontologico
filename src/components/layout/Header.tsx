@@ -126,10 +126,10 @@ export function Header() {
     
     switch (result.type) {
       case 'lead':
-        navigate(`/crm?search=${encodeURIComponent(result.phone)}`);
+        navigate(`/crm?search=${encodeURIComponent(result.name)}`);
         break;
       case 'patient':
-        navigate(`/pacientes?search=${encodeURIComponent(result.phone)}`);
+        navigate(`/pacientes?search=${encodeURIComponent(result.name)}`);
         break;
       case 'conversation':
         navigate(`/conversas?phone=${encodeURIComponent(result.phone)}`);
