@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { usePaginatedQuery, PaginationOptions, PaginatedResult } from "@/hooks/usePaginatedQuery";
 
 export interface Patient {
   id: string;
@@ -207,6 +208,96 @@ export function useDeletePatient() {
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao excluir paciente");
+    },
+  });
+}
+
+// Paginated patients hook
+export interface PatientPaginationOptions {
+  page: number;
+  pageSize: number;
+  search?: string;
+  active?: boolean;
+}
+
+export function usePatientsPaginated(options: PatientPaginationOptions) {
+  const { currentOrganization } = useOrganization();
+
+  return useQuery<PaginatedResult<Patient>>({
+    queryKey: ["patients-paginated", currentOrganization?.id, options],
+    queryFn: async () => {
+      if (!currentOrganization?.id) {
+        return {
+          data: [],
+          totalCount: 0,
+          totalPages: 0,
+          currentPage: options.page,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        };
+      }
+
+      let query = supabase
+        .from("patients")
+        .select("*", { count: "exact" })
+        .eq("organization_id", currentOrganization.id);
+
+      if (options.active !== undefined) {
+        query = query.eq("active", options.active);
+      }
+
+      if (options.search && options.search.trim()) {
+        query = query.or(
+          `name.ilike.%${options.search}%,phone.ilike.%${options.search}%,email.ilike.%${options.search}%`
+        );
+      }
+
+      query = query.order("created_at", { ascending: false });
+
+      const start = (options.page - 1) * options.pageSize;
+      const end = start + options.pageSize - 1;
+
+      const { data, count, error } = await query.range(start, end);
+
+      if (error) throw error;
+
+      const totalCount = count ?? 0;
+      const totalPages = Math.ceil(totalCount / options.pageSize) || 1;
+
+      return {
+        data: (data || []) as Patient[],
+        totalCount,
+        totalPages,
+        currentPage: options.page,
+        hasNextPage: options.page < totalPages,
+        hasPreviousPage: options.page > 1,
+      };
+    },
+  });
+}
+
+// Toggle patient active status
+export function useTogglePatientActive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { data, error } = await supabase
+        .from("patients")
+        .update({ active })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { active }) => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      toast.success(active ? "Paciente ativado!" : "Paciente inativado!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao alterar status do paciente");
     },
   });
 }

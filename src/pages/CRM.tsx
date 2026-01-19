@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Phone, MessageCircle, Plus, Search, Eye, GripVertical } from "lucide-react";
+import { Phone, MessageCircle, Plus, Search, Eye, GripVertical, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, useDroppable, pointerWithin, rectIntersection } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
-import { TemperatureBadge, getTemperatureColor } from "@/components/crm/TemperatureBadge";
+import { TemperatureBadge } from "@/components/crm/TemperatureBadge";
 import { HotSubstatusBadge } from "@/components/crm/HotSubstatusBadge";
 import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
 import { LeadTimer } from "@/components/crm/LeadTimer";
@@ -24,6 +24,16 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+
+const LEADS_PER_PAGE = 100;
+
 interface SortableLeadCardProps {
   lead: Lead;
   onViewDetails: () => void;
@@ -149,14 +159,58 @@ export default function CRM() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentOrganization } = useOrganization();
-  const {
-    data: leads,
-    isLoading: isLoadingLeads
-  } = useLeads();
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
   const {
     data: statuses,
     isLoading: isLoadingStatuses
   } = useLeadStatuses();
+
+  // Paginated leads query
+  const { data: paginatedLeads, isLoading: isLoadingLeads } = useQuery({
+    queryKey: ["leads-paginated", currentOrganization?.id, page, debouncedSearch],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return { data: [], totalCount: 0 };
+      
+      let query = supabase
+        .from("leads")
+        .select(`
+          *,
+          sources:source_id(id, name, channel),
+          procedures:interest_id(id, name, category)
+        `, { count: "exact" })
+        .eq("organization_id", currentOrganization.id)
+        .order("created_at", { ascending: false });
+      
+      if (debouncedSearch.trim()) {
+        const phoneQuery = debouncedSearch.replace(/\D/g, '');
+        const searchFilter = phoneQuery.length > 0 
+          ? `name.ilike.%${debouncedSearch}%,phone.ilike.%${phoneQuery}%`
+          : `name.ilike.%${debouncedSearch}%`;
+        query = query.or(searchFilter);
+      }
+      
+      const start = (page - 1) * LEADS_PER_PAGE;
+      const end = start + LEADS_PER_PAGE - 1;
+      
+      const { data, count, error } = await query.range(start, end);
+      
+      if (error) throw error;
+      
+      return {
+        data: data as Lead[],
+        totalCount: count || 0,
+        totalPages: Math.ceil((count || 0) / LEADS_PER_PAGE),
+        currentPage: page,
+        hasNextPage: page < Math.ceil((count || 0) / LEADS_PER_PAGE),
+        hasPreviousPage: page > 1
+      };
+    },
+    enabled: !!currentOrganization?.id,
+  });
+  
+  const leads = paginatedLeads?.data;
   
   // Get accurate total count from database
   const { data: leadsCount } = useQuery({
@@ -217,6 +271,15 @@ export default function CRM() {
       setSearchQuery(urlSearch);
     }
   }, [searchParams]);
+
+  // Debounce search and reset page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
       distance: 8
@@ -419,6 +482,48 @@ export default function CRM() {
             </p>
           </div>
         </Card>}
+
+      {/* Pagination */}
+      {paginatedLeads && paginatedLeads.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {((page - 1) * LEADS_PER_PAGE) + 1} a {Math.min(page * LEADS_PER_PAGE, paginatedLeads.totalCount)} de {paginatedLeads.totalCount} leads
+          </p>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={!paginatedLeads.hasPreviousPage}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+              </PaginationItem>
+              
+              <PaginationItem>
+                <span className="px-4 text-sm">
+                  Página {page} de {paginatedLeads.totalPages}
+                </span>
+              </PaginationItem>
+              
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={!paginatedLeads.hasNextPage}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
 
       <LeadDetailPanel lead={selectedLead} open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen} />
     </div>;
