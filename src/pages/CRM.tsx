@@ -21,6 +21,9 @@ import { HotSubstatusBadge } from "@/components/crm/HotSubstatusBadge";
 import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
 import { LeadTimer } from "@/components/crm/LeadTimer";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
 interface SortableLeadCardProps {
   lead: Lead;
   onViewDetails: () => void;
@@ -145,6 +148,7 @@ function DroppableColumn({
 export default function CRM() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { currentOrganization } = useOrganization();
   const {
     data: leads,
     isLoading: isLoadingLeads
@@ -153,6 +157,52 @@ export default function CRM() {
     data: statuses,
     isLoading: isLoadingStatuses
   } = useLeadStatuses();
+  
+  // Get accurate total count from database
+  const { data: leadsCount } = useQuery({
+    queryKey: ["leads-count", currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return 0;
+      const { count, error } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!currentOrganization?.id,
+  });
+
+  const { data: scheduledCount } = useQuery({
+    queryKey: ["leads-scheduled-count", currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return 0;
+      const { count, error } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
+        .eq("scheduled", true);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!currentOrganization?.id,
+  });
+
+  const { data: closedCount } = useQuery({
+    queryKey: ["leads-closed-count", currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return 0;
+      const { count, error } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
+        .eq("status", "fechado");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!currentOrganization?.id,
+  });
+  
   const updateLeadStatus = useUpdateLeadStatus();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -270,9 +320,11 @@ export default function CRM() {
         </div>
       </div>;
   }
-  const totalLeads = filteredLeads?.length || 0;
-  const scheduledLeads = filteredLeads?.filter(l => l.scheduled).length || 0;
-  const closedLeads = filteredLeads?.filter(l => l.status === "fechado").length || 0;
+  // Use accurate database counts for stats, fallback to filtered if filters are active
+  const hasFilters = temperatureFilter || searchQuery.trim();
+  const totalLeads = hasFilters ? (filteredLeads?.length || 0) : (leadsCount || 0);
+  const scheduledLeads = hasFilters ? (filteredLeads?.filter(l => l.scheduled).length || 0) : (scheduledCount || 0);
+  const closedLeads = hasFilters ? (filteredLeads?.filter(l => l.status === "fechado").length || 0) : (closedCount || 0);
   const conversionRate = totalLeads > 0 ? (closedLeads / totalLeads * 100).toFixed(1) : "0";
   return <div className="p-6 space-y-6">
       <div className="space-y-4">

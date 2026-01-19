@@ -118,18 +118,27 @@ Deno.serve(async (req) => {
       patients_created: 0,
       sources_created: 0,
       errors: [] as string[],
+      skipped: 0,
     };
 
+    console.log(`Starting import of ${records.length} records for org ${organization_id}`);
+    let processedCount = 0;
+
     for (const record of records) {
+      processedCount++;
+      
       try {
         // Skip invalid records
         if (!record.phone || record.phone.length < 10) {
-          results.errors.push(`Invalid phone: ${record.phone}`);
+          results.errors.push(`[${processedCount}] Invalid phone: ${record.phone}`);
+          results.skipped++;
           continue;
         }
 
         // Skip marketing/test records
         if (record.name && /^\(\w+\)\s*MARKETING$/i.test(record.name)) {
+          results.skipped++;
+          console.log(`[${processedCount}] Skipping marketing record: ${record.name}`);
           continue;
         }
 
@@ -276,15 +285,32 @@ Deno.serve(async (req) => {
         }
       } catch (recordError: unknown) {
         const errMsg = recordError instanceof Error ? recordError.message : String(recordError);
-        results.errors.push(`Error processing ${record.phone}: ${errMsg}`);
+        console.error(`[${processedCount}] Error processing ${record.phone}:`, errMsg);
+        results.errors.push(`[${processedCount}] Error processing ${record.phone}: ${errMsg}`);
+      }
+      
+      // Log progress every 100 records
+      if (processedCount % 100 === 0) {
+        console.log(`Progress: ${processedCount}/${records.length} records processed`);
       }
     }
+
+    console.log(`Import complete. Created: ${results.leads_created}, Updated: ${results.leads_updated}, Patients: ${results.patients_created}, Skipped: ${results.skipped}, Errors: ${results.errors.length}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         results,
         processed: records.length,
+        summary: {
+          total_processed: processedCount,
+          leads_created: results.leads_created,
+          leads_updated: results.leads_updated,
+          patients_created: results.patients_created,
+          sources_created: results.sources_created,
+          skipped: results.skipped,
+          errors_count: results.errors.length,
+        }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

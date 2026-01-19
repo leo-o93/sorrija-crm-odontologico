@@ -60,12 +60,21 @@ export function Header() {
       const query = debouncedQuery.toLowerCase();
       const phoneQuery = debouncedQuery.replace(/\D/g, '');
 
+      // Build search filter dynamically - only include phone if it has digits
+      const buildSearchFilter = () => {
+        if (phoneQuery.length > 0) {
+          return `name.ilike.%${query}%,phone.ilike.%${phoneQuery}%`;
+        }
+        return `name.ilike.%${query}%`;
+      };
+      const searchFilter = buildSearchFilter();
+
       // Search leads
       const { data: leads } = await supabase
         .from("leads")
         .select("id, name, phone, procedures(name)")
         .eq("organization_id", currentOrganization.id)
-        .or(`name.ilike.%${query}%,phone.ilike.%${phoneQuery}%`)
+        .or(searchFilter)
         .limit(5);
 
       leads?.forEach((lead) => {
@@ -83,7 +92,7 @@ export function Header() {
         .from("patients")
         .select("id, name, phone, email")
         .eq("organization_id", currentOrganization.id)
-        .or(`name.ilike.%${query}%,phone.ilike.%${phoneQuery}%`)
+        .or(searchFilter)
         .limit(5);
 
       patients?.forEach((patient) => {
@@ -96,15 +105,31 @@ export function Header() {
         });
       });
 
-      // Search conversations
-      const { data: conversations } = await supabase
+      // Search conversations - also search by linked lead/patient name
+      let conversationsQuery = supabase
         .from("conversations")
         .select("id, phone, leads(name), patients(name)")
-        .eq("organization_id", currentOrganization.id)
-        .ilike("phone", `%${phoneQuery}%`)
-        .limit(5);
+        .eq("organization_id", currentOrganization.id);
+      
+      if (phoneQuery.length > 0) {
+        conversationsQuery = conversationsQuery.ilike("phone", `%${phoneQuery}%`);
+      } else {
+        // When searching by name, we need to filter in JS as Supabase doesn't support filtering on joined table fields
+        conversationsQuery = conversationsQuery.limit(50);
+      }
+      
+      const { data: conversations } = await conversationsQuery.limit(phoneQuery.length > 0 ? 5 : 50);
 
-      conversations?.forEach((conv) => {
+      // Filter conversations by name if searching by name (not phone)
+      const filteredConversations = phoneQuery.length > 0 
+        ? conversations 
+        : conversations?.filter(conv => {
+            const leadName = (conv.leads as any)?.name?.toLowerCase() || '';
+            const patientName = (conv.patients as any)?.name?.toLowerCase() || '';
+            return leadName.includes(query) || patientName.includes(query);
+          }).slice(0, 5);
+
+      filteredConversations?.forEach((conv) => {
         const leadName = (conv.leads as any)?.name;
         const patientName = (conv.patients as any)?.name;
         results.push({
