@@ -69,7 +69,8 @@ export function useSalesDashboard(startDate?: Date, endDate?: Date) {
         .select('*, procedures(name), sources(name)')
         .eq('organization_id', currentOrganization.id)
         .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
+        .lte('created_at', endStr + 'T23:59:59')
+        .limit(10000);
 
       if (leadsError) throw leadsError;
 
@@ -80,7 +81,8 @@ export function useSalesDashboard(startDate?: Date, endDate?: Date) {
         .eq('organization_id', currentOrganization.id)
         .eq('type', 'income')
         .gte('transaction_date', startStr)
-        .lte('transaction_date', endStr);
+        .lte('transaction_date', endStr)
+        .limit(10000);
 
       if (txError) throw txError;
 
