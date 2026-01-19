@@ -63,7 +63,8 @@ export function useLeads(filters?: {
           procedures (name)
         `)
         .eq("organization_id", currentOrganization.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       if (filters?.status) {
         query = query.eq("status", filters.status);

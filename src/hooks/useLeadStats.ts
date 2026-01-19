@@ -46,7 +46,8 @@ export function useLeadStats() {
         .select("budget_total")
         .eq("organization_id", currentOrganization.id)
         .gte("registration_date", firstDayOfMonth)
-        .eq("status", "fechado");
+        .eq("status", "fechado")
+        .limit(5000);
 
       const monthlyRevenue = revenueData?.reduce(
         (sum, lead) => sum + (lead.budget_total || 0),
