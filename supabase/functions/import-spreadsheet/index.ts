@@ -35,6 +35,11 @@ interface ImportRecord {
   valor_contratado: number | null;
   valor_nao_contratado: number | null;
   data_contratacao: string | null;
+  // Detailed history JSON
+  agendamentos_json: unknown[] | null;
+  atendimentos_json: unknown[] | null;
+  orcamentos_json: unknown[] | null;
+  vendas_json: unknown[] | null;
 }
 
 interface ImportRequest {
@@ -227,6 +232,11 @@ Deno.serve(async (req) => {
               last_sale_payment_method: record.ultima_venda_forma_pagamento,
               contracted_value: record.valor_contratado || 0,
               non_contracted_value: record.valor_nao_contratado || 0,
+              // Detailed history JSON
+              appointments_history: record.agendamentos_json || [],
+              attendances_history: record.atendimentos_json || [],
+              quotes_history: record.orcamentos_json || [],
+              sales_history: record.vendas_json || [],
               updated_at: new Date().toISOString(),
             })
             .eq("id", existingLead.id);
@@ -262,6 +272,11 @@ Deno.serve(async (req) => {
               last_sale_payment_method: record.ultima_venda_forma_pagamento,
               contracted_value: record.valor_contratado || 0,
               non_contracted_value: record.valor_nao_contratado || 0,
+              // Detailed history JSON
+              appointments_history: record.agendamentos_json || [],
+              attendances_history: record.atendimentos_json || [],
+              quotes_history: record.orcamentos_json || [],
+              sales_history: record.vendas_json || [],
             })
             .select("id")
             .single();
@@ -315,6 +330,11 @@ Deno.serve(async (req) => {
                 contracted_value: record.valor_contratado || 0,
                 non_contracted_value: record.valor_nao_contratado || 0,
                 contract_date: record.data_contratacao,
+                // Detailed history JSON
+                appointments_history: record.agendamentos_json || [],
+                attendances_history: record.atendimentos_json || [],
+                quotes_history: record.orcamentos_json || [],
+                sales_history: record.vendas_json || [],
                 updated_at: new Date().toISOString(),
               })
               .eq("id", existingPatient.id);
@@ -356,6 +376,11 @@ Deno.serve(async (req) => {
                 contracted_value: record.valor_contratado || 0,
                 non_contracted_value: record.valor_nao_contratado || 0,
                 contract_date: record.data_contratacao,
+                // Detailed history JSON
+                appointments_history: record.agendamentos_json || [],
+                attendances_history: record.atendimentos_json || [],
+                quotes_history: record.orcamentos_json || [],
+                sales_history: record.vendas_json || [],
               });
 
             if (patientError) {

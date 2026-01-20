@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { usePaginatedQuery, PaginationOptions, PaginatedResult } from "@/hooks/usePaginatedQuery";
+import type { Json } from "@/integrations/supabase/types";
+import type {
+  AppointmentHistoryItem,
+  AttendanceHistoryItem,
+  QuoteHistoryItem,
+  SaleHistoryItem,
+} from "@/types/history";
 
 export interface Patient {
   id: string;
@@ -37,6 +44,11 @@ export interface Patient {
   contracted_value?: number | null;
   non_contracted_value?: number | null;
   contract_date?: string | null;
+  // Detailed history
+  appointments_history?: AppointmentHistoryItem[] | Json | null;
+  attendances_history?: AttendanceHistoryItem[] | Json | null;
+  quotes_history?: QuoteHistoryItem[] | Json | null;
+  sales_history?: SaleHistoryItem[] | Json | null;
 }
 
 export interface CreatePatientInput {

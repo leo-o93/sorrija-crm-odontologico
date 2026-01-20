@@ -34,6 +34,11 @@ interface ImportRecord {
   valor_contratado: number | null;
   valor_nao_contratado: number | null;
   data_contratacao: string | null;
+  // Detailed history JSON
+  agendamentos_json: unknown[] | null;
+  atendimentos_json: unknown[] | null;
+  orcamentos_json: unknown[] | null;
+  vendas_json: unknown[] | null;
 }
 
 interface ImportResults {
@@ -172,6 +177,26 @@ export function useSpreadsheetImport() {
 
         const dataContratacao = parseDate(row["ultimo_orcamento__data contração"] as string | number);
 
+        // Parse detailed history JSON columns
+        const parseJsonColumn = (value: unknown): unknown[] | null => {
+          if (!value) return null;
+          if (Array.isArray(value)) return value;
+          if (typeof value === "string") {
+            try {
+              const parsed = JSON.parse(value);
+              return Array.isArray(parsed) ? parsed : null;
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        };
+
+        const agendamentosJson = parseJsonColumn(row["agendamentos_json"]);
+        const atendimentosJson = parseJsonColumn(row["atendimentos_json"]);
+        const orcamentosJson = parseJsonColumn(row["orcamentos_json"]);
+        const vendasJson = parseJsonColumn(row["vendas_json"]);
+
         records.push({
           phone,
           name: name || null,
@@ -204,6 +229,11 @@ export function useSpreadsheetImport() {
           valor_contratado: valorContratado,
           valor_nao_contratado: valorNaoContratado,
           data_contratacao: dataContratacao,
+          // Detailed history JSON
+          agendamentos_json: agendamentosJson,
+          atendimentos_json: atendimentosJson,
+          orcamentos_json: orcamentosJson,
+          vendas_json: vendasJson,
         });
       }
 

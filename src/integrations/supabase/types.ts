@@ -798,6 +798,8 @@ export type Database = {
       leads: {
         Row: {
           appointment_date: string | null
+          appointments_history: Json | null
+          attendances_history: Json | null
           automation_enabled: boolean | null
           budget_paid: number | null
           budget_total: number | null
@@ -824,8 +826,10 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           phone: string
+          quotes_history: Json | null
           registration_date: string
           responsible_user_id: string | null
+          sales_history: Json | null
           scheduled: boolean
           scheduled_on_attempt: string | null
           second_contact_channel: string | null
@@ -844,6 +848,8 @@ export type Database = {
         }
         Insert: {
           appointment_date?: string | null
+          appointments_history?: Json | null
+          attendances_history?: Json | null
           automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
@@ -870,8 +876,10 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           phone: string
+          quotes_history?: Json | null
           registration_date?: string
           responsible_user_id?: string | null
+          sales_history?: Json | null
           scheduled?: boolean
           scheduled_on_attempt?: string | null
           second_contact_channel?: string | null
@@ -890,6 +898,8 @@ export type Database = {
         }
         Update: {
           appointment_date?: string | null
+          appointments_history?: Json | null
+          attendances_history?: Json | null
           automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
@@ -916,8 +926,10 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           phone?: string
+          quotes_history?: Json | null
           registration_date?: string
           responsible_user_id?: string | null
+          sales_history?: Json | null
           scheduled?: boolean
           scheduled_on_attempt?: string | null
           second_contact_channel?: string | null
@@ -1264,6 +1276,8 @@ export type Database = {
           active: boolean
           address: string | null
           allergies: string | null
+          appointments_history: Json | null
+          attendances_history: Json | null
           birth_date: string | null
           city: string | null
           contract_date: string | null
@@ -1285,6 +1299,8 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           phone: string
+          quotes_history: Json | null
+          sales_history: Json | null
           state: string | null
           total_appointments: number | null
           total_attendances: number | null
@@ -1298,6 +1314,8 @@ export type Database = {
           active?: boolean
           address?: string | null
           allergies?: string | null
+          appointments_history?: Json | null
+          attendances_history?: Json | null
           birth_date?: string | null
           city?: string | null
           contract_date?: string | null
@@ -1319,6 +1337,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           phone: string
+          quotes_history?: Json | null
+          sales_history?: Json | null
           state?: string | null
           total_appointments?: number | null
           total_attendances?: number | null
@@ -1332,6 +1352,8 @@ export type Database = {
           active?: boolean
           address?: string | null
           allergies?: string | null
+          appointments_history?: Json | null
+          attendances_history?: Json | null
           birth_date?: string | null
           city?: string | null
           contract_date?: string | null
@@ -1353,6 +1375,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           phone?: string
+          quotes_history?: Json | null
+          sales_history?: Json | null
           state?: string | null
           total_appointments?: number | null
           total_attendances?: number | null
