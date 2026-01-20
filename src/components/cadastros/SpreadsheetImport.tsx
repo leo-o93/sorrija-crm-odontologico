@@ -21,21 +21,24 @@ import {
   XCircle,
   AlertTriangle,
   Loader2,
+  Bell,
 } from "lucide-react";
 import { useSpreadsheetImport } from "@/hooks/useSpreadsheetImport";
+import { useImportContext } from "@/contexts/ImportContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 
 export function SpreadsheetImport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { currentOrganization } = useOrganization();
+  const { state: importState, startImport: globalStartImport, reset: globalReset } = useImportContext();
   const {
-    isProcessing,
-    progress,
+    isProcessing: isParsing,
+    progress: parseProgress,
     previewData,
-    results,
+    results: localResults,
     parseExcelFile,
-    importRecords,
-    reset,
+    parsedRecords,
+    reset: localReset,
   } = useSpreadsheetImport();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,15 +63,25 @@ export function SpreadsheetImport() {
       alert("Selecione uma organização");
       return;
     }
-    await importRecords(currentOrganization.id);
+    if (!parsedRecords || parsedRecords.length === 0) {
+      alert("Nenhum registro para importar");
+      return;
+    }
+    await globalStartImport(parsedRecords, currentOrganization.id);
   };
 
   const handleReset = () => {
-    reset();
+    localReset();
+    globalReset();
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
+
+  // Use global state if importing, local state otherwise
+  const isProcessing = isParsing || importState.isImporting;
+  const progress = importState.isImporting ? importState.progress : parseProgress;
+  const results = importState.results || localResults;
 
   return (
     <div className="space-y-6">
@@ -129,9 +142,25 @@ export function SpreadsheetImport() {
           {isProcessing && (
             <div className="space-y-2">
               <Progress value={progress} />
-              <p className="text-sm text-muted-foreground text-center">
-                Processando... {progress}%
-              </p>
+              <div className="text-sm text-muted-foreground text-center space-y-1">
+                <p>
+                  {importState.isImporting 
+                    ? `Importando... ${progress}%` 
+                    : `Processando... ${progress}%`
+                  }
+                </p>
+                {importState.isImporting && (
+                  <>
+                    <p className="text-xs">
+                      Batch {importState.currentBatch}/{importState.totalBatches}
+                    </p>
+                    <p className="text-xs text-blue-600 flex items-center justify-center gap-1">
+                      <Bell className="h-3 w-3" />
+                      Você pode sair desta página. A importação continuará em background.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
