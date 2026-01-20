@@ -147,13 +147,18 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
     });
   };
 
-  // Use calculated metrics or fallback to stored values
+  // PRIORITIZE stored values (from import) over calculated
+  // Use whichever is higher to ensure we show the best data available
   const displayMetrics = {
-    totalAppointments: calculatedMetrics?.totalAppointments ?? lead.total_appointments ?? 0,
-    totalQuotes: calculatedMetrics?.totalQuotes ?? lead.total_quotes ?? 0,
-    totalSales: calculatedMetrics?.totalSales ?? lead.total_sales ?? 0,
-    totalRevenue: calculatedMetrics?.totalRevenue ?? lead.total_revenue ?? 0,
+    totalAppointments: Math.max(lead.total_appointments ?? 0, calculatedMetrics?.totalAppointments ?? 0),
+    totalQuotes: Math.max(lead.total_quotes ?? 0, calculatedMetrics?.totalQuotes ?? 0),
+    totalSales: Math.max(lead.total_sales ?? 0, calculatedMetrics?.totalSales ?? 0),
+    totalRevenue: Math.max(lead.total_revenue ?? 0, calculatedMetrics?.totalRevenue ?? 0),
   };
+
+  // Check if we have stored historical data (from import) but no linked records
+  const hasStoredHistoryOnly = (lead.total_appointments ?? 0) > 0 && 
+    (!recentAppointments || recentAppointments.length === 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -303,6 +308,15 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                         </div>
                       );
                     })}
+                  </div>
+                ) : hasStoredHistoryOnly ? (
+                  <div className="text-center py-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm font-medium text-foreground">
+                      Dados históricos importados
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {lead.total_appointments} agendamentos
+                    </p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
