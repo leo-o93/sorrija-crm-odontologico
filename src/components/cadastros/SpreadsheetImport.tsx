@@ -268,7 +268,7 @@ export function SpreadsheetImport() {
                 </AlertDescription>
               </Alert>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <Card>
                   <CardContent className="pt-4">
                     <div className="text-center">
@@ -303,6 +303,19 @@ export function SpreadsheetImport() {
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Pacientes criados
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-cyan-600">
+                        {results.patients_updated}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Pacientes atualizados
                       </p>
                     </div>
                   </CardContent>

@@ -40,6 +40,7 @@ interface ImportResults {
   leads_created: number;
   leads_updated: number;
   patients_created: number;
+  patients_updated: number;
   sources_created: number;
   errors: string[];
 }
@@ -237,6 +238,7 @@ export function useSpreadsheetImport() {
       leads_created: 0,
       leads_updated: 0,
       patients_created: 0,
+      patients_updated: 0,
       sources_created: 0,
       errors: [],
     };
@@ -263,6 +265,8 @@ export function useSpreadsheetImport() {
           aggregatedResults.leads_updated += data.results.leads_updated || 0;
           aggregatedResults.patients_created +=
             data.results.patients_created || 0;
+          aggregatedResults.patients_updated +=
+            data.results.patients_updated || 0;
           aggregatedResults.sources_created +=
             data.results.sources_created || 0;
           aggregatedResults.errors.push(...(data.results.errors || []));
@@ -275,7 +279,7 @@ export function useSpreadsheetImport() {
 
       if (aggregatedResults.errors.length === 0) {
         toast.success(
-          `Importação concluída! ${aggregatedResults.leads_created} leads criados, ${aggregatedResults.patients_created} pacientes criados.`
+          `Importação concluída! ${aggregatedResults.leads_created} leads criados, ${aggregatedResults.leads_updated} leads atualizados, ${aggregatedResults.patients_created} pacientes criados, ${aggregatedResults.patients_updated} pacientes atualizados.`
         );
       } else {
         toast.warning(
