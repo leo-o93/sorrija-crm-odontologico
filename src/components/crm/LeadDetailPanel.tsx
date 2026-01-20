@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead, useDeleteLeadComplete } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,13 @@ import { ConfirmDeleteLeadDialog } from "./ConfirmDeleteLeadDialog";
 import { TemperatureBadge } from "./TemperatureBadge";
 import { HotSubstatusBadge } from "./HotSubstatusBadge";
 import { TemperatureActions } from "./TemperatureActions";
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+};
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -140,6 +147,105 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                   currentTemperature={lead.temperature}
                 />
               </div>
+
+              {/* Métricas do Lead */}
+              {((lead.total_appointments && lead.total_appointments > 0) || 
+                (lead.total_quotes && lead.total_quotes > 0) || 
+                (lead.total_sales && lead.total_sales > 0) || 
+                (lead.total_revenue && lead.total_revenue > 0)) && (
+                <>
+                  <Separator />
+                  <div className="space-y-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Métricas
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-2xl font-bold text-blue-600">{lead.total_appointments || 0}</p>
+                        <p className="text-xs text-muted-foreground">Agendamentos</p>
+                      </div>
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-2xl font-bold text-green-600">{lead.total_sales || 0}</p>
+                        <p className="text-xs text-muted-foreground">Vendas</p>
+                      </div>
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-2xl font-bold text-purple-600">{lead.total_quotes || 0}</p>
+                        <p className="text-xs text-muted-foreground">Orçamentos</p>
+                      </div>
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-xl font-bold text-orange-600">
+                          {formatCurrency(lead.total_revenue || 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Receita Total</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Última Venda */}
+              {lead.last_sale_date && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Última Venda
+                    </h3>
+                    <div className="text-sm space-y-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                      <p className="flex justify-between">
+                        <span className="text-muted-foreground">Data:</span>
+                        <span className="font-medium">{format(new Date(lead.last_sale_date), "dd/MM/yyyy")}</span>
+                      </p>
+                      {lead.last_sale_amount && (
+                        <p className="flex justify-between">
+                          <span className="text-muted-foreground">Valor:</span>
+                          <span className="font-medium text-green-600">{formatCurrency(lead.last_sale_amount)}</span>
+                        </p>
+                      )}
+                      {lead.last_sale_payment_method && (
+                        <p className="flex justify-between">
+                          <span className="text-muted-foreground">Pagamento:</span>
+                          <span className="font-medium">{lead.last_sale_payment_method}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Valores de Orçamento */}
+              {((lead.contracted_value && lead.contracted_value > 0) || (lead.non_contracted_value && lead.non_contracted_value > 0)) && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Valores de Contrato
+                    </h3>
+                    <div className="flex gap-3">
+                      {lead.contracted_value && lead.contracted_value > 0 && (
+                        <div className="flex-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
+                          <p className="text-xs text-muted-foreground">Contratado</p>
+                          <p className="text-lg font-bold text-green-600">
+                            {formatCurrency(lead.contracted_value)}
+                          </p>
+                        </div>
+                      )}
+                      {lead.non_contracted_value && lead.non_contracted_value > 0 && (
+                        <div className="flex-1 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg text-center">
+                          <p className="text-xs text-muted-foreground">Não Contratado</p>
+                          <p className="text-lg font-bold text-red-600">
+                            {formatCurrency(lead.non_contracted_value)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <Separator />
 

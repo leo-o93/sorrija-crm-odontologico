@@ -17,7 +17,10 @@ import {
   Pill,
   User,
   FileText,
-  Power
+  Power,
+  BarChart3,
+  Receipt,
+  CreditCard
 } from "lucide-react";
 import { Patient, useDeletePatient, useTogglePatientActive } from "@/hooks/usePatients";
 import { format } from "date-fns";
@@ -27,6 +30,13 @@ import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { PatientForm } from "./PatientForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+};
 
 interface PatientDetailPanelProps {
   patient: Patient | null;
@@ -149,6 +159,113 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
           </Button>
 
           <Separator className="my-4" />
+
+          {/* Patient Metrics */}
+          {((patient.total_appointments && patient.total_appointments > 0) || 
+            (patient.total_attendances && patient.total_attendances > 0) || 
+            (patient.total_sales && patient.total_sales > 0) || 
+            (patient.total_revenue && patient.total_revenue > 0)) && (
+            <>
+              <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Histórico do Paciente
+                </h4>
+                
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-xl font-bold text-blue-600">{patient.total_appointments || 0}</p>
+                    <p className="text-xs text-muted-foreground">Agendamentos</p>
+                  </div>
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-xl font-bold text-green-600">{patient.total_attendances || 0}</p>
+                    <p className="text-xs text-muted-foreground">Atendimentos</p>
+                  </div>
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-xl font-bold text-purple-600">{patient.total_sales || 0}</p>
+                    <p className="text-xs text-muted-foreground">Vendas</p>
+                  </div>
+                </div>
+                
+                {patient.total_revenue && patient.total_revenue > 0 && (
+                  <div className="text-center p-3 bg-background rounded border">
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(patient.total_revenue)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Receita Total do Paciente</p>
+                  </div>
+                )}
+              </div>
+              <Separator className="my-4" />
+            </>
+          )}
+
+          {/* Last Sale Info */}
+          {patient.last_sale_date && (
+            <>
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Última Venda
+                </h4>
+                <div className="text-sm space-y-1 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                  <p className="flex justify-between">
+                    <span className="text-muted-foreground">Data:</span>
+                    <span className="font-medium">{format(new Date(patient.last_sale_date), "dd/MM/yyyy")}</span>
+                  </p>
+                  {patient.last_sale_amount && (
+                    <p className="flex justify-between">
+                      <span className="text-muted-foreground">Valor:</span>
+                      <span className="font-medium text-green-600">{formatCurrency(patient.last_sale_amount)}</span>
+                    </p>
+                  )}
+                  {patient.last_sale_payment_method && (
+                    <p className="flex justify-between">
+                      <span className="text-muted-foreground">Pagamento:</span>
+                      <span className="font-medium">{patient.last_sale_payment_method}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Separator className="my-4" />
+            </>
+          )}
+
+          {/* Contracted Values */}
+          {((patient.contracted_value && patient.contracted_value > 0) || (patient.non_contracted_value && patient.non_contracted_value > 0)) && (
+            <>
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Valores de Contrato
+                </h4>
+                <div className="flex gap-3">
+                  {patient.contracted_value && patient.contracted_value > 0 && (
+                    <div className="flex-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Contratado</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(patient.contracted_value)}
+                      </p>
+                    </div>
+                  )}
+                  {patient.non_contracted_value && patient.non_contracted_value > 0 && (
+                    <div className="flex-1 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Não Contratado</p>
+                      <p className="text-lg font-bold text-red-600">
+                        {formatCurrency(patient.non_contracted_value)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {patient.contract_date && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Data de contratação: {format(new Date(patient.contract_date), "dd/MM/yyyy")}
+                  </p>
+                )}
+              </div>
+              <Separator className="my-4" />
+            </>
+          )}
 
           {/* Contact Information */}
           <div className="space-y-4">
