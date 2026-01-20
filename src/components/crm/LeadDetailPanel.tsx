@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead, useDeleteLeadComplete } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt, CheckCircle, XCircle, Loader2, Stethoscope, ShoppingCart, FileBarChart } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,8 @@ import { ConfirmDeleteLeadDialog } from "./ConfirmDeleteLeadDialog";
 import { TemperatureBadge } from "./TemperatureBadge";
 import { HotSubstatusBadge } from "./HotSubstatusBadge";
 import { TemperatureActions } from "./TemperatureActions";
+import { HistoryDetailDialog } from "@/components/pacientes/HistoryDetailDialog";
+import { HistoryType, AppointmentHistoryItem, AttendanceHistoryItem, QuoteHistoryItem, SaleHistoryItem } from "@/types/history";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -60,7 +62,28 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   const [isEditing, setIsEditing] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
+  const [historyDialogTitle, setHistoryDialogTitle] = useState("");
   const deleteLeadComplete = useDeleteLeadComplete();
+
+  // Helper to safely extract arrays from JSON
+  const getHistoryArray = <T,>(data: unknown): T[] => {
+    if (Array.isArray(data)) return data as T[];
+    return [];
+  };
+
+  // Extract history arrays from lead
+  const appointmentsHistory = getHistoryArray<AppointmentHistoryItem>(lead?.appointments_history);
+  const attendancesHistory = getHistoryArray<AttendanceHistoryItem>(lead?.attendances_history);
+  const quotesHistory = getHistoryArray<QuoteHistoryItem>(lead?.quotes_history);
+  const salesHistory = getHistoryArray<SaleHistoryItem>(lead?.sales_history);
+
+  const openHistoryDialog = (type: HistoryType, title: string) => {
+    setHistoryDialogType(type);
+    setHistoryDialogTitle(title);
+    setHistoryDialogOpen(true);
+  };
 
   // Real-time calculated metrics
   const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
@@ -241,24 +264,36 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 </h3>
                 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-center p-2 bg-background rounded border">
+                  <button 
+                    onClick={() => openHistoryDialog("appointments", "Histórico de Agendamentos")}
+                    className="text-center p-2 bg-background rounded border hover:bg-accent transition-colors cursor-pointer"
+                  >
                     <p className="text-2xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
                     <p className="text-xs text-muted-foreground">Agendamentos</p>
-                  </div>
-                  <div className="text-center p-2 bg-background rounded border">
+                  </button>
+                  <button 
+                    onClick={() => openHistoryDialog("sales", "Histórico de Vendas")}
+                    className="text-center p-2 bg-background rounded border hover:bg-accent transition-colors cursor-pointer"
+                  >
                     <p className="text-2xl font-bold text-green-600">{displayMetrics.totalSales}</p>
                     <p className="text-xs text-muted-foreground">Vendas</p>
-                  </div>
-                  <div className="text-center p-2 bg-background rounded border">
+                  </button>
+                  <button 
+                    onClick={() => openHistoryDialog("quotes", "Histórico de Orçamentos")}
+                    className="text-center p-2 bg-background rounded border hover:bg-accent transition-colors cursor-pointer"
+                  >
                     <p className="text-2xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
                     <p className="text-xs text-muted-foreground">Orçamentos</p>
-                  </div>
-                  <div className="text-center p-2 bg-background rounded border">
+                  </button>
+                  <button 
+                    onClick={() => openHistoryDialog("sales", "Histórico de Receita")}
+                    className="text-center p-2 bg-background rounded border hover:bg-accent transition-colors cursor-pointer"
+                  >
                     <p className="text-xl font-bold text-orange-600">
                       {formatCurrency(displayMetrics.totalRevenue)}
                     </p>
                     <p className="text-xs text-muted-foreground">Receita Total</p>
-                  </div>
+                  </button>
                 </div>
               </div>
 
@@ -591,6 +626,19 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
         leadId={lead.id}
         leadName={lead.name}
         isDeleting={deleteLeadComplete.isPending}
+      />
+
+      <HistoryDetailDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        title={historyDialogTitle}
+        type={historyDialogType}
+        data={
+          historyDialogType === "appointments" ? appointmentsHistory :
+          historyDialogType === "attendances" ? attendancesHistory :
+          historyDialogType === "quotes" ? quotesHistory :
+          salesHistory
+        }
       />
     </Sheet>
   );

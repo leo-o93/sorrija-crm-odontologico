@@ -9,8 +9,10 @@ import { EvolutionProvider } from "@/contexts/EvolutionContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
+import { ImportProvider } from "@/contexts/ImportContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
+import { ImportProgressIndicator } from "@/components/layout/ImportProgressIndicator";
 import Dashboard from "./pages/Dashboard";
 import PainelSistema from "./pages/PainelSistema";
 import CRM from "./pages/CRM";
@@ -230,9 +232,12 @@ const App = () => (
         <AuthProvider>
           <SuperAdminProvider>
             <OrganizationProvider>
-              <EvolutionProvider>
-                <AppRoutes />
-              </EvolutionProvider>
+              <ImportProvider>
+                <EvolutionProvider>
+                  <AppRoutes />
+                  <ImportProgressIndicator />
+                </EvolutionProvider>
+              </ImportProvider>
             </OrganizationProvider>
           </SuperAdminProvider>
         </AuthProvider>

@@ -46,6 +46,11 @@ export interface Lead {
   last_sale_payment_method: string | null;
   contracted_value: number | null;
   non_contracted_value: number | null;
+  // Detailed history JSON
+  appointments_history: unknown[] | null;
+  attendances_history: unknown[] | null;
+  quotes_history: unknown[] | null;
+  sales_history: unknown[] | null;
   sources?: { name: string };
   procedures?: { name: string };
 }

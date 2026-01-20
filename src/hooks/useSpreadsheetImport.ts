@@ -336,6 +336,7 @@ export function useSpreadsheetImport() {
     progress,
     previewData,
     results,
+    parsedRecords,
     parseExcelFile,
     importRecords,
     reset,
