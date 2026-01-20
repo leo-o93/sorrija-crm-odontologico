@@ -23,7 +23,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  ChevronRight
 } from "lucide-react";
 import { Patient, useDeletePatient, useTogglePatientActive } from "@/hooks/usePatients";
 import { format } from "date-fns";
@@ -34,6 +35,14 @@ import { PatientForm } from "./PatientForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { HistoryDetailDialog } from "./HistoryDetailDialog";
+import type { 
+  HistoryType,
+  AppointmentHistoryItem, 
+  AttendanceHistoryItem, 
+  QuoteHistoryItem, 
+  SaleHistoryItem 
+} from "@/types/history";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -60,6 +69,9 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
+  const [historyDialogTitle, setHistoryDialogTitle] = useState("");
   const deletePatient = useDeletePatient();
   const toggleActive = useTogglePatientActive();
 
@@ -169,6 +181,35 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const hasStoredHistoryOnly = (patient.total_appointments ?? 0) > 0 && 
     (!recentAppointments || recentAppointments.length === 0);
 
+  // Helper to safely get history arrays
+  const getHistoryArray = <T,>(data: T[] | unknown): T[] => {
+    if (Array.isArray(data)) return data as T[];
+    return [];
+  };
+
+  const appointmentsHistory = getHistoryArray<AppointmentHistoryItem>(patient.appointments_history);
+  const attendancesHistory = getHistoryArray<AttendanceHistoryItem>(patient.attendances_history);
+  const quotesHistory = getHistoryArray<QuoteHistoryItem>(patient.quotes_history);
+  const salesHistory = getHistoryArray<SaleHistoryItem>(patient.sales_history);
+
+  const hasAnyHistory = appointmentsHistory.length > 0 || attendancesHistory.length > 0 || 
+    quotesHistory.length > 0 || salesHistory.length > 0;
+
+  const openHistoryDialog = (type: HistoryType, title: string) => {
+    setHistoryDialogType(type);
+    setHistoryDialogTitle(title);
+    setHistoryDialogOpen(true);
+  };
+
+  const getHistoryData = (type: HistoryType) => {
+    switch (type) {
+      case "appointments": return appointmentsHistory;
+      case "attendances": return attendancesHistory;
+      case "quotes": return quotesHistory;
+      case "sales": return salesHistory;
+    }
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -239,7 +280,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
           <Separator className="my-4" />
 
-          {/* Patient Metrics - Always visible with calculated data */}
+          {/* Patient Metrics - Clickable cards */}
           <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
             <h4 className="font-medium text-sm flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -248,26 +289,62 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
             </h4>
             
             <div className="grid grid-cols-3 gap-2 text-sm">
-              <div className="text-center p-2 bg-background rounded border">
+              <button
+                onClick={() => appointmentsHistory.length > 0 && openHistoryDialog("appointments", "Agendamentos")}
+                className={`text-center p-2 bg-background rounded border transition-colors ${
+                  appointmentsHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                }`}
+                disabled={appointmentsHistory.length === 0}
+              >
                 <p className="text-xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
-                <p className="text-xs text-muted-foreground">Agendamentos</p>
-              </div>
-              <div className="text-center p-2 bg-background rounded border">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                  Agendamentos
+                  {appointmentsHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                </p>
+              </button>
+              <button
+                onClick={() => attendancesHistory.length > 0 && openHistoryDialog("attendances", "Atendimentos")}
+                className={`text-center p-2 bg-background rounded border transition-colors ${
+                  attendancesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                }`}
+                disabled={attendancesHistory.length === 0}
+              >
                 <p className="text-xl font-bold text-green-600">{displayMetrics.totalAttendances}</p>
-                <p className="text-xs text-muted-foreground">Atendimentos</p>
-              </div>
-              <div className="text-center p-2 bg-background rounded border">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                  Atendimentos
+                  {attendancesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                </p>
+              </button>
+              <button
+                onClick={() => quotesHistory.length > 0 && openHistoryDialog("quotes", "Orçamentos")}
+                className={`text-center p-2 bg-background rounded border transition-colors ${
+                  quotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                }`}
+                disabled={quotesHistory.length === 0}
+              >
                 <p className="text-xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
-                <p className="text-xs text-muted-foreground">Orçamentos</p>
-              </div>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                  Orçamentos
+                  {quotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                </p>
+              </button>
             </div>
             
-            <div className="text-center p-3 bg-background rounded border">
+            <button
+              onClick={() => salesHistory.length > 0 && openHistoryDialog("sales", "Vendas / Receita")}
+              className={`w-full text-center p-3 bg-background rounded border transition-colors ${
+                salesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+              }`}
+              disabled={salesHistory.length === 0}
+            >
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(displayMetrics.totalRevenue)}
               </p>
-              <p className="text-xs text-muted-foreground">Receita Total do Paciente</p>
-            </div>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                Receita Total do Paciente
+                {salesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+              </p>
+            </button>
           </div>
 
           <Separator className="my-4" />
@@ -556,6 +633,15 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
         onConfirm={handleDelete}
         itemName={patient.name}
         title="Excluir Paciente"
+      />
+
+      {/* History Detail Dialog */}
+      <HistoryDetailDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        title={historyDialogTitle}
+        type={historyDialogType}
+        data={getHistoryData(historyDialogType)}
       />
     </>
   );
