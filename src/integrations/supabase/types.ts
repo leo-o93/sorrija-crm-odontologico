@@ -801,6 +801,7 @@ export type Database = {
           automation_enabled: boolean | null
           budget_paid: number | null
           budget_total: number | null
+          contracted_value: number | null
           created_at: string
           email: string | null
           evaluation_result: string | null
@@ -812,10 +813,14 @@ export type Database = {
           interest_id: string | null
           last_follow_up_date: string | null
           last_interaction_at: string | null
+          last_sale_amount: number | null
+          last_sale_date: string | null
+          last_sale_payment_method: string | null
           lost_reason: string | null
           name: string
           next_follow_up_date: string | null
           no_show_count: number | null
+          non_contracted_value: number | null
           notes: string | null
           organization_id: string | null
           phone: string
@@ -830,6 +835,10 @@ export type Database = {
           temperature: string | null
           third_contact_channel: string | null
           third_contact_date: string | null
+          total_appointments: number | null
+          total_quotes: number | null
+          total_revenue: number | null
+          total_sales: number | null
           triggered_by: string | null
           updated_at: string
         }
@@ -838,6 +847,7 @@ export type Database = {
           automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
+          contracted_value?: number | null
           created_at?: string
           email?: string | null
           evaluation_result?: string | null
@@ -849,10 +859,14 @@ export type Database = {
           interest_id?: string | null
           last_follow_up_date?: string | null
           last_interaction_at?: string | null
+          last_sale_amount?: number | null
+          last_sale_date?: string | null
+          last_sale_payment_method?: string | null
           lost_reason?: string | null
           name: string
           next_follow_up_date?: string | null
           no_show_count?: number | null
+          non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
           phone: string
@@ -867,6 +881,10 @@ export type Database = {
           temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          total_appointments?: number | null
+          total_quotes?: number | null
+          total_revenue?: number | null
+          total_sales?: number | null
           triggered_by?: string | null
           updated_at?: string
         }
@@ -875,6 +893,7 @@ export type Database = {
           automation_enabled?: boolean | null
           budget_paid?: number | null
           budget_total?: number | null
+          contracted_value?: number | null
           created_at?: string
           email?: string | null
           evaluation_result?: string | null
@@ -886,10 +905,14 @@ export type Database = {
           interest_id?: string | null
           last_follow_up_date?: string | null
           last_interaction_at?: string | null
+          last_sale_amount?: number | null
+          last_sale_date?: string | null
+          last_sale_payment_method?: string | null
           lost_reason?: string | null
           name?: string
           next_follow_up_date?: string | null
           no_show_count?: number | null
+          non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
           phone?: string
@@ -904,6 +927,10 @@ export type Database = {
           temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          total_appointments?: number | null
+          total_quotes?: number | null
+          total_revenue?: number | null
+          total_sales?: number | null
           triggered_by?: string | null
           updated_at?: string
         }
@@ -1239,20 +1266,31 @@ export type Database = {
           allergies: string | null
           birth_date: string | null
           city: string | null
+          contract_date: string | null
+          contracted_value: number | null
           cpf: string | null
           created_at: string
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           id: string
+          last_sale_amount: number | null
+          last_sale_date: string | null
+          last_sale_payment_method: string | null
           lead_id: string | null
           medical_history: string | null
           medications: string | null
           name: string
+          non_contracted_value: number | null
           notes: string | null
           organization_id: string | null
           phone: string
           state: string | null
+          total_appointments: number | null
+          total_attendances: number | null
+          total_quotes: number | null
+          total_revenue: number | null
+          total_sales: number | null
           updated_at: string
           zip_code: string | null
         }
@@ -1262,20 +1300,31 @@ export type Database = {
           allergies?: string | null
           birth_date?: string | null
           city?: string | null
+          contract_date?: string | null
+          contracted_value?: number | null
           cpf?: string | null
           created_at?: string
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           id?: string
+          last_sale_amount?: number | null
+          last_sale_date?: string | null
+          last_sale_payment_method?: string | null
           lead_id?: string | null
           medical_history?: string | null
           medications?: string | null
           name: string
+          non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
           phone: string
           state?: string | null
+          total_appointments?: number | null
+          total_attendances?: number | null
+          total_quotes?: number | null
+          total_revenue?: number | null
+          total_sales?: number | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -1285,20 +1334,31 @@ export type Database = {
           allergies?: string | null
           birth_date?: string | null
           city?: string | null
+          contract_date?: string | null
+          contracted_value?: number | null
           cpf?: string | null
           created_at?: string
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           id?: string
+          last_sale_amount?: number | null
+          last_sale_date?: string | null
+          last_sale_payment_method?: string | null
           lead_id?: string | null
           medical_history?: string | null
           medications?: string | null
           name?: string
+          non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
           phone?: string
           state?: string | null
+          total_appointments?: number | null
+          total_attendances?: number | null
+          total_quotes?: number | null
+          total_revenue?: number | null
+          total_sales?: number | null
           updated_at?: string
           zip_code?: string | null
         }

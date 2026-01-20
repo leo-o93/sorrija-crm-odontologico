@@ -23,6 +23,17 @@ interface ImportRecord {
   total_atendimentos: number;
   total_agendamentos: number;
   medical_history: string | null;
+  // New financial metrics
+  total_orcamentos: number;
+  total_vendas: number;
+  soma_valor_vendas: number | null;
+  soma_valor_atendimentos: number | null;
+  ultima_venda_data: string | null;
+  ultima_venda_valor: number | null;
+  ultima_venda_forma_pagamento: string | null;
+  valor_contratado: number | null;
+  valor_nao_contratado: number | null;
+  data_contratacao: string | null;
 }
 
 interface ImportResults {
@@ -113,6 +124,53 @@ export function useSpreadsheetImport() {
           budgetPaid = parseCurrency(somaVendas);
         }
 
+        // Parse new financial fields
+        const totalOrcamentos = Number(row["total_orcamentos"]) || 0;
+        const totalVendas = Number(row["total_vendas"]) || 0;
+        let somaValorVendas: number | null = null;
+        const vendas = row["soma_valor_vendas"];
+        if (typeof vendas === "number") {
+          somaValorVendas = vendas;
+        } else if (typeof vendas === "string") {
+          somaValorVendas = parseCurrency(vendas);
+        }
+
+        let somaValorAtendimentos: number | null = null;
+        const atendimentos = row["soma_valor_atendimentos"];
+        if (typeof atendimentos === "number") {
+          somaValorAtendimentos = atendimentos;
+        } else if (typeof atendimentos === "string") {
+          somaValorAtendimentos = parseCurrency(atendimentos);
+        }
+
+        const ultimaVendaData = parseDate(row["ultima_venda__data"] as string | number);
+        let ultimaVendaValor: number | null = null;
+        const vendaValor = row["ultima_venda__valor"];
+        if (typeof vendaValor === "number") {
+          ultimaVendaValor = vendaValor;
+        } else if (typeof vendaValor === "string") {
+          ultimaVendaValor = parseCurrency(vendaValor);
+        }
+        const ultimaVendaFormaPagamento = (row["ultima_venda__forma pagamento"] as string) || null;
+
+        let valorContratado: number | null = null;
+        const contratado = row["ultimo_orcamento__valor contratado"];
+        if (typeof contratado === "number") {
+          valorContratado = contratado;
+        } else if (typeof contratado === "string") {
+          valorContratado = parseCurrency(contratado);
+        }
+
+        let valorNaoContratado: number | null = null;
+        const naoContratado = row["ultimo_orcamento__valor não contratado"];
+        if (typeof naoContratado === "number") {
+          valorNaoContratado = naoContratado;
+        } else if (typeof naoContratado === "string") {
+          valorNaoContratado = parseCurrency(naoContratado);
+        }
+
+        const dataContratacao = parseDate(row["ultimo_orcamento__data contração"] as string | number);
+
         records.push({
           phone,
           name: name || null,
@@ -134,6 +192,17 @@ export function useSpreadsheetImport() {
           total_atendimentos: totalAtendimentos,
           total_agendamentos: totalAgendamentos,
           medical_history: null,
+          // New financial metrics
+          total_orcamentos: totalOrcamentos,
+          total_vendas: totalVendas,
+          soma_valor_vendas: somaValorVendas,
+          soma_valor_atendimentos: somaValorAtendimentos,
+          ultima_venda_data: ultimaVendaData,
+          ultima_venda_valor: ultimaVendaValor,
+          ultima_venda_forma_pagamento: ultimaVendaFormaPagamento,
+          valor_contratado: valorContratado,
+          valor_nao_contratado: valorNaoContratado,
+          data_contratacao: dataContratacao,
         });
       }
 

@@ -24,6 +24,17 @@ interface ImportRecord {
   total_atendimentos: number;
   total_agendamentos: number;
   medical_history: string | null;
+  // Financial metrics
+  total_orcamentos: number;
+  total_vendas: number;
+  soma_valor_vendas: number | null;
+  soma_valor_atendimentos: number | null;
+  ultima_venda_data: string | null;
+  ultima_venda_valor: number | null;
+  ultima_venda_forma_pagamento: string | null;
+  valor_contratado: number | null;
+  valor_nao_contratado: number | null;
+  data_contratacao: string | null;
 }
 
 interface ImportRequest {
@@ -205,6 +216,16 @@ Deno.serve(async (req) => {
               source_id: sourceId || undefined,
               notes: record.notes || undefined,
               budget_paid: record.budget_paid || undefined,
+              // Financial metrics
+              total_appointments: record.total_agendamentos || 0,
+              total_quotes: record.total_orcamentos || 0,
+              total_sales: record.total_vendas || 0,
+              total_revenue: record.soma_valor_vendas || 0,
+              last_sale_date: record.ultima_venda_data,
+              last_sale_amount: record.ultima_venda_valor,
+              last_sale_payment_method: record.ultima_venda_forma_pagamento,
+              contracted_value: record.valor_contratado || 0,
+              non_contracted_value: record.valor_nao_contratado || 0,
               updated_at: new Date().toISOString(),
             })
             .eq("id", existingLead.id);
@@ -217,7 +238,6 @@ Deno.serve(async (req) => {
           leadId = existingLead.id;
           results.leads_updated++;
         } else {
-          // Create new lead
           const { data: newLead, error: insertError } = await supabase
             .from("leads")
             .insert({
@@ -231,6 +251,16 @@ Deno.serve(async (req) => {
               registration_date: record.registration_date || new Date().toISOString().split("T")[0],
               notes: record.notes,
               budget_paid: record.budget_paid,
+              // Financial metrics
+              total_appointments: record.total_agendamentos || 0,
+              total_quotes: record.total_orcamentos || 0,
+              total_sales: record.total_vendas || 0,
+              total_revenue: record.soma_valor_vendas || 0,
+              last_sale_date: record.ultima_venda_data,
+              last_sale_amount: record.ultima_venda_valor,
+              last_sale_payment_method: record.ultima_venda_forma_pagamento,
+              contracted_value: record.valor_contratado || 0,
+              non_contracted_value: record.valor_nao_contratado || 0,
             })
             .select("id")
             .single();
@@ -274,6 +304,18 @@ Deno.serve(async (req) => {
                 lead_id: leadId,
                 organization_id,
                 active: true,
+                // Financial metrics
+                total_appointments: record.total_agendamentos || 0,
+                total_attendances: record.total_atendimentos || 0,
+                total_quotes: record.total_orcamentos || 0,
+                total_sales: record.total_vendas || 0,
+                total_revenue: record.soma_valor_vendas || 0,
+                last_sale_date: record.ultima_venda_data,
+                last_sale_amount: record.ultima_venda_valor,
+                last_sale_payment_method: record.ultima_venda_forma_pagamento,
+                contracted_value: record.valor_contratado || 0,
+                non_contracted_value: record.valor_nao_contratado || 0,
+                contract_date: record.data_contratacao,
               });
 
             if (patientError) {

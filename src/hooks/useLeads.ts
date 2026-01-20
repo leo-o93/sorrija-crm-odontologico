@@ -36,6 +36,16 @@ export interface Lead {
   no_show_count: number | null;
   lost_reason: string | null;
   triggered_by: string | null;
+  // Financial metrics
+  total_appointments: number | null;
+  total_quotes: number | null;
+  total_sales: number | null;
+  total_revenue: number | null;
+  last_sale_date: string | null;
+  last_sale_amount: number | null;
+  last_sale_payment_method: string | null;
+  contracted_value: number | null;
+  non_contracted_value: number | null;
   sources?: { name: string };
   procedures?: { name: string };
 }

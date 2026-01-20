@@ -25,6 +25,18 @@ export interface Patient {
   active: boolean;
   created_at: string;
   updated_at: string;
+  // Financial metrics
+  total_appointments?: number | null;
+  total_attendances?: number | null;
+  total_quotes?: number | null;
+  total_sales?: number | null;
+  total_revenue?: number | null;
+  last_sale_date?: string | null;
+  last_sale_amount?: number | null;
+  last_sale_payment_method?: string | null;
+  contracted_value?: number | null;
+  non_contracted_value?: number | null;
+  contract_date?: string | null;
 }
 
 export interface CreatePatientInput {
