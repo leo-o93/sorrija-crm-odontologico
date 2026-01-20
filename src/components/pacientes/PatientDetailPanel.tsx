@@ -8,7 +8,6 @@ import {
   MessageCircle, 
   Calendar, 
   Edit, 
-  History, 
   Trash2,
   Mail,
   MapPin,
@@ -20,7 +19,11 @@ import {
   Power,
   BarChart3,
   Receipt,
-  CreditCard
+  CreditCard,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { Patient, useDeletePatient, useTogglePatientActive } from "@/hooks/usePatients";
 import { format } from "date-fns";
@@ -29,7 +32,8 @@ import { QuickScheduleDialog } from "@/components/inbox/QuickScheduleDialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { PatientForm } from "./PatientForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -44,13 +48,84 @@ interface PatientDetailPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
+  scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
+  confirmed: { label: "Confirmado", color: "bg-green-100 text-green-800" },
+  completed: { label: "Concluído", color: "bg-emerald-100 text-emerald-800" },
+  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
+  no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
+};
+
 export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetailPanelProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deletePatient = useDeletePatient();
   const toggleActive = useTogglePatientActive();
-  const navigate = useNavigate();
+
+  // Real-time calculated metrics
+  const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["patient-calculated-metrics", patient?.id],
+    queryFn: async () => {
+      if (!patient?.id) return null;
+
+      // Total appointments
+      const { count: totalAppointments } = await supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("patient_id", patient.id);
+
+      // Total completed (attendances)
+      const { count: totalAttendances } = await supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("patient_id", patient.id)
+        .eq("status", "completed");
+
+      // Total quotes
+      const { count: totalQuotes } = await supabase
+        .from("quotes")
+        .select("*", { count: "exact", head: true })
+        .eq("patient_id", patient.id);
+
+      // Sum approved quotes as revenue
+      const { data: approvedQuotes } = await supabase
+        .from("quotes")
+        .select("final_amount")
+        .eq("patient_id", patient.id)
+        .eq("status", "approved");
+
+      const totalRevenue = approvedQuotes?.reduce(
+        (sum, q) => sum + Number(q.final_amount || 0), 0
+      ) || 0;
+
+      return { 
+        totalAppointments: totalAppointments || 0, 
+        totalAttendances: totalAttendances || 0, 
+        totalQuotes: totalQuotes || 0, 
+        totalRevenue 
+      };
+    },
+    enabled: !!patient?.id && open,
+  });
+
+  // Recent appointments
+  const { data: recentAppointments, isLoading: appointmentsLoading } = useQuery({
+    queryKey: ["patient-recent-appointments", patient?.id],
+    queryFn: async () => {
+      if (!patient?.id) return [];
+
+      const { data } = await supabase
+        .from("appointments")
+        .select("*, procedures(name)")
+        .eq("patient_id", patient.id)
+        .order("appointment_date", { ascending: false })
+        .limit(5);
+
+      return data || [];
+    },
+    enabled: !!patient?.id && open,
+  });
 
   if (!patient) return null;
 
@@ -62,11 +137,6 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     const phone = patient.phone.replace(/\D/g, "");
     const formattedPhone = phone.startsWith("55") ? phone : `55${phone}`;
     window.open(`https://wa.me/${formattedPhone}`, "_blank");
-  };
-
-  const handleViewHistory = () => {
-    navigate(`/agenda?patient=${patient.id}`);
-    onOpenChange(false);
   };
 
   const handleToggleActive = () => {
@@ -84,6 +154,14 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
   const handleEditSuccess = () => {
     setEditOpen(false);
+  };
+
+  // Use calculated metrics or fallback to stored values
+  const displayMetrics = {
+    totalAppointments: calculatedMetrics?.totalAppointments ?? patient.total_appointments ?? 0,
+    totalAttendances: calculatedMetrics?.totalAttendances ?? patient.total_attendances ?? 0,
+    totalQuotes: calculatedMetrics?.totalQuotes ?? patient.total_quotes ?? 0,
+    totalRevenue: calculatedMetrics?.totalRevenue ?? patient.total_revenue ?? 0,
   };
 
   return (
@@ -128,14 +206,10 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
             Agendar Consulta
           </Button>
 
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Edit className="h-4 w-4 mr-1" />
               Editar
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleViewHistory}>
-              <History className="h-4 w-4 mr-1" />
-              Histórico
             </Button>
             <Button 
               variant="outline" 
@@ -160,45 +234,93 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
           <Separator className="my-4" />
 
-          {/* Patient Metrics */}
-          {((patient.total_appointments && patient.total_appointments > 0) || 
-            (patient.total_attendances && patient.total_attendances > 0) || 
-            (patient.total_sales && patient.total_sales > 0) || 
-            (patient.total_revenue && patient.total_revenue > 0)) && (
-            <>
-              <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Histórico do Paciente
-                </h4>
-                
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div className="text-center p-2 bg-background rounded border">
-                    <p className="text-xl font-bold text-blue-600">{patient.total_appointments || 0}</p>
-                    <p className="text-xs text-muted-foreground">Agendamentos</p>
-                  </div>
-                  <div className="text-center p-2 bg-background rounded border">
-                    <p className="text-xl font-bold text-green-600">{patient.total_attendances || 0}</p>
-                    <p className="text-xs text-muted-foreground">Atendimentos</p>
-                  </div>
-                  <div className="text-center p-2 bg-background rounded border">
-                    <p className="text-xl font-bold text-purple-600">{patient.total_sales || 0}</p>
-                    <p className="text-xs text-muted-foreground">Vendas</p>
-                  </div>
-                </div>
-                
-                {patient.total_revenue && patient.total_revenue > 0 && (
-                  <div className="text-center p-3 bg-background rounded border">
-                    <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(patient.total_revenue)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Receita Total do Paciente</p>
-                  </div>
-                )}
+          {/* Patient Metrics - Always visible with calculated data */}
+          <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
+            <h4 className="font-medium text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Métricas do Paciente
+              {metricsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </h4>
+            
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="text-center p-2 bg-background rounded border">
+                <p className="text-xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
+                <p className="text-xs text-muted-foreground">Agendamentos</p>
               </div>
-              <Separator className="my-4" />
-            </>
-          )}
+              <div className="text-center p-2 bg-background rounded border">
+                <p className="text-xl font-bold text-green-600">{displayMetrics.totalAttendances}</p>
+                <p className="text-xs text-muted-foreground">Atendimentos</p>
+              </div>
+              <div className="text-center p-2 bg-background rounded border">
+                <p className="text-xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
+                <p className="text-xs text-muted-foreground">Orçamentos</p>
+              </div>
+            </div>
+            
+            <div className="text-center p-3 bg-background rounded border">
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(displayMetrics.totalRevenue)}
+              </p>
+              <p className="text-xs text-muted-foreground">Receita Total do Paciente</p>
+            </div>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Appointment History - Always visible */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-sm flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Histórico de Consultas
+              {appointmentsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </h4>
+            
+            {recentAppointments && recentAppointments.length > 0 ? (
+              <div className="space-y-2">
+                {recentAppointments.map((appointment) => {
+                  const statusInfo = appointmentStatusLabels[appointment.status] || { 
+                    label: appointment.status, 
+                    color: "bg-gray-100 text-gray-800" 
+                  };
+                  const StatusIcon = appointment.status === "completed" ? CheckCircle :
+                    appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
+                    Clock;
+
+                  return (
+                    <div 
+                      key={appointment.id} 
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <StatusIcon className={`h-4 w-4 ${
+                          appointment.status === "completed" ? "text-green-600" :
+                          appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
+                          "text-blue-600"
+                        }`} />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {appointment.procedures?.name || "Consulta"}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                        {statusInfo.label}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum agendamento encontrado
+              </p>
+            )}
+          </div>
+
+          <Separator className="my-4" />
 
           {/* Last Sale Info */}
           {patient.last_sale_date && (

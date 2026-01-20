@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead, useDeleteLeadComplete } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,8 @@ import { ConfirmDeleteLeadDialog } from "./ConfirmDeleteLeadDialog";
 import { TemperatureBadge } from "./TemperatureBadge";
 import { HotSubstatusBadge } from "./HotSubstatusBadge";
 import { TemperatureActions } from "./TemperatureActions";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -46,11 +48,79 @@ const statusLabels: Record<string, string> = {
   perdido: "Perdido",
 };
 
+const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
+  scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
+  confirmed: { label: "Confirmado", color: "bg-green-100 text-green-800" },
+  completed: { label: "Concluído", color: "bg-emerald-100 text-emerald-800" },
+  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
+  no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
+};
+
 export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const deleteLeadComplete = useDeleteLeadComplete();
+
+  // Real-time calculated metrics
+  const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["lead-calculated-metrics", lead?.id],
+    queryFn: async () => {
+      if (!lead?.id) return null;
+
+      // Total appointments
+      const { count: totalAppointments } = await supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("lead_id", lead.id);
+
+      // Total quotes
+      const { count: totalQuotes } = await supabase
+        .from("quotes")
+        .select("*", { count: "exact", head: true })
+        .eq("lead_id", lead.id);
+
+      // Sum approved quotes as revenue
+      const { data: approvedQuotes } = await supabase
+        .from("quotes")
+        .select("final_amount")
+        .eq("lead_id", lead.id)
+        .eq("status", "approved");
+
+      const totalRevenue = approvedQuotes?.reduce(
+        (sum, q) => sum + Number(q.final_amount || 0), 0
+      ) || 0;
+
+      // Count sales (approved quotes)
+      const totalSales = approvedQuotes?.length || 0;
+
+      return { 
+        totalAppointments: totalAppointments || 0, 
+        totalQuotes: totalQuotes || 0, 
+        totalSales,
+        totalRevenue 
+      };
+    },
+    enabled: !!lead?.id && open,
+  });
+
+  // Recent appointments
+  const { data: recentAppointments, isLoading: appointmentsLoading } = useQuery({
+    queryKey: ["lead-recent-appointments", lead?.id],
+    queryFn: async () => {
+      if (!lead?.id) return [];
+
+      const { data } = await supabase
+        .from("appointments")
+        .select("*, procedures(name)")
+        .eq("lead_id", lead.id)
+        .order("appointment_date", { ascending: false })
+        .limit(5);
+
+      return data || [];
+    },
+    enabled: !!lead?.id && open,
+  });
 
   if (!lead) return null;
 
@@ -75,6 +145,14 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
         setIsDeleteDialogOpen(false);
       },
     });
+  };
+
+  // Use calculated metrics or fallback to stored values
+  const displayMetrics = {
+    totalAppointments: calculatedMetrics?.totalAppointments ?? lead.total_appointments ?? 0,
+    totalQuotes: calculatedMetrics?.totalQuotes ?? lead.total_quotes ?? 0,
+    totalSales: calculatedMetrics?.totalSales ?? lead.total_sales ?? 0,
+    totalRevenue: calculatedMetrics?.totalRevenue ?? lead.total_revenue ?? 0,
   };
 
   return (
@@ -148,42 +226,90 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 />
               </div>
 
-              {/* Métricas do Lead */}
-              {((lead.total_appointments && lead.total_appointments > 0) || 
-                (lead.total_quotes && lead.total_quotes > 0) || 
-                (lead.total_sales && lead.total_sales > 0) || 
-                (lead.total_revenue && lead.total_revenue > 0)) && (
-                <>
-                  <Separator />
-                  <div className="space-y-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Métricas
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="text-center p-2 bg-background rounded border">
-                        <p className="text-2xl font-bold text-blue-600">{lead.total_appointments || 0}</p>
-                        <p className="text-xs text-muted-foreground">Agendamentos</p>
-                      </div>
-                      <div className="text-center p-2 bg-background rounded border">
-                        <p className="text-2xl font-bold text-green-600">{lead.total_sales || 0}</p>
-                        <p className="text-xs text-muted-foreground">Vendas</p>
-                      </div>
-                      <div className="text-center p-2 bg-background rounded border">
-                        <p className="text-2xl font-bold text-purple-600">{lead.total_quotes || 0}</p>
-                        <p className="text-xs text-muted-foreground">Orçamentos</p>
-                      </div>
-                      <div className="text-center p-2 bg-background rounded border">
-                        <p className="text-xl font-bold text-orange-600">
-                          {formatCurrency(lead.total_revenue || 0)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Receita Total</p>
-                      </div>
-                    </div>
+              {/* Métricas do Lead - Always visible */}
+              <Separator />
+              <div className="space-y-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Métricas
+                  {metricsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-2xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
+                    <p className="text-xs text-muted-foreground">Agendamentos</p>
                   </div>
-                </>
-              )}
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-2xl font-bold text-green-600">{displayMetrics.totalSales}</p>
+                    <p className="text-xs text-muted-foreground">Vendas</p>
+                  </div>
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-2xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
+                    <p className="text-xs text-muted-foreground">Orçamentos</p>
+                  </div>
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-xl font-bold text-orange-600">
+                      {formatCurrency(displayMetrics.totalRevenue)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Receita Total</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Appointment History - Always visible */}
+              <Separator />
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Histórico de Agendamentos
+                  {appointmentsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                </h3>
+                
+                {recentAppointments && recentAppointments.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentAppointments.map((appointment) => {
+                      const statusInfo = appointmentStatusLabels[appointment.status] || { 
+                        label: appointment.status, 
+                        color: "bg-gray-100 text-gray-800" 
+                      };
+                      const StatusIcon = appointment.status === "completed" ? CheckCircle :
+                        appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
+                        Clock;
+
+                      return (
+                        <div 
+                          key={appointment.id} 
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <StatusIcon className={`h-4 w-4 ${
+                              appointment.status === "completed" ? "text-green-600" :
+                              appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
+                              "text-blue-600"
+                            }`} />
+                            <div>
+                              <p className="text-sm font-medium">
+                                {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {appointment.procedures?.name || "Consulta"}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum agendamento encontrado
+                  </p>
+                )}
+              </div>
 
               {/* Última Venda */}
               {lead.last_sale_date && (
@@ -419,23 +545,19 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 </>
               )}
 
-              {/* Observações */}
+              {/* Notas */}
               {lead.notes && (
                 <>
                   <Separator />
                   <div className="space-y-3">
                     <h3 className="font-semibold flex items-center gap-2">
                       <FileText className="h-4 w-4" />
-                      Observações
+                      Notas
                     </h3>
                     <p className="text-sm whitespace-pre-wrap">{lead.notes}</p>
                   </div>
                 </>
               )}
-
-              <Separator />
-
-              {/* Botões estão agora no topo, após as ações rápidas */}
             </>
           )}
         </div>
