@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
       leads_created: 0,
       leads_updated: 0,
       patients_created: 0,
+      patients_updated: 0,
       sources_created: 0,
       errors: [] as string[],
       skipped: 0,
@@ -274,7 +275,7 @@ Deno.serve(async (req) => {
           results.leads_created++;
         }
 
-        // Create patient if applicable
+        // Create or update patient if applicable
         if (isPatient) {
           // Check if patient already exists
           const { data: existingPatient } = await supabase
@@ -284,7 +285,46 @@ Deno.serve(async (req) => {
             .eq("organization_id", organization_id)
             .single();
 
-          if (!existingPatient) {
+          if (existingPatient) {
+            // UPDATE existing patient with financial metrics
+            const { error: updateError } = await supabase
+              .from("patients")
+              .update({
+                name: record.name || undefined,
+                email: record.email || undefined,
+                cpf: record.cpf || undefined,
+                birth_date: record.birth_date || undefined,
+                address: record.address || undefined,
+                city: record.city || undefined,
+                state: record.state || undefined,
+                zip_code: record.zip_code || undefined,
+                emergency_contact_name: record.emergency_contact_name || undefined,
+                emergency_contact_phone: record.emergency_contact_phone || undefined,
+                medical_history: record.medical_history || undefined,
+                notes: record.notes || undefined,
+                lead_id: leadId,
+                // Financial metrics
+                total_appointments: record.total_agendamentos || 0,
+                total_attendances: record.total_atendimentos || 0,
+                total_quotes: record.total_orcamentos || 0,
+                total_sales: record.total_vendas || 0,
+                total_revenue: record.soma_valor_vendas || 0,
+                last_sale_date: record.ultima_venda_data,
+                last_sale_amount: record.ultima_venda_valor,
+                last_sale_payment_method: record.ultima_venda_forma_pagamento,
+                contracted_value: record.valor_contratado || 0,
+                non_contracted_value: record.valor_nao_contratado || 0,
+                contract_date: record.data_contratacao,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingPatient.id);
+
+            if (updateError) {
+              results.errors.push(`Error updating patient ${record.phone}: ${updateError.message}`);
+            } else {
+              results.patients_updated++;
+            }
+          } else {
             const { error: patientError } = await supabase
               .from("patients")
               .insert({
@@ -337,7 +377,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Import complete. Created: ${results.leads_created}, Updated: ${results.leads_updated}, Patients: ${results.patients_created}, Skipped: ${results.skipped}, Errors: ${results.errors.length}`);
+    console.log(`Import complete. Leads Created: ${results.leads_created}, Leads Updated: ${results.leads_updated}, Patients Created: ${results.patients_created}, Patients Updated: ${results.patients_updated}, Skipped: ${results.skipped}, Errors: ${results.errors.length}`);
 
     return new Response(
       JSON.stringify({
@@ -349,6 +389,7 @@ Deno.serve(async (req) => {
           leads_created: results.leads_created,
           leads_updated: results.leads_updated,
           patients_created: results.patients_created,
+          patients_updated: results.patients_updated,
           sources_created: results.sources_created,
           skipped: results.skipped,
           errors_count: results.errors.length,
