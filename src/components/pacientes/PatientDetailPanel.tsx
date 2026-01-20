@@ -156,13 +156,18 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     setEditOpen(false);
   };
 
-  // Use calculated metrics or fallback to stored values
+  // PRIORITIZE stored values (from import) over calculated
+  // Use whichever is higher to ensure we show the best data available
   const displayMetrics = {
-    totalAppointments: calculatedMetrics?.totalAppointments ?? patient.total_appointments ?? 0,
-    totalAttendances: calculatedMetrics?.totalAttendances ?? patient.total_attendances ?? 0,
-    totalQuotes: calculatedMetrics?.totalQuotes ?? patient.total_quotes ?? 0,
-    totalRevenue: calculatedMetrics?.totalRevenue ?? patient.total_revenue ?? 0,
+    totalAppointments: Math.max(patient.total_appointments ?? 0, calculatedMetrics?.totalAppointments ?? 0),
+    totalAttendances: Math.max(patient.total_attendances ?? 0, calculatedMetrics?.totalAttendances ?? 0),
+    totalQuotes: Math.max(patient.total_quotes ?? 0, calculatedMetrics?.totalQuotes ?? 0),
+    totalRevenue: Math.max(patient.total_revenue ?? 0, calculatedMetrics?.totalRevenue ?? 0),
   };
+
+  // Check if we have stored historical data (from import) but no linked records
+  const hasStoredHistoryOnly = (patient.total_appointments ?? 0) > 0 && 
+    (!recentAppointments || recentAppointments.length === 0);
 
   return (
     <>
@@ -312,6 +317,15 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                     </div>
                   );
                 })}
+              </div>
+            ) : hasStoredHistoryOnly ? (
+              <div className="text-center py-4 bg-muted/30 rounded-lg">
+                <p className="text-sm font-medium text-foreground">
+                  Dados históricos importados
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {patient.total_appointments} agendamentos, {patient.total_attendances ?? 0} atendimentos
+                </p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
