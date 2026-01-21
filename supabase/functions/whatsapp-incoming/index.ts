@@ -307,6 +307,12 @@ Deno.serve(async (req) => {
     
     if (isFromMe) {
       console.log('📤 OUTBOUND MESSAGE: Sent from WhatsApp directly (not via CRM)');
+      console.log('📤 OUTBOUND DEBUG:', {
+        remoteJid: payload.data.key.remoteJid,
+        senderPn: payload.data.key.senderPn,
+        payloadSender: payload.sender,
+        note: 'IMPORTANTE: payload.sender é NOSSO número (remetente), NÃO o destinatário!'
+      });
     } else {
       console.log('📥 INBOUND MESSAGE: Received from contact');
     }
@@ -324,7 +330,7 @@ Deno.serve(async (req) => {
         phoneSource = remoteJid.replace('@s.whatsapp.net', '');
         console.log('Using remoteJid for outbound phone:', phoneSource);
       } else if (remoteJid.includes('@lid')) {
-        console.log('Outbound @lid identifier, trying senderPn/mapping/sender...');
+        console.log('Outbound @lid identifier, trying senderPn/mapping...');
         if (senderPn && senderPn.includes('@s.whatsapp.net')) {
           phoneSource = senderPn.replace('@s.whatsapp.net', '');
           lidId = remoteJid;
@@ -341,11 +347,21 @@ Deno.serve(async (req) => {
           if (lidMapping) {
             phoneSource = lidMapping.phone.replace(/^\+?55/, '');
             console.log('Found outbound lid mapping, phone:', phoneSource);
-          } else if (payload.sender && payload.sender.includes('@s.whatsapp.net')) {
-            // Fallback: usar campo sender do payload root
-            phoneSource = payload.sender.replace('@s.whatsapp.net', '');
-            lidId = remoteJid;
-            console.log('Using root sender for outbound @lid:', phoneSource);
+          } else {
+            // NÃO usar payload.sender como fallback para mensagens outbound!
+            // O payload.sender em mensagens outbound é o REMETENTE (nossa conta), não o destinatário
+            console.warn('⚠️ Outbound @lid WITHOUT mapping - cannot determine recipient');
+            console.warn('⚠️ remoteJid:', remoteJid);
+            console.warn('⚠️ payload.sender seria nosso próprio número, NÃO o destinatário');
+            console.warn('⚠️ Aguardando mensagem INBOUND deste contato para criar mapeamento');
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                message: 'Outbound @lid without mapping - waiting for inbound message to create mapping',
+                remoteJid: remoteJid
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
         }
       } else if (senderPn && senderPn.includes('@s.whatsapp.net')) {
@@ -415,8 +431,10 @@ Deno.serve(async (req) => {
     // Normalize phone number
     const normalizedPhone = phoneSource.replace(/\D/g, '');
     const phoneWithCountry = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
-    if (lidId && phoneSource) {
-      console.log('Saving lid mapping:', lidId, '->', phoneWithCountry);
+    // Só salvar mapeamento lid para mensagens INBOUND (quando conhecemos o telefone real do remetente)
+    // Para mensagens OUTBOUND, o telefone que temos pode ser incorreto (nosso próprio número)
+    if (lidId && phoneSource && !isFromMe) {
+      console.log('✅ Saving lid mapping from INBOUND message:', lidId, '->', phoneWithCountry);
       await supabase
         .from('lid_phone_mapping')
         .upsert({
@@ -424,6 +442,8 @@ Deno.serve(async (req) => {
           phone: phoneWithCountry,
           organization_id: organizationId,
         }, { onConflict: 'lid_id' });
+    } else if (lidId && isFromMe) {
+      console.log('⏭️ Skipping lid mapping for OUTBOUND message - source phone may be incorrect');
     }
 
     // Extract message content
