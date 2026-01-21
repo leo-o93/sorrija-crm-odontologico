@@ -589,18 +589,30 @@ Deno.serve(async (req) => {
       console.log('Found existing conversation:', conversationId);
       
       // Update conversation (only increment unread_count for incoming messages)
-      const { error: updateError } = await supabase
+      const updatePayload = {
+        last_message_at: new Date().toISOString(),
+        unread_count: direction === 'in' 
+          ? (existingConversation.unread_count || 0) + 1 
+          : existingConversation.unread_count,
+      };
+      
+      console.log(`📝 Updating conversation ${conversationId}:`, {
+        direction,
+        last_message_at: updatePayload.last_message_at,
+        new_unread_count: updatePayload.unread_count
+      });
+      
+      const { error: updateError, data: updatedConv } = await supabase
         .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          unread_count: direction === 'in' 
-            ? (existingConversation.unread_count || 0) + 1 
-            : existingConversation.unread_count,
-        })
-        .eq('id', conversationId);
+        .update(updatePayload)
+        .eq('id', conversationId)
+        .select('id, last_message_at')
+        .maybeSingle();
 
       if (updateError) {
-        console.error('Error updating conversation:', updateError);
+        console.error('❌ Error updating conversation:', updateError);
+      } else {
+        console.log('✅ Conversation updated successfully:', updatedConv);
       }
     } else {
       // Create new conversation (only set unread_count for incoming messages)
@@ -670,7 +682,7 @@ Deno.serve(async (req) => {
       throw messageError;
     }
 
-    console.log('Message processed successfully:', messageId);
+    console.log(`✅ Message processed successfully: ${messageId} (direction: ${direction}, conversation: ${conversationId})`);
 
     return new Response(
       JSON.stringify({
