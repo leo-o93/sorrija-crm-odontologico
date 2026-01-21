@@ -114,11 +114,17 @@ Deno.serve(async (req) => {
 
     // Check if mediaKey exists - if not, media is expired or unsynced
     const messageData = rawPayload?.data?.message || rawPayload?.message;
-    const hasMediaKey = messageData?.imageMessage?.mediaKey ||
-                       messageData?.videoMessage?.mediaKey ||
-                       messageData?.audioMessage?.mediaKey ||
-                       messageData?.documentMessage?.mediaKey ||
-                       messageData?.stickerMessage?.mediaKey;
+    const videoMessage = messageData?.videoMessage;
+    const audioMessage = messageData?.audioMessage;
+    const imageMessage = messageData?.imageMessage;
+    const documentMessage = messageData?.documentMessage;
+    const stickerMessage = messageData?.stickerMessage;
+    
+    const hasMediaKey = imageMessage?.mediaKey ||
+                       videoMessage?.mediaKey ||
+                       audioMessage?.mediaKey ||
+                       documentMessage?.mediaKey ||
+                       stickerMessage?.mediaKey;
 
     if (!hasMediaKey) {
       console.log('[media-proxy] No mediaKey found - media likely expired or not synced');
@@ -128,6 +134,37 @@ Deno.serve(async (req) => {
         message: 'Mídia não disponível. O arquivo pode ter expirado ou não foi sincronizado.'
       }), { 
         status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Reject videos outright - they're too large for edge functions
+    // Also check fileLength for documents/audio
+    const fileLengthVideo = videoMessage?.fileLength;
+    const fileLengthAudio = audioMessage?.fileLength;
+    const fileLengthDoc = documentMessage?.fileLength;
+    const maxSizeBytes = 10 * 1024 * 1024; // 10MB limit
+    
+    if (videoMessage) {
+      console.log(`[media-proxy] Video detected (fileLength: ${fileLengthVideo}), rejecting - too large for edge functions`);
+      return new Response(JSON.stringify({ 
+        error: 'file_too_large',
+        message: 'Vídeos não podem ser processados pelo proxy. Visualize diretamente no WhatsApp.'
+      }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+    
+    // Check file size for audio and documents
+    const fileLength = fileLengthAudio || fileLengthDoc;
+    if (fileLength && parseInt(fileLength) > maxSizeBytes) {
+      console.log(`[media-proxy] File too large: ${fileLength} bytes, rejecting`);
+      return new Response(JSON.stringify({ 
+        error: 'file_too_large',
+        message: 'Arquivo muito grande para processar (máximo 10MB).'
+      }), { 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
