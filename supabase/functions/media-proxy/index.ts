@@ -10,6 +10,9 @@ const corsHeaders = {
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_BASE64_LENGTH = 20 * 1024 * 1024;
 
+// UUID v4 regex for validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,10 +23,22 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get auth user
+    // Get auth header and validate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Extract and verify user from JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('[media-proxy] Auth error:', authError);
+      return new Response(JSON.stringify({ error: 'Invalid authentication token' }), { 
         status: 401, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -38,7 +53,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[media-proxy] Processing message: ${message_id}`);
+    // Validate message_id format to prevent injection attacks
+    if (!UUID_REGEX.test(message_id)) {
+      console.warn(`[media-proxy] Invalid message_id format: ${message_id}`);
+      return new Response(JSON.stringify({ error: 'Invalid message_id format' }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    console.log(`[media-proxy] Processing message: ${message_id} for user: ${user.id}`);
 
     // Fetch the message
     const { data: message, error: msgError } = await supabase
@@ -54,6 +78,42 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
+
+    // CRITICAL SECURITY CHECK: Verify user belongs to the organization that owns this message
+    const messageOrgId = message.conversations?.organization_id;
+    if (!messageOrgId) {
+      console.error('[media-proxy] Message has no organization_id');
+      return new Response(JSON.stringify({ error: 'Invalid message data' }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Check if user is a member of the organization (or super admin)
+    const { data: membership, error: memberError } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('organization_id', messageOrgId)
+      .eq('active', true)
+      .maybeSingle();
+
+    // Also check if user is a super admin (can access all orgs)
+    const { data: superAdmin } = await supabase
+      .from('super_admins')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if ((memberError || !membership) && !superAdmin) {
+      console.warn(`[media-proxy] SECURITY: User ${user.id} attempted to access media from org ${messageOrgId} - access denied`);
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    console.log(`[media-proxy] User ${user.id} authorized for org ${messageOrgId}`);
 
     // Check if already has storage path - generate fresh signed URL
     if (message.media_url && message.media_url.startsWith('storage://')) {
