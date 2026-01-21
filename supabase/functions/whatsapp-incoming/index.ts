@@ -15,6 +15,7 @@ interface EvolutionWebhookPayload {
       fromMe: boolean;
       id: string;
       senderPn?: string;
+      previousRemoteJid?: string; // Campo que contém o @lid associado ao contato
     };
     pushName?: string;
     message?: {
@@ -310,16 +311,24 @@ Deno.serve(async (req) => {
       console.log('📤 OUTBOUND DEBUG:', {
         remoteJid: payload.data.key.remoteJid,
         senderPn: payload.data.key.senderPn,
+        previousRemoteJid: payload.data.key.previousRemoteJid,
         payloadSender: payload.sender,
         note: 'IMPORTANTE: payload.sender é NOSSO número (remetente), NÃO o destinatário!'
       });
     } else {
       console.log('📥 INBOUND MESSAGE: Received from contact');
+      console.log('📥 INBOUND DEBUG:', {
+        remoteJid: payload.data.key.remoteJid,
+        senderPn: payload.data.key.senderPn,
+        previousRemoteJid: payload.data.key.previousRemoteJid,
+        note: 'previousRemoteJid contém o @lid associado a este contato'
+      });
     }
 
     // Extract phone number - pode vir em senderPn (número real) ou remoteJid
     const remoteJid = payload.data.key.remoteJid;
     const senderPn = payload.data.key.senderPn;
+    const previousRemoteJid = payload.data.key.previousRemoteJid; // @lid associado ao contato
     let lidId: string | null = null;
 
     let phoneSource: string | null = null;
@@ -433,15 +442,31 @@ Deno.serve(async (req) => {
     const phoneWithCountry = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
     // Só salvar mapeamento lid para mensagens INBOUND (quando conhecemos o telefone real do remetente)
     // Para mensagens OUTBOUND, o telefone que temos pode ser incorreto (nosso próprio número)
-    if (lidId && phoneSource && !isFromMe) {
-      console.log('✅ Saving lid mapping from INBOUND message:', lidId, '->', phoneWithCountry);
-      await supabase
-        .from('lid_phone_mapping')
-        .upsert({
-          lid_id: lidId,
-          phone: phoneWithCountry,
-          organization_id: organizationId,
-        }, { onConflict: 'lid_id' });
+    if (!isFromMe && phoneWithCountry) {
+      // Prioridade 1: Se remoteJid é @lid, salvar esse mapeamento
+      if (lidId) {
+        console.log('✅ Saving lid mapping from INBOUND (remoteJid):', lidId, '->', phoneWithCountry);
+        await supabase
+          .from('lid_phone_mapping')
+          .upsert({
+            lid_id: lidId,
+            phone: phoneWithCountry,
+            organization_id: organizationId,
+          }, { onConflict: 'lid_id' });
+      }
+      
+      // Prioridade 2: Se previousRemoteJid é @lid, também salvar esse mapeamento
+      // IMPORTANTE: Este é o campo chave que a Evolution API envia associando o @lid ao telefone real
+      if (previousRemoteJid && previousRemoteJid.includes('@lid')) {
+        console.log('✅ Saving lid mapping from INBOUND (previousRemoteJid):', previousRemoteJid, '->', phoneWithCountry);
+        await supabase
+          .from('lid_phone_mapping')
+          .upsert({
+            lid_id: previousRemoteJid,
+            phone: phoneWithCountry,
+            organization_id: organizationId,
+          }, { onConflict: 'lid_id' });
+      }
     } else if (lidId && isFromMe) {
       console.log('⏭️ Skipping lid mapping for OUTBOUND message - source phone may be incorrect');
     }
