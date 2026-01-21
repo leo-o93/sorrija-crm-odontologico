@@ -55,9 +55,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if already has permanent URL
-    if (message.media_url && !message.media_url.includes('mmg.whatsapp.net')) {
-      console.log('[media-proxy] Already has permanent URL');
+    // Check if already has storage path - generate fresh signed URL
+    if (message.media_url && message.media_url.startsWith('storage://')) {
+      const storagePath = message.media_url.replace('storage://whatsapp-media/', '');
+      console.log('[media-proxy] Generating fresh signed URL for existing storage path');
+      
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('whatsapp-media')
+        .createSignedUrl(storagePath, 3600);
+      
+      if (signedUrlData?.signedUrl) {
+        return new Response(JSON.stringify({ url: signedUrlData.signedUrl }), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+      console.log('[media-proxy] Could not generate signed URL, will try to re-fetch');
+    }
+    
+    // Check for legacy public URLs (non-WhatsApp temporary URLs)
+    if (message.media_url && !message.media_url.includes('mmg.whatsapp.net') && !message.media_url.startsWith('storage://')) {
+      console.log('[media-proxy] Already has permanent URL (legacy)');
       return new Response(JSON.stringify({ url: message.media_url }), { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -310,26 +327,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
+    // Create signed URL (valid for 1 hour) since bucket is now private
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('whatsapp-media')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
 
-    const permanentUrl = publicUrlData.publicUrl;
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      console.error('[media-proxy] Signed URL error:', signedUrlError);
+      return new Response(JSON.stringify({ error: 'Failed to generate signed URL' }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
-    console.log(`[media-proxy] Updating message with permanent URL: ${permanentUrl}`);
+    const signedUrl = signedUrlData.signedUrl;
+    
+    // Store the file path (not the signed URL) so we can regenerate signed URLs later
+    // Use a special format: storage://{bucket}/{path}
+    const storagePath = `storage://whatsapp-media/${filePath}`;
 
-    // Update message with permanent URL
+    console.log(`[media-proxy] Updating message with storage path and returning signed URL`);
+
+    // Update message with storage path reference
     const { error: updateError } = await supabase
       .from('messages')
-      .update({ media_url: permanentUrl })
+      .update({ media_url: storagePath })
       .eq('id', message_id);
 
     if (updateError) {
       console.error('[media-proxy] Message update error:', updateError);
     }
 
-    return new Response(JSON.stringify({ url: permanentUrl }), { 
+    return new Response(JSON.stringify({ url: signedUrl, storage_path: storagePath }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
 
