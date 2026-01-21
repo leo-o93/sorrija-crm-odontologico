@@ -1,9 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Max file size: 15MB (base64 is ~33% larger, so 20MB base64 string)
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+const MAX_BASE64_LENGTH = 20 * 1024 * 1024;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -107,6 +112,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check if mediaKey exists - if not, media is expired or unsynced
+    const messageData = rawPayload?.data?.message || rawPayload?.message;
+    const hasMediaKey = messageData?.imageMessage?.mediaKey ||
+                       messageData?.videoMessage?.mediaKey ||
+                       messageData?.audioMessage?.mediaKey ||
+                       messageData?.documentMessage?.mediaKey ||
+                       messageData?.stickerMessage?.mediaKey;
+
+    if (!hasMediaKey) {
+      console.log('[media-proxy] No mediaKey found - media likely expired or not synced');
+      return new Response(JSON.stringify({ 
+        error: 'media_expired',
+        expired: true,
+        message: 'Mídia não disponível. O arquivo pode ter expirado ou não foi sincronizado.'
+      }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
     console.log(`[media-proxy] Fetching media from Evolution API`);
 
     // Call Evolution API to get base64 media
@@ -129,17 +154,18 @@ Deno.serve(async (req) => {
       const errorText = await evolutionResponse.text();
       console.error('[media-proxy] Evolution API error:', errorText);
       
-      // Check if it's a 403, 404 or 410 error (media expired or not found)
-      const isMediaExpired = errorText.includes('403') || 
+      // Check if it's a 400, 403, 404 or 410 error (media expired or not found)
+      const isMediaExpired = evolutionResponse.status === 400 ||
+                            evolutionResponse.status === 403 ||
+                            evolutionResponse.status === 404 ||
+                            evolutionResponse.status === 410 ||
                             errorText.includes('Forbidden') ||
-                            errorText.includes('404') ||
                             errorText.includes('Not Found') ||
-                            errorText.includes('410') ||
-                            errorText.includes('Gone');
+                            errorText.includes('Gone') ||
+                            errorText.includes('Bad Request');
       
       if (isMediaExpired) {
         console.log('[media-proxy] Media expired or not found, returning expired status');
-        // Return 200 with error field so SDK doesn't throw
         return new Response(JSON.stringify({ 
           error: 'media_expired',
           expired: true,
@@ -162,14 +188,56 @@ Deno.serve(async (req) => {
 
     if (!base64Data) {
       console.error('[media-proxy] No base64 data returned');
-      return new Response(JSON.stringify({ error: 'No media data returned' }), { 
-        status: 404, 
+      return new Response(JSON.stringify({ 
+        error: 'media_expired',
+        expired: true,
+        message: 'Mídia não retornada pela Evolution API.'
+      }), { 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Decode base64 to binary
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    // Check file size before processing to avoid memory issues
+    if (base64Data.length > MAX_BASE64_LENGTH) {
+      console.error(`[media-proxy] File too large: ${base64Data.length} chars (max ${MAX_BASE64_LENGTH})`);
+      return new Response(JSON.stringify({ 
+        error: 'file_too_large',
+        message: 'Arquivo muito grande para processar (máximo 15MB).'
+      }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    console.log(`[media-proxy] Decoding base64 (${Math.round(base64Data.length / 1024)}KB)`);
+
+    // Use Deno's efficient base64 decoder instead of atob + manual conversion
+    let binaryData: Uint8Array;
+    try {
+      binaryData = decodeBase64(base64Data);
+    } catch (decodeError) {
+      console.error('[media-proxy] Base64 decode error:', decodeError);
+      return new Response(JSON.stringify({ 
+        error: 'decode_error',
+        message: 'Erro ao decodificar mídia.'
+      }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Double-check decoded size
+    if (binaryData.length > MAX_FILE_SIZE_BYTES) {
+      console.error(`[media-proxy] Decoded file too large: ${binaryData.length} bytes`);
+      return new Response(JSON.stringify({ 
+        error: 'file_too_large',
+        message: 'Arquivo muito grande para armazenar (máximo 15MB).'
+      }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
     // Determine file extension
     const extMap: Record<string, string> = {
@@ -187,7 +255,7 @@ Deno.serve(async (req) => {
     const fileName = `${message_id}.${ext}`;
     const filePath = `${organizationId}/${fileName}`;
 
-    console.log(`[media-proxy] Uploading to storage: ${filePath}`);
+    console.log(`[media-proxy] Uploading to storage: ${filePath} (${Math.round(binaryData.length / 1024)}KB)`);
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
