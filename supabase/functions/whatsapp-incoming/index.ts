@@ -1,9 +1,58 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { timingSafeEqual } from "https://deno.land/std@0.224.0/crypto/timing_safe_equal.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token, x-webhook-timestamp',
 };
+
+// Simple in-memory rate limiter for webhook requests
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute per instance
+
+function checkRateLimit(instanceName: string): boolean {
+  const now = Date.now();
+  const key = `webhook:${instanceName}`;
+  const entry = rateLimitMap.get(key);
+  
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
+}
+
+// Timing-safe token comparison to prevent timing attacks
+function secureCompareTokens(providedToken: string, storedToken: string): boolean {
+  try {
+    const encoder = new TextEncoder();
+    const a = encoder.encode(providedToken);
+    const b = encoder.encode(storedToken);
+    
+    // If lengths differ, still do comparison but will return false
+    if (a.length !== b.length) {
+      // Pad the shorter one to prevent length leakage
+      const maxLen = Math.max(a.length, b.length);
+      const paddedA = new Uint8Array(maxLen);
+      const paddedB = new Uint8Array(maxLen);
+      paddedA.set(a);
+      paddedB.set(b);
+      timingSafeEqual(paddedA, paddedB);
+      return false;
+    }
+    
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 interface EvolutionWebhookPayload {
   event: string;
@@ -280,17 +329,28 @@ Deno.serve(async (req) => {
     const organizationId = integrationSettings.organization_id;
     console.log('Using organization from integration:', organizationId);
 
-    // Validar webhook token
+    // Rate limiting check
+    if (!checkRateLimit(instanceName)) {
+      console.warn(`Rate limit exceeded for instance: ${instanceName}`);
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate webhook token using timing-safe comparison
     const storedToken = integrationSettings.settings?.webhook_secret;
-    if (storedToken !== webhookToken) {
+    if (!storedToken || !secureCompareTokens(webhookToken, storedToken)) {
       console.error('Invalid webhook token for instance:', instanceName);
-      console.error('Expected token:', storedToken?.substring(0, 10) + '...');
-      console.error('Received token:', webhookToken.substring(0, 10) + '...');
+      // Don't log actual tokens in production - just indicate mismatch
+      console.error('Token validation failed');
       return new Response(
         JSON.stringify({ error: 'Invalid webhook token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('✅ Webhook authentication successful for instance:', instanceName);
 
     // Determine message direction
     const isFromMe = payload.data.key.fromMe;
