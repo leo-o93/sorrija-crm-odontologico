@@ -39,6 +39,12 @@ interface ImportRecord {
   atendimentos_json: unknown[] | null;
   orcamentos_json: unknown[] | null;
   vendas_json: unknown[] | null;
+  // Non-contracted quotes data
+  total_orc_nao_contratados_itens: number;
+  soma_valor_orc_nao_contratados: number | null;
+  top_procedimentos_orc_nao_contratados: string | null;
+  top_especialidades_orc_nao_contratados: string | null;
+  orc_nao_contratados_json: unknown[] | null;
 }
 
 interface ImportResults {
@@ -197,6 +203,21 @@ export function useSpreadsheetImport() {
         const orcamentosJson = parseJsonColumn(row["orcamentos_json"]);
         const vendasJson = parseJsonColumn(row["vendas_json"]);
 
+        // Parse new non-contracted quotes fields
+        const totalOrcNaoContratadosItens = Number(row["total_orc_nao_contratados_itens"]) || 0;
+        
+        let somaValorOrcNaoContratados: number | null = null;
+        const somaOrcNaoContratados = row["soma_valor_orc_nao_contratados"];
+        if (typeof somaOrcNaoContratados === "number") {
+          somaValorOrcNaoContratados = somaOrcNaoContratados;
+        } else if (typeof somaOrcNaoContratados === "string") {
+          somaValorOrcNaoContratados = parseCurrency(somaOrcNaoContratados);
+        }
+
+        const topProcedimentosOrcNaoContratados = (row["top_procedimentos_orc_nao_contratados"] as string) || null;
+        const topEspecialidadesOrcNaoContratados = (row["top_especialidades_orc_nao_contratados"] as string) || null;
+        const orcNaoContratadosJson = parseJsonColumn(row["orc_nao_contratados_json"]);
+
         records.push({
           phone,
           name: name || null,
@@ -234,6 +255,12 @@ export function useSpreadsheetImport() {
           atendimentos_json: atendimentosJson,
           orcamentos_json: orcamentosJson,
           vendas_json: vendasJson,
+          // Non-contracted quotes data
+          total_orc_nao_contratados_itens: totalOrcNaoContratadosItens,
+          soma_valor_orc_nao_contratados: somaValorOrcNaoContratados,
+          top_procedimentos_orc_nao_contratados: topProcedimentosOrcNaoContratados,
+          top_especialidades_orc_nao_contratados: topEspecialidadesOrcNaoContratados,
+          orc_nao_contratados_json: orcNaoContratadosJson,
         });
       }
 

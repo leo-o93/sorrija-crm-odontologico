@@ -6,13 +6,14 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, CreditCard, Receipt, Stethoscope } from "lucide-react";
+import { Calendar, CreditCard, Receipt, Stethoscope, AlertTriangle } from "lucide-react";
 import {
   HistoryType,
   AppointmentHistoryItem,
   AttendanceHistoryItem,
   QuoteHistoryItem,
   SaleHistoryItem,
+  NonContractedQuoteItem,
 } from "@/types/history";
 
 const formatCurrency = (value: number) => {
@@ -51,7 +52,7 @@ interface HistoryDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   type: HistoryType;
-  data: (AppointmentHistoryItem | AttendanceHistoryItem | QuoteHistoryItem | SaleHistoryItem)[];
+  data: (AppointmentHistoryItem | AttendanceHistoryItem | QuoteHistoryItem | SaleHistoryItem | NonContractedQuoteItem)[];
 }
 
 export function HistoryDetailDialog({
@@ -71,6 +72,8 @@ export function HistoryDetailDialog({
         return <Receipt className="h-5 w-5 text-purple-600" />;
       case "sales":
         return <CreditCard className="h-5 w-5 text-orange-600" />;
+      case "non_contracted_quotes":
+        return <AlertTriangle className="h-5 w-5 text-orange-600" />;
     }
   };
 
@@ -218,6 +221,38 @@ export function HistoryDetailDialog({
     );
   };
 
+  const renderNonContractedQuoteItem = (item: NonContractedQuoteItem, index: number) => {
+    const itemData = item as unknown as Record<string, unknown>;
+    
+    const data = getField(itemData, 'DATA', 'data') as string;
+    const procedimento = getField(itemData, 'PROCEDIMENTO', 'procedimento') as string;
+    const especialidade = getField(itemData, 'ESPECIALIDADE', 'especialidade') as string;
+    const valor = getField(itemData, 'VALOR', 'valor', 'valor_num') as number;
+    const observacao = getField(itemData, 'OBSERVACAO', 'OBSERVAÇÃO', 'observacao') as string;
+    
+    return (
+      <div key={index} className="p-3 border border-orange-200 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 space-y-2">
+        <div className="flex justify-between items-start">
+          <p className="text-xs text-muted-foreground">{formatDate(data || "")}</p>
+          {valor > 0 && (
+            <span className="font-medium text-orange-700">
+              {formatCurrency(valor)}
+            </span>
+          )}
+        </div>
+        {procedimento && <p className="text-sm font-medium">{procedimento}</p>}
+        {especialidade && (
+          <Badge variant="outline" className="text-xs bg-orange-100/50 text-orange-700">
+            {especialidade}
+          </Badge>
+        )}
+        {observacao && (
+          <p className="text-xs text-muted-foreground mt-1">{observacao}</p>
+        )}
+      </div>
+    );
+  };
+
   const renderItem = (item: unknown, index: number) => {
     switch (type) {
       case "appointments":
@@ -228,6 +263,8 @@ export function HistoryDetailDialog({
         return renderQuoteItem(item as QuoteHistoryItem, index);
       case "sales":
         return renderSaleItem(item as SaleHistoryItem, index);
+      case "non_contracted_quotes":
+        return renderNonContractedQuoteItem(item as NonContractedQuoteItem, index);
     }
   };
 

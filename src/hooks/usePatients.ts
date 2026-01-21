@@ -9,6 +9,7 @@ import type {
   AttendanceHistoryItem,
   QuoteHistoryItem,
   SaleHistoryItem,
+  NonContractedQuoteItem,
 } from "@/types/history";
 
 export interface Patient {
@@ -49,6 +50,12 @@ export interface Patient {
   attendances_history?: AttendanceHistoryItem[] | Json | null;
   quotes_history?: QuoteHistoryItem[] | Json | null;
   sales_history?: SaleHistoryItem[] | Json | null;
+  // Non-contracted quotes data
+  total_non_contracted_quote_items?: number | null;
+  total_non_contracted_quote_value?: number | null;
+  top_non_contracted_procedures?: string | null;
+  top_non_contracted_specialties?: string | null;
+  non_contracted_quotes_history?: NonContractedQuoteItem[] | Json | null;
 }
 
 export interface CreatePatientInput {

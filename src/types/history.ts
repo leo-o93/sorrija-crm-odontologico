@@ -35,10 +35,20 @@ export interface SaleHistoryItem {
   OBSERVAÇÃO?: string;
 }
 
-export type HistoryType = 'appointments' | 'attendances' | 'quotes' | 'sales';
+// New type for non-contracted quote items
+export interface NonContractedQuoteItem {
+  DATA?: string;
+  PROCEDIMENTO?: string;
+  ESPECIALIDADE?: string;
+  VALOR?: number;
+  valor_num?: number;
+  OBSERVACAO?: string;
+}
+
+export type HistoryType = 'appointments' | 'attendances' | 'quotes' | 'sales' | 'non_contracted_quotes';
 
 export interface HistoryDialogData {
   type: HistoryType;
   title: string;
-  data: (AppointmentHistoryItem | AttendanceHistoryItem | QuoteHistoryItem | SaleHistoryItem)[];
+  data: (AppointmentHistoryItem | AttendanceHistoryItem | QuoteHistoryItem | SaleHistoryItem | NonContractedQuoteItem)[];
 }

@@ -35,6 +35,12 @@ interface ImportRecord {
   atendimentos_json: unknown[] | null;
   orcamentos_json: unknown[] | null;
   vendas_json: unknown[] | null;
+  // Non-contracted quotes data
+  total_orc_nao_contratados_itens: number;
+  soma_valor_orc_nao_contratados: number | null;
+  top_procedimentos_orc_nao_contratados: string | null;
+  top_especialidades_orc_nao_contratados: string | null;
+  orc_nao_contratados_json: unknown[] | null;
 }
 
 interface ImportResults {

@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Lead, useDeleteLeadComplete } from "@/hooks/useLeads";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt, CheckCircle, XCircle, Loader2, Stethoscope, ShoppingCart, FileBarChart } from "lucide-react";
+import { Phone, MessageCircle, Calendar, DollarSign, FileText, Edit, UserCheck, Trash2, ThermometerSun, Clock, TrendingUp, CreditCard, Receipt, CheckCircle, XCircle, Loader2, Stethoscope, ShoppingCart, FileBarChart, AlertTriangle, ChevronRight } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +14,7 @@ import { TemperatureBadge } from "./TemperatureBadge";
 import { HotSubstatusBadge } from "./HotSubstatusBadge";
 import { TemperatureActions } from "./TemperatureActions";
 import { HistoryDetailDialog } from "@/components/pacientes/HistoryDetailDialog";
-import { HistoryType, AppointmentHistoryItem, AttendanceHistoryItem, QuoteHistoryItem, SaleHistoryItem } from "@/types/history";
+import { HistoryType, AppointmentHistoryItem, AttendanceHistoryItem, QuoteHistoryItem, SaleHistoryItem, NonContractedQuoteItem } from "@/types/history";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -78,6 +78,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   const attendancesHistory = getHistoryArray<AttendanceHistoryItem>(lead?.attendances_history);
   const quotesHistory = getHistoryArray<QuoteHistoryItem>(lead?.quotes_history);
   const salesHistory = getHistoryArray<SaleHistoryItem>(lead?.sales_history);
+  const nonContractedQuotesHistory = getHistoryArray<NonContractedQuoteItem>(lead?.non_contracted_quotes_history);
 
   const openHistoryDialog = (type: HistoryType, title: string) => {
     setHistoryDialogType(type);
@@ -422,6 +423,56 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                 </>
               )}
 
+              {/* Non-Contracted Quotes Detail */}
+              {((lead.total_non_contracted_quote_items && lead.total_non_contracted_quote_items > 0) || nonContractedQuotesHistory.length > 0) && (
+                <>
+                  <Separator />
+                  <div className="space-y-3 p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200">
+                    <h3 className="font-semibold flex items-center gap-2 text-orange-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      Orçamentos Não Contratados
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-xl font-bold text-orange-600">
+                          {lead.total_non_contracted_quote_items ?? nonContractedQuotesHistory.length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Itens</p>
+                      </div>
+                      <button
+                        onClick={() => nonContractedQuotesHistory.length > 0 && openHistoryDialog("non_contracted_quotes", "Orçamentos Não Contratados")}
+                        className={`text-center p-2 bg-background rounded border transition-colors ${
+                          nonContractedQuotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                        }`}
+                        disabled={nonContractedQuotesHistory.length === 0}
+                      >
+                        <p className="text-xl font-bold text-orange-600">
+                          {formatCurrency(lead.total_non_contracted_quote_value ?? 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                          Valor Total
+                          {nonContractedQuotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                        </p>
+                      </button>
+                    </div>
+                    
+                    {lead.top_non_contracted_procedures && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Top Procedimentos: </span>
+                        <span className="font-medium">{lead.top_non_contracted_procedures}</span>
+                      </div>
+                    )}
+                    {lead.top_non_contracted_specialties && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Top Especialidades: </span>
+                        <span className="font-medium">{lead.top_non_contracted_specialties}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               <Separator />
 
               {/* Ações rápidas */}
@@ -637,6 +688,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
           historyDialogType === "appointments" ? appointmentsHistory :
           historyDialogType === "attendances" ? attendancesHistory :
           historyDialogType === "quotes" ? quotesHistory :
+          historyDialogType === "non_contracted_quotes" ? nonContractedQuotesHistory :
           salesHistory
         }
       />
