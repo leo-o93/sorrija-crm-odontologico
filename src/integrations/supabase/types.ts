@@ -822,6 +822,7 @@ export type Database = {
           name: string
           next_follow_up_date: string | null
           no_show_count: number | null
+          non_contracted_quotes_history: Json | null
           non_contracted_value: number | null
           notes: string | null
           organization_id: string | null
@@ -839,7 +840,11 @@ export type Database = {
           temperature: string | null
           third_contact_channel: string | null
           third_contact_date: string | null
+          top_non_contracted_procedures: string | null
+          top_non_contracted_specialties: string | null
           total_appointments: number | null
+          total_non_contracted_quote_items: number | null
+          total_non_contracted_quote_value: number | null
           total_quotes: number | null
           total_revenue: number | null
           total_sales: number | null
@@ -872,6 +877,7 @@ export type Database = {
           name: string
           next_follow_up_date?: string | null
           no_show_count?: number | null
+          non_contracted_quotes_history?: Json | null
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
@@ -889,7 +895,11 @@ export type Database = {
           temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          top_non_contracted_procedures?: string | null
+          top_non_contracted_specialties?: string | null
           total_appointments?: number | null
+          total_non_contracted_quote_items?: number | null
+          total_non_contracted_quote_value?: number | null
           total_quotes?: number | null
           total_revenue?: number | null
           total_sales?: number | null
@@ -922,6 +932,7 @@ export type Database = {
           name?: string
           next_follow_up_date?: string | null
           no_show_count?: number | null
+          non_contracted_quotes_history?: Json | null
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
@@ -939,7 +950,11 @@ export type Database = {
           temperature?: string | null
           third_contact_channel?: string | null
           third_contact_date?: string | null
+          top_non_contracted_procedures?: string | null
+          top_non_contracted_specialties?: string | null
           total_appointments?: number | null
+          total_non_contracted_quote_items?: number | null
+          total_non_contracted_quote_value?: number | null
           total_quotes?: number | null
           total_revenue?: number | null
           total_sales?: number | null
@@ -1295,6 +1310,7 @@ export type Database = {
           medical_history: string | null
           medications: string | null
           name: string
+          non_contracted_quotes_history: Json | null
           non_contracted_value: number | null
           notes: string | null
           organization_id: string | null
@@ -1302,8 +1318,12 @@ export type Database = {
           quotes_history: Json | null
           sales_history: Json | null
           state: string | null
+          top_non_contracted_procedures: string | null
+          top_non_contracted_specialties: string | null
           total_appointments: number | null
           total_attendances: number | null
+          total_non_contracted_quote_items: number | null
+          total_non_contracted_quote_value: number | null
           total_quotes: number | null
           total_revenue: number | null
           total_sales: number | null
@@ -1333,6 +1353,7 @@ export type Database = {
           medical_history?: string | null
           medications?: string | null
           name: string
+          non_contracted_quotes_history?: Json | null
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
@@ -1340,8 +1361,12 @@ export type Database = {
           quotes_history?: Json | null
           sales_history?: Json | null
           state?: string | null
+          top_non_contracted_procedures?: string | null
+          top_non_contracted_specialties?: string | null
           total_appointments?: number | null
           total_attendances?: number | null
+          total_non_contracted_quote_items?: number | null
+          total_non_contracted_quote_value?: number | null
           total_quotes?: number | null
           total_revenue?: number | null
           total_sales?: number | null
@@ -1371,6 +1396,7 @@ export type Database = {
           medical_history?: string | null
           medications?: string | null
           name?: string
+          non_contracted_quotes_history?: Json | null
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
@@ -1378,8 +1404,12 @@ export type Database = {
           quotes_history?: Json | null
           sales_history?: Json | null
           state?: string | null
+          top_non_contracted_procedures?: string | null
+          top_non_contracted_specialties?: string | null
           total_appointments?: number | null
           total_attendances?: number | null
+          total_non_contracted_quote_items?: number | null
+          total_non_contracted_quote_value?: number | null
           total_quotes?: number | null
           total_revenue?: number | null
           total_sales?: number | null

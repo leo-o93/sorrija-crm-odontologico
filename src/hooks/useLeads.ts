@@ -51,6 +51,12 @@ export interface Lead {
   attendances_history: unknown[] | null;
   quotes_history: unknown[] | null;
   sales_history: unknown[] | null;
+  // Non-contracted quotes data
+  total_non_contracted_quote_items: number | null;
+  total_non_contracted_quote_value: number | null;
+  top_non_contracted_procedures: string | null;
+  top_non_contracted_specialties: string | null;
+  non_contracted_quotes_history: unknown[] | null;
   sources?: { name: string };
   procedures?: { name: string };
 }

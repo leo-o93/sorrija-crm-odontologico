@@ -40,6 +40,12 @@ interface ImportRecord {
   atendimentos_json: unknown[] | null;
   orcamentos_json: unknown[] | null;
   vendas_json: unknown[] | null;
+  // Non-contracted quotes data
+  total_orc_nao_contratados_itens: number;
+  soma_valor_orc_nao_contratados: number | null;
+  top_procedimentos_orc_nao_contratados: string | null;
+  top_especialidades_orc_nao_contratados: string | null;
+  orc_nao_contratados_json: unknown[] | null;
 }
 
 interface ImportRequest {
@@ -237,6 +243,12 @@ Deno.serve(async (req) => {
               attendances_history: record.atendimentos_json || [],
               quotes_history: record.orcamentos_json || [],
               sales_history: record.vendas_json || [],
+              // Non-contracted quotes data
+              total_non_contracted_quote_items: record.total_orc_nao_contratados_itens || 0,
+              total_non_contracted_quote_value: record.soma_valor_orc_nao_contratados || 0,
+              top_non_contracted_procedures: record.top_procedimentos_orc_nao_contratados,
+              top_non_contracted_specialties: record.top_especialidades_orc_nao_contratados,
+              non_contracted_quotes_history: record.orc_nao_contratados_json || [],
               updated_at: new Date().toISOString(),
             })
             .eq("id", existingLead.id);
@@ -277,6 +289,12 @@ Deno.serve(async (req) => {
               attendances_history: record.atendimentos_json || [],
               quotes_history: record.orcamentos_json || [],
               sales_history: record.vendas_json || [],
+              // Non-contracted quotes data
+              total_non_contracted_quote_items: record.total_orc_nao_contratados_itens || 0,
+              total_non_contracted_quote_value: record.soma_valor_orc_nao_contratados || 0,
+              top_non_contracted_procedures: record.top_procedimentos_orc_nao_contratados,
+              top_non_contracted_specialties: record.top_especialidades_orc_nao_contratados,
+              non_contracted_quotes_history: record.orc_nao_contratados_json || [],
             })
             .select("id")
             .single();
@@ -335,6 +353,12 @@ Deno.serve(async (req) => {
                 attendances_history: record.atendimentos_json || [],
                 quotes_history: record.orcamentos_json || [],
                 sales_history: record.vendas_json || [],
+                // Non-contracted quotes data
+                total_non_contracted_quote_items: record.total_orc_nao_contratados_itens || 0,
+                total_non_contracted_quote_value: record.soma_valor_orc_nao_contratados || 0,
+                top_non_contracted_procedures: record.top_procedimentos_orc_nao_contratados,
+                top_non_contracted_specialties: record.top_especialidades_orc_nao_contratados,
+                non_contracted_quotes_history: record.orc_nao_contratados_json || [],
                 updated_at: new Date().toISOString(),
               })
               .eq("id", existingPatient.id);
@@ -381,6 +405,12 @@ Deno.serve(async (req) => {
                 attendances_history: record.atendimentos_json || [],
                 quotes_history: record.orcamentos_json || [],
                 sales_history: record.vendas_json || [],
+                // Non-contracted quotes data
+                total_non_contracted_quote_items: record.total_orc_nao_contratados_itens || 0,
+                total_non_contracted_quote_value: record.soma_valor_orc_nao_contratados || 0,
+                top_non_contracted_procedures: record.top_procedimentos_orc_nao_contratados,
+                top_non_contracted_specialties: record.top_especialidades_orc_nao_contratados,
+                non_contracted_quotes_history: record.orc_nao_contratados_json || [],
               });
 
             if (patientError) {

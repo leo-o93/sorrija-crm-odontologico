@@ -41,7 +41,8 @@ import type {
   AppointmentHistoryItem, 
   AttendanceHistoryItem, 
   QuoteHistoryItem, 
-  SaleHistoryItem 
+  SaleHistoryItem,
+  NonContractedQuoteItem 
 } from "@/types/history";
 
 const formatCurrency = (value: number) => {
@@ -191,9 +192,10 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const attendancesHistory = getHistoryArray<AttendanceHistoryItem>(patient.attendances_history);
   const quotesHistory = getHistoryArray<QuoteHistoryItem>(patient.quotes_history);
   const salesHistory = getHistoryArray<SaleHistoryItem>(patient.sales_history);
+  const nonContractedQuotesHistory = getHistoryArray<NonContractedQuoteItem>(patient.non_contracted_quotes_history);
 
   const hasAnyHistory = appointmentsHistory.length > 0 || attendancesHistory.length > 0 || 
-    quotesHistory.length > 0 || salesHistory.length > 0;
+    quotesHistory.length > 0 || salesHistory.length > 0 || nonContractedQuotesHistory.length > 0;
 
   const openHistoryDialog = (type: HistoryType, title: string) => {
     setHistoryDialogType(type);
@@ -207,6 +209,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
       case "attendances": return attendancesHistory;
       case "quotes": return quotesHistory;
       case "sales": return salesHistory;
+      case "non_contracted_quotes": return nonContractedQuotesHistory;
     }
   };
 
@@ -346,6 +349,56 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
               </p>
             </button>
           </div>
+
+          {/* Non-Contracted Quotes Section */}
+          {((patient.total_non_contracted_quote_items ?? 0) > 0 || nonContractedQuotesHistory.length > 0) && (
+            <>
+              <Separator className="my-4" />
+              <div className="space-y-3 p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200">
+                <h4 className="font-medium text-sm flex items-center gap-2 text-orange-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  Orçamentos Não Contratados
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-center p-2 bg-background rounded border">
+                    <p className="text-xl font-bold text-orange-600">
+                      {patient.total_non_contracted_quote_items ?? nonContractedQuotesHistory.length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Itens</p>
+                  </div>
+                  <button
+                    onClick={() => nonContractedQuotesHistory.length > 0 && openHistoryDialog("non_contracted_quotes", "Orçamentos Não Contratados")}
+                    className={`text-center p-2 bg-background rounded border transition-colors ${
+                      nonContractedQuotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                    }`}
+                    disabled={nonContractedQuotesHistory.length === 0}
+                  >
+                    <p className="text-xl font-bold text-orange-600">
+                      {formatCurrency(patient.total_non_contracted_quote_value ?? 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      Valor Total
+                      {nonContractedQuotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                    </p>
+                  </button>
+                </div>
+                
+                {patient.top_non_contracted_procedures && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Top Procedimentos: </span>
+                    <span className="font-medium">{patient.top_non_contracted_procedures}</span>
+                  </div>
+                )}
+                {patient.top_non_contracted_specialties && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Top Especialidades: </span>
+                    <span className="font-medium">{patient.top_non_contracted_specialties}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           <Separator className="my-4" />
 
