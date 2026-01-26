@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Organization } from '@/types/organization';
+import type { AppRole } from '@/lib/roles';
 
 interface AuditLog {
   id: string;
@@ -40,7 +41,7 @@ interface SuperAdminContextType {
   updateOrganization: (id: string, data: Record<string, unknown>) => Promise<boolean>;
   deleteOrganization: (id: string) => Promise<boolean>;
   getOrganizationMembers: (orgId: string) => Promise<any[]>;
-  addMember: (orgId: string, email: string, role: string) => Promise<boolean>;
+  addMember: (orgId: string, email: string, role: AppRole) => Promise<boolean>;
   removeMember: (orgId: string, userId: string) => Promise<boolean>;
   auditLogs: AuditLog[];
   globalStats: GlobalStats;
@@ -195,7 +196,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const addMember = async (orgId: string, email: string, role: string): Promise<boolean> => {
+  const addMember = async (orgId: string, email: string, role: AppRole): Promise<boolean> => {
     try {
       await callAdminFunction(`/${orgId}/members`, 'POST', { email, role });
       return true;

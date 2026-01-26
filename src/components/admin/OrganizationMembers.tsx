@@ -8,6 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { toast } from 'sonner';
 import { Loader2, Trash2, UserPlus } from 'lucide-react';
+import { appRoles, getRoleLabel } from '@/lib/roles';
+import type { AppRole } from '@/lib/roles';
 
 interface OrganizationMembersProps {
   organizationId: string;
@@ -19,7 +21,7 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
   const { getOrganizationMembers, addMember, removeMember } = useSuperAdmin();
   const [members, setMembers] = useState<any[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('usuario');
+  const [role, setRole] = useState<AppRole>('usuario');
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
@@ -105,15 +107,6 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    const roles: Record<string, string> = {
-      admin: 'Administrador',
-      usuario: 'Usuário',
-    };
-    // Qualquer role legado será exibido como 'Usuário'
-    return roles[role] || 'Usuário';
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -131,13 +124,16 @@ export function OrganizationMembers({ organizationId, open, onOpenChange }: Orga
               disabled={isAddingMember}
               className="md:col-span-2"
             />
-            <Select value={role} onValueChange={setRole} disabled={isAddingMember}>
+            <Select value={role} onValueChange={(value: AppRole) => setRole(value)} disabled={isAddingMember}>
               <SelectTrigger>
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="usuario">Usuário</SelectItem>
+                {appRoles.map((appRole) => (
+                  <SelectItem key={appRole} value={appRole}>
+                    {getRoleLabel(appRole)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button onClick={handleAdd} disabled={isAddingMember}>

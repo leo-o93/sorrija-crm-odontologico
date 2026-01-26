@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
+import { getRoleLabel } from '@/lib/roles';
 
 interface UserWithOrgs {
   id: string;
@@ -55,15 +56,6 @@ export function GlobalUsersManager() {
       return usersWithOrgs;
     },
   });
-
-  const getRoleLabel = (role: string) => {
-    const roles: Record<string, string> = {
-      admin: 'Administrador',
-      usuario: 'Usuário',
-    };
-    // Qualquer role legado será exibido como 'Usuário'
-    return roles[role] || 'Usuário';
-  };
 
   if (isLoading) {
     return (

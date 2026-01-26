@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, User } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { getRoleLabel } from '@/lib/roles';
 
 export function UserMenu() {
   const { user, userRole, signOut } = useAuth();
@@ -18,15 +19,6 @@ export function UserMenu() {
 
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
-  };
-
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      admin: 'Administrador',
-      usuario: 'Usuário',
-    };
-    // Qualquer role legado será exibido como 'Usuário'
-    return labels[role] || 'Usuário';
   };
 
   return (
