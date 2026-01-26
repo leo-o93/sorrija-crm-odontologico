@@ -3,9 +3,10 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import type { AppRole } from '@/lib/roles';
 
 interface UserRole {
-  role: 'admin' | 'usuario';
+  role: AppRole;
 }
 
 interface AuthContextType {
@@ -17,7 +18,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
-  hasRole: (role: string) => boolean;
+  hasRole: (role: AppRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,9 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!orgMemberError && orgMemberData) {
         // Map old roles to new simplified roles
-        const role = orgMemberData.role;
-        const normalizedRole: 'admin' | 'usuario' = role === 'admin' ? 'admin' : 'usuario';
-        setUserRole({ role: normalizedRole });
+        const role = orgMemberData.role as AppRole;
+        setUserRole({ role });
         return;
       }
 
@@ -90,9 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       // Map old roles to new simplified roles
-      const role = data?.role;
-      const normalizedRole: 'admin' | 'usuario' = role === 'admin' ? 'admin' : 'usuario';
-      setUserRole({ role: normalizedRole });
+      const role = data?.role as AppRole | undefined;
+      if (role) {
+        setUserRole({ role });
+      } else {
+        setUserRole(null);
+      }
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole(null);
@@ -175,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const hasRole = (role: string) => {
+  const hasRole = (role: AppRole) => {
     return userRole?.role === role;
   };
 

@@ -66,57 +66,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
         if (memberError) throw memberError;
 
-        // Se não tem membership, tentar criar organização baseado na integration_settings
+        // Se não tem membership, aguardar onboarding manual
         if (!memberships || memberships.length === 0) {
-          const { data: settings } = await supabase
-            .from('integration_settings')
-            .select('settings')
-            .eq('integration_type', 'whatsapp_evolution')
-            .eq('active', true)
-            .single();
-
-          const evolutionInstance = settings?.settings && typeof settings.settings === 'object' 
-            ? (settings.settings as any).evolution_instance 
-            : null;
-
-          if (evolutionInstance) {
-            // Criar organização para essa instância
-            const { data: newOrg, error: orgError } = await supabase
-              .from('organizations')
-              .insert({
-                evolution_instance: evolutionInstance,
-                name: `Organização ${evolutionInstance}`,
-              })
-              .select()
-              .single();
-
-            if (orgError) {
-              // Se já existe, buscar
-              const { data: existingOrg } = await supabase
-                .from('organizations')
-                .select('*')
-                .eq('evolution_instance', evolutionInstance)
-                .single();
-
-              if (existingOrg) {
-                // Adicionar usuário como membro
-                await supabase.from('organization_members').insert({
-                  organization_id: existingOrg.id,
-                  user_id: user.id,
-                });
-                setCurrentOrganization(existingOrg);
-                setAvailableOrganizations([existingOrg]);
-              }
-            } else if (newOrg) {
-              // Adicionar usuário como membro
-              await supabase.from('organization_members').insert({
-                organization_id: newOrg.id,
-                user_id: user.id,
-              });
-              setCurrentOrganization(newOrg);
-              setAvailableOrganizations([newOrg]);
-            }
-          }
+          setAvailableOrganizations([]);
+          setCurrentOrganization(null);
+          toast.error('Nenhuma organização vinculada ao seu usuário.');
+          toast.message('Solicite ao administrador o acesso ou crie uma organização.');
         } else {
           // Extrair organizações dos memberships
           const orgs = memberships
@@ -125,11 +80,21 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
           setAvailableOrganizations(orgs);
 
-          // Usar organização salva em localStorage ou primeira disponível
+          const { data: preferenceData } = await supabase
+            .from('user_preferences' as any)
+            .select('last_organization_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          // Usar organização salva em localStorage, preferência no backend ou primeira disponível
           const savedOrgId = localStorage.getItem('currentOrganizationId');
-          const selectedOrg = savedOrgId 
-            ? orgs.find(o => o.id === savedOrgId) 
-            : orgs[0];
+          const preferredOrgId = preferenceData?.last_organization_id ?? null;
+
+          const selectedOrg = savedOrgId
+            ? orgs.find(o => o.id === savedOrgId)
+            : preferredOrgId
+              ? orgs.find(o => o.id === preferredOrgId)
+              : orgs[0];
 
           setCurrentOrganization(selectedOrg || orgs[0]);
         }
@@ -147,6 +112,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     if (org) {
       setCurrentOrganization(org);
       localStorage.setItem('currentOrganizationId', organizationId);
+      if (user) {
+        await supabase.from('user_preferences' as any).upsert({
+          user_id: user.id,
+          last_organization_id: organizationId,
+        });
+      }
       toast.success(`Organização alterada para ${org.name}`);
       
       // Invalidar todas as queries para recarregar dados da nova organização

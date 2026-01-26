@@ -14,15 +14,25 @@ import {
   Webhook,
   Brain,
   Activity,
-  Shield
+  Shield,
+  ClipboardList,
+  FileSignature,
+  Package,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
 import { useSuperAdmin } from "@/contexts/SuperAdminContext";
 import { useAuth } from "@/contexts/AuthContext";
+import type { AppRole } from "@/lib/roles";
 
 // All navigation items
-const allNavigation = [
+const allNavigation: Array<{
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  restrictedTo: AppRole[] | null;
+}> = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, restrictedTo: null },
   { name: "Painel do Sistema", href: "/painel-sistema", icon: Activity, restrictedTo: null },
   { name: "CRM / Leads", href: "/crm", icon: Target, restrictedTo: null },
@@ -30,14 +40,19 @@ const allNavigation = [
   { name: "Pacientes", href: "/pacientes", icon: Users, restrictedTo: null },
   { name: "Agenda", href: "/agenda", icon: Calendar, restrictedTo: null },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, restrictedTo: null },
-  { name: "Financeiro", href: "/financeiro", icon: DollarSign, restrictedTo: 'admin' as const },
+  { name: "Prontuário", href: "/prontuario", icon: ClipboardList, restrictedTo: null },
+  { name: "Planos de Tratamento", href: "/tratamentos", icon: FileText, restrictedTo: null },
+  { name: "Documentos", href: "/documentos-clinicos", icon: FileSignature, restrictedTo: null },
+  { name: "Financeiro", href: "/financeiro", icon: DollarSign, restrictedTo: ['admin'] },
+  { name: "Estoque", href: "/estoque", icon: Package, restrictedTo: ['admin'] },
+  { name: "Billing", href: "/billing", icon: CreditCard, restrictedTo: ['admin'] },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3, restrictedTo: null },
   { name: "Relatórios IA", href: "/relatorios-ia", icon: Brain, restrictedTo: null },
   { name: "Indicadores", href: "/indicadores", icon: PieChart, restrictedTo: null },
   { name: "Marketing", href: "/marketing", icon: Target, restrictedTo: null },
-  { name: "Webhooks", href: "/webhooks", icon: Webhook, restrictedTo: 'admin' as const },
+  { name: "Webhooks", href: "/webhooks", icon: Webhook, restrictedTo: ['admin'] },
   { name: "Cadastros", href: "/cadastros", icon: Briefcase, restrictedTo: null },
-  { name: "Configurações", href: "/configuracoes", icon: Settings, restrictedTo: 'admin' as const },
+  { name: "Configurações", href: "/configuracoes", icon: Settings, restrictedTo: ['admin'] },
 ];
 
 const adminItem = { name: "Admin", href: "/admin", icon: Shield };
@@ -58,8 +73,14 @@ export function Sidebar() {
       return allNavigation;
     }
 
-    // Usuario sees only non-restricted pages
-    return allNavigation.filter(item => item.restrictedTo === null);
+    if (!userRole?.role) {
+      return allNavigation.filter(item => item.restrictedTo === null);
+    }
+
+    return allNavigation.filter((item) => {
+      if (!item.restrictedTo) return true;
+      return item.restrictedTo.includes(userRole.role);
+    });
   };
 
   const visibleNavItems = getVisibleNavItems();

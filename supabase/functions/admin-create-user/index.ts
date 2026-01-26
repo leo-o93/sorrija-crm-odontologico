@@ -9,12 +9,12 @@ interface CreateUserRequest {
   fullName: string;
   email: string;
   password: string;
-  role: 'admin' | 'usuario';
+  role: 'admin' | 'gerente' | 'comercial' | 'recepcao' | 'dentista' | 'usuario';
   organizationId: string;
 }
 
 // Input validation helpers
-const VALID_ROLES = ['admin', 'usuario'] as const;
+const VALID_ROLES = ['admin', 'gerente', 'comercial', 'recepcao', 'dentista', 'usuario'] as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_NAME_LENGTH = 100;

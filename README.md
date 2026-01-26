@@ -107,11 +107,32 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 - Itens e procedimentos
 - Acompanhamento de aprovação
 
+### Prontuário (`/prontuario`)
+- Anamnese estruturada
+- Evolução clínica e diagnóstico
+- Odontograma e anexos clínicos
+
+### Planos de Tratamento (`/tratamentos`)
+- Itens executados x pendentes
+- Integração com financeiro
+
+### Documentos Clínicos (`/documentos-clinicos`)
+- Consentimentos LGPD
+- Assinatura digital e anexos
+
 ### Financeiro (`/financeiro`)
 - Contas a pagar
 - Contas a receber
 - Fluxo de caixa
 - Pagamentos recorrentes
+
+### Estoque (`/estoque`)
+- Materiais e insumos
+- Movimentações e alertas de reposição
+
+### Billing (`/billing`)
+- Planos e assinaturas
+- Limites de uso por organização
 
 ### Relatórios (`/relatorios`, `/relatorios-ia`)
 - Relatórios operacionais
@@ -202,6 +223,11 @@ O deploy é realizado automaticamente via Lovable:
 ## 📋 Checklist de Validação
 
 Consulte o arquivo [CHECKLIST.md](./CHECKLIST.md) para validação manual completa do sistema.
+
+## 🧭 Plano de evolução
+
+- [Plano de ação por fases](./docs/action-plan.md)
+- [Checklist de produção SaaS](./docs/saas-production-checklist.md)
 
 ## 🤝 Contribuição
 
