@@ -52,14 +52,6 @@ const formSchema = z.object({
 }).refine((data) => data.patient_id || data.lead_id, {
   message: "Selecione um paciente ou lead",
   path: ["patient_id"],
-}).refine((data) => {
-  const appointmentDateTime = new Date(data.appointment_date);
-  const [hours, minutes] = data.appointment_time.split(":");
-  appointmentDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10));
-  return appointmentDateTime > new Date();
-}, {
-  message: "Agendamento deve ser no futuro",
-  path: ["appointment_time"],
 }).refine((data) => isWithinBusinessHours(data.appointment_time), {
   message: "Horário deve estar dentro do expediente",
   path: ["appointment_time"],
@@ -255,8 +247,8 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="scheduled">Agendado</SelectItem>
-                  <SelectItem value="confirmed">Confirmado</SelectItem>
                   <SelectItem value="attended">Atendido</SelectItem>
+                  <SelectItem value="rescheduled">Reagendado</SelectItem>
                   <SelectItem value="no_show">Faltou</SelectItem>
                   <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>

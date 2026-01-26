@@ -94,9 +94,9 @@ export function useAIReportStats(dateRange?: { start: Date; end: Date }) {
       const messages_out = messages.filter(m => m.direction === 'out').length;
 
       // Calculate appointment stats
-      const appointments_scheduled = appointments.filter(a => a.status === 'agendado').length;
-      const appointments_completed = appointments.filter(a => a.status === 'realizado').length;
-      const appointments_cancelled = appointments.filter(a => a.status === 'cancelado').length;
+      const appointments_scheduled = appointments.filter(a => a.status === 'scheduled' || a.status === 'rescheduled').length;
+      const appointments_completed = appointments.filter(a => a.status === 'attended').length;
+      const appointments_cancelled = appointments.filter(a => a.status === 'cancelled' || a.status === 'no_show').length;
 
       // Calculate alerts
       const now = new Date();

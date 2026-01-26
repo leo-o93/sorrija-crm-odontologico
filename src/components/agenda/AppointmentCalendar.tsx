@@ -17,16 +17,16 @@ interface AppointmentCalendarProps {
 
 const statusColors = {
   scheduled: "bg-blue-500",
-  confirmed: "bg-green-500",
-  attended: "bg-purple-500",
+  attended: "bg-green-500",
+  rescheduled: "bg-purple-500",
   no_show: "bg-red-500",
   cancelled: "bg-gray-500",
 };
 
 const statusLabels = {
   scheduled: "Agendado",
-  confirmed: "Confirmado",
   attended: "Atendido",
+  rescheduled: "Reagendado",
   no_show: "Faltou",
   cancelled: "Cancelado",
 };

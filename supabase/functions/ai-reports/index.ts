@@ -143,9 +143,9 @@ serve(async (req) => {
       total_messages: messages?.length || 0,
       messages_in: messages?.filter(m => m.direction === 'in').length || 0,
       messages_out: messages?.filter(m => m.direction === 'out').length || 0,
-      appointments_scheduled: appointments?.filter(a => a.status === 'scheduled').length || 0,
-      appointments_completed: appointments?.filter(a => a.status === 'completed').length || 0,
-      appointments_cancelled: appointments?.filter(a => a.status === 'cancelled').length || 0,
+      appointments_scheduled: appointments?.filter(a => a.status === 'scheduled' || a.status === 'rescheduled').length || 0,
+      appointments_completed: appointments?.filter(a => a.status === 'attended').length || 0,
+      appointments_cancelled: appointments?.filter(a => a.status === 'cancelled' || a.status === 'no_show').length || 0,
     };
 
     // Get hot leads with recent activity for priority analysis

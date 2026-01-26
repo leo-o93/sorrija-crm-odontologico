@@ -41,6 +41,14 @@ const statusLabels: Record<string, string> = {
   converted: "Convertido",
 };
 
+const paymentMethodLabels: Record<string, string> = {
+  dinheiro: "Dinheiro",
+  cartao: "Cartão",
+  pix: "Pix",
+  transferencia: "Transferência",
+  boleto: "Boleto",
+};
+
 export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }: QuoteDetailDialogProps) {
   const { data: quote, isLoading } = useQuote(quoteId || "");
   const updateQuote = useUpdateQuote();
@@ -205,6 +213,7 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                       <TableRow>
                         <TableHead>Parcela</TableHead>
                         <TableHead>Vencimento</TableHead>
+                        <TableHead>Pagamento</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                       </TableRow>
@@ -215,6 +224,11 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                           <TableCell>{payment.installment_number}ª</TableCell>
                           <TableCell>
                             {format(new Date(payment.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            {payment.payment_method
+                              ? paymentMethodLabels[payment.payment_method] || payment.payment_method
+                              : "-"}
                           </TableCell>
                           <TableCell>
                             <Badge variant={payment.status === "paid" ? "default" : "secondary"}>

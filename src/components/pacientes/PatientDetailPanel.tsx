@@ -60,8 +60,8 @@ interface PatientDetailPanelProps {
 
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
-  confirmed: { label: "Confirmado", color: "bg-green-100 text-green-800" },
-  completed: { label: "Concluído", color: "bg-emerald-100 text-emerald-800" },
+  attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
+  rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
   cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
   no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
 };
@@ -93,7 +93,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
         .from("appointments")
         .select("*", { count: "exact", head: true })
         .eq("patient_id", patient.id)
-        .eq("status", "completed");
+        .eq("status", "attended");
 
       // Total quotes
       const { count: totalQuotes } = await supabase
@@ -293,11 +293,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
             
             <div className="grid grid-cols-3 gap-2 text-sm">
               <button
-                onClick={() => appointmentsHistory.length > 0 && openHistoryDialog("appointments", "Agendamentos")}
-                className={`text-center p-2 bg-background rounded border transition-colors ${
-                  appointmentsHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-                }`}
-                disabled={appointmentsHistory.length === 0}
+                onClick={() => openHistoryDialog("appointments", "Agendamentos")}
+                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
               >
                 <p className="text-xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -306,11 +303,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                 </p>
               </button>
               <button
-                onClick={() => attendancesHistory.length > 0 && openHistoryDialog("attendances", "Atendimentos")}
-                className={`text-center p-2 bg-background rounded border transition-colors ${
-                  attendancesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-                }`}
-                disabled={attendancesHistory.length === 0}
+                onClick={() => openHistoryDialog("attendances", "Atendimentos")}
+                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
               >
                 <p className="text-xl font-bold text-green-600">{displayMetrics.totalAttendances}</p>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -319,11 +313,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                 </p>
               </button>
               <button
-                onClick={() => quotesHistory.length > 0 && openHistoryDialog("quotes", "Orçamentos")}
-                className={`text-center p-2 bg-background rounded border transition-colors ${
-                  quotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-                }`}
-                disabled={quotesHistory.length === 0}
+                onClick={() => openHistoryDialog("quotes", "Orçamentos")}
+                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
               >
                 <p className="text-xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -334,11 +325,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
             </div>
             
             <button
-              onClick={() => salesHistory.length > 0 && openHistoryDialog("sales", "Vendas / Receita")}
-              className={`w-full text-center p-3 bg-background rounded border transition-colors ${
-                salesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-              }`}
-              disabled={salesHistory.length === 0}
+              onClick={() => openHistoryDialog("sales", "Vendas / Receita")}
+              className="w-full text-center p-3 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
             >
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(displayMetrics.totalRevenue)}
@@ -417,7 +405,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                     label: appointment.status, 
                     color: "bg-gray-100 text-gray-800" 
                   };
-                  const StatusIcon = appointment.status === "completed" ? CheckCircle :
+                  const StatusIcon = appointment.status === "attended" ? CheckCircle :
                     appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
                     Clock;
 
@@ -428,7 +416,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                     >
                       <div className="flex items-center gap-3">
                         <StatusIcon className={`h-4 w-4 ${
-                          appointment.status === "completed" ? "text-green-600" :
+                          appointment.status === "attended" ? "text-green-600" :
                           appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
                           "text-blue-600"
                         }`} />

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Phone, MessageCircle, Plus, Search, Eye, GripVertical, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useSendMessage } from "@/hooks/useMessages";
 import {
   Pagination,
   PaginationContent,
@@ -159,6 +161,7 @@ export default function CRM() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentOrganization } = useOrganization();
+  const sendMessage = useSendMessage();
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   
@@ -262,6 +265,9 @@ export default function CRM() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isNewLeadDialogOpen, setIsNewLeadDialogOpen] = useState(false);
+  const [isInitialMessageOpen, setIsInitialMessageOpen] = useState(false);
+  const [initialMessageLead, setInitialMessageLead] = useState<Lead | null>(null);
+  const [initialMessageText, setInitialMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [temperatureFilter, setTemperatureFilter] = useState<string | null>(null);
 
@@ -280,6 +286,13 @@ export default function CRM() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (!isInitialMessageOpen) {
+      setInitialMessageText("");
+      setInitialMessageLead(null);
+    }
+  }, [isInitialMessageOpen]);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
       distance: 8
@@ -343,8 +356,39 @@ export default function CRM() {
     setIsDetailPanelOpen(true);
   };
   const handleOpenConversation = async (lead: Lead) => {
-    // Navigate to conversations with the lead's phone to open the correct conversation
-    navigate(`/conversas?phone=${encodeURIComponent(lead.phone)}`);
+    if (!currentOrganization?.id) return;
+    const cleanedPhone = lead.phone.replace(/\D/g, "");
+    const phoneWithCountry = cleanedPhone.startsWith("55") ? cleanedPhone : `55${cleanedPhone}`;
+
+    const { data: conversation } = await supabase
+      .from("conversations")
+      .select("id, phone")
+      .eq("organization_id", currentOrganization.id)
+      .or(`lead_id.eq.${lead.id},phone.eq.${phoneWithCountry}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (conversation?.id) {
+      navigate(`/conversas?phone=${encodeURIComponent(conversation.phone || phoneWithCountry)}`);
+      return;
+    }
+
+    setInitialMessageLead(lead);
+    setIsInitialMessageOpen(true);
+  };
+
+  const handleSendInitialMessage = async () => {
+    if (!initialMessageLead || !initialMessageText.trim()) return;
+
+    await sendMessage.mutateAsync({
+      phone: initialMessageLead.phone,
+      leadId: initialMessageLead.id,
+      type: "text",
+      text: initialMessageText.trim(),
+    });
+
+    setIsInitialMessageOpen(false);
+    navigate(`/conversas?phone=${encodeURIComponent(initialMessageLead.phone)}`);
   };
 
   // Filter leads by search and temperature
@@ -526,5 +570,36 @@ export default function CRM() {
       )}
 
       <LeadDetailPanel lead={selectedLead} open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen} />
+
+      <Dialog open={isInitialMessageOpen} onOpenChange={setIsInitialMessageOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar primeira mensagem</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Nenhuma conversa encontrada para {initialMessageLead?.name}. Envie a primeira mensagem para iniciar a conversa.
+            </p>
+            <Textarea
+              value={initialMessageText}
+              onChange={(e) => setInitialMessageText(e.target.value)}
+              placeholder="Digite a primeira mensagem..."
+              rows={4}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsInitialMessageOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSendInitialMessage}
+              disabled={!initialMessageText.trim() || sendMessage.isPending}
+            >
+              {sendMessage.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Enviar mensagem
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 }

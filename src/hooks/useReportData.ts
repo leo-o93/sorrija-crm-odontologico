@@ -156,7 +156,7 @@ export function useAppointmentsReport(startDate: Date, endDate: Date) {
       if (error) throw error;
 
       const total = appointments.length;
-      const completed = appointments.filter(a => a.status === 'completed').length;
+      const completed = appointments.filter(a => a.status === 'attended').length;
       const cancelled = appointments.filter(a => a.status === 'cancelled').length;
 
       // By procedure

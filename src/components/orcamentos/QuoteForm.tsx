@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
-import { useCreateQuote, QuoteItem } from "@/hooks/useQuotes";
+import { useCreateQuote, QuoteItem, QuotePayment } from "@/hooks/useQuotes";
 import { useProcedures } from "@/hooks/useProcedures";
 import { useLeads } from "@/hooks/useLeads";
 import { usePatients } from "@/hooks/usePatients";
@@ -45,6 +45,7 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   const [items, setItems] = useState<QuoteItem[]>([
     { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 },
   ]);
+  const [payments, setPayments] = useState<QuotePayment[]>([]);
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
@@ -112,6 +113,29 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
     return items.reduce((sum, item) => sum + item.total_price, 0);
   };
 
+  const addPayment = () => {
+    setPayments([
+      ...payments,
+      {
+        installment_number: payments.length + 1,
+        due_date: new Date().toISOString().split("T")[0],
+        amount: calculateTotal(),
+        payment_method: "dinheiro",
+        status: "pending",
+      },
+    ]);
+  };
+
+  const removePayment = (index: number) => {
+    setPayments(payments.filter((_, i) => i !== index));
+  };
+
+  const updatePayment = (index: number, field: keyof QuotePayment, value: any) => {
+    const newPayments = [...payments];
+    newPayments[index] = { ...newPayments[index], [field]: value };
+    setPayments(newPayments);
+  };
+
   const onSubmit = async (data: QuoteFormValues) => {
     if (items.length === 0 || items.some((item) => !item.procedure_name)) {
       return;
@@ -130,6 +154,14 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
       valid_until: data.valid_until,
       notes: data.notes,
       items: items.filter((item) => item.procedure_name),
+      payments: payments
+        .filter((payment) => payment.payment_method && payment.amount > 0)
+        .map((payment, index) => ({
+          ...payment,
+          installment_number: index + 1,
+          due_date: payment.due_date || new Date().toISOString().split("T")[0],
+          status: payment.status || "pending",
+        })),
     });
 
     onSuccess?.();
@@ -372,6 +404,96 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Pagamentos</CardTitle>
+              <Button type="button" onClick={addPayment} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Pagamento
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {payments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Adicione informações de pagamento (dinheiro, cartão, pix, etc).
+              </p>
+            ) : (
+              payments.map((payment, index) => (
+                <div key={index} className="flex flex-col gap-3 p-4 border rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-sm font-medium">Forma</label>
+                      <Select
+                        value={payment.payment_method || ""}
+                        onValueChange={(value) => updatePayment(index, "payment_method", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="cartao">Cartão</SelectItem>
+                          <SelectItem value="pix">Pix</SelectItem>
+                          <SelectItem value="transferencia">Transferência</SelectItem>
+                          <SelectItem value="boleto">Boleto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Vencimento</label>
+                      <Input
+                        type="date"
+                        value={payment.due_date}
+                        onChange={(e) => updatePayment(index, "due_date", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Valor</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={payment.amount}
+                        onChange={(e) => updatePayment(index, "amount", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Status</label>
+                      <Select
+                        value={payment.status}
+                        onValueChange={(value) => updatePayment(index, "status", value as QuotePayment["status"])}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pendente</SelectItem>
+                          <SelectItem value="paid">Pago</SelectItem>
+                          <SelectItem value="overdue">Em atraso</SelectItem>
+                          <SelectItem value="cancelled">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removePayment(index)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
