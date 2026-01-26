@@ -13,12 +13,14 @@ import { toast } from 'sonner';
 import { UserPlus, Edit, Loader2 } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
+import { appRoles, getRoleLabel, roleBadgeVariants } from '@/lib/roles';
+import type { AppRole } from '@/lib/roles';
 
 interface UserWithAuth {
   id: string;
   full_name: string;
   email: string;
-  role: 'admin' | 'usuario';
+  role: AppRole;
   active: boolean;
   created_at: string;
 }
@@ -34,7 +36,7 @@ export function UsersManager() {
     fullName: string;
     email: string;
     password: string;
-    role: 'admin' | 'usuario';
+    role: AppRole;
   }>({
     fullName: '',
     email: '',
@@ -112,7 +114,7 @@ export function UsersManager() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'usuario' }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       if (!currentOrganization?.id) {
         throw new Error('Nenhuma organização selecionada');
       }
@@ -143,8 +145,13 @@ export function UsersManager() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('A senha deve ter no mínimo 6 caracteres');
+    if (formData.password.length < 8) {
+      toast.error('A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+
+    if (!/[a-zA-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+      toast.error('A senha deve conter ao menos uma letra e um número');
       return;
     }
 
@@ -157,27 +164,6 @@ export function UsersManager() {
       userId: selectedUser.id, 
       role: selectedUser.role
     });
-  };
-
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      admin: 'Administrador',
-      usuario: 'Usuário',
-      // Legacy roles mapping
-      gerente: 'Usuário',
-      comercial: 'Usuário',
-      recepcao: 'Usuário',
-      dentista: 'Usuário',
-    };
-    return labels[role] || role;
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      admin: 'destructive',
-      usuario: 'secondary',
-    };
-    return variants[role] || 'default';
   };
 
   if (!currentOrganization) {
@@ -244,7 +230,7 @@ export function UsersManager() {
                   <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
+                    <Badge variant={roleBadgeVariants[user.role] ?? 'default'}>
                       {getRoleLabel(user.role)}
                     </Badge>
                   </TableCell>
@@ -326,18 +312,21 @@ export function UsersManager() {
               <Label htmlFor="role">Função</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: 'admin' | 'usuario') => setFormData({ ...formData, role: value })}
+                onValueChange={(value: AppRole) => setFormData({ ...formData, role: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="usuario">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
+                  {appRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {getRoleLabel(role)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Administrador: acesso completo. Usuário: sem acesso a Financeiro, Configurações e Webhooks.
+                Defina o papel do usuário para controlar permissões e acessos.
               </p>
             </div>
           </div>
@@ -375,7 +364,7 @@ export function UsersManager() {
               <Label htmlFor="editRole">Função</Label>
               <Select
                 value={selectedUser?.role}
-                onValueChange={(value: 'admin' | 'usuario') =>
+                onValueChange={(value: AppRole) =>
                   setSelectedUser(selectedUser ? { ...selectedUser, role: value } : null)
                 }
               >
@@ -383,12 +372,15 @@ export function UsersManager() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="usuario">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
+                  {appRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {getRoleLabel(role)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Administrador: acesso completo. Usuário: sem acesso a Financeiro, Configurações e Webhooks.
+                Defina o papel do usuário para controlar permissões e acessos.
               </p>
             </div>
           </div>

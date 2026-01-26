@@ -203,6 +203,11 @@ O deploy é realizado automaticamente via Lovable:
 
 Consulte o arquivo [CHECKLIST.md](./CHECKLIST.md) para validação manual completa do sistema.
 
+## 🧭 Plano de evolução
+
+- [Plano de ação por fases](./docs/action-plan.md)
+- [Checklist de produção SaaS](./docs/saas-production-checklist.md)
+
 ## 🤝 Contribuição
 
 1. Crie uma branch para sua feature
