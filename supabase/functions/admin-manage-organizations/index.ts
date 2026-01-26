@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
       const { email, role } = await req.json();
 
       // Validate role
-      const validRoles = ['admin', 'usuario'];
+      const validRoles = ['admin', 'gerente', 'comercial', 'recepcao', 'dentista', 'usuario'];
       const normalizedRole = validRoles.includes(role) ? role : 'usuario';
 
       const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();

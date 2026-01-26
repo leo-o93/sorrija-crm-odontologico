@@ -4,10 +4,11 @@ import { Loader2 } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useAutoLeadTransitions } from '@/hooks/useAutoLeadTransitions';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
+import type { AppRole } from '@/lib/roles';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'usuario' | Array<'admin' | 'usuario'>;
+  requiredRole?: AppRole | AppRole[];
   superAdminOnly?: boolean;
 }
 
@@ -67,7 +68,7 @@ export function ProtectedRoute({ children, requiredRole, superAdminOnly = false 
   }
 
   // Check if user has required role
-  if (requiredRoles.length > 0 && !(userRole?.role && requiredRoles.includes(userRole.role as 'admin' | 'usuario'))) {
+  if (requiredRoles.length > 0 && !(userRole?.role && requiredRoles.includes(userRole.role))) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
