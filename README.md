@@ -107,11 +107,32 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 - Itens e procedimentos
 - Acompanhamento de aprovação
 
+### Prontuário (`/prontuario`)
+- Anamnese estruturada
+- Evolução clínica e diagnóstico
+- Odontograma e anexos clínicos
+
+### Planos de Tratamento (`/tratamentos`)
+- Itens executados x pendentes
+- Integração com financeiro
+
+### Documentos Clínicos (`/documentos-clinicos`)
+- Consentimentos LGPD
+- Assinatura digital e anexos
+
 ### Financeiro (`/financeiro`)
 - Contas a pagar
 - Contas a receber
 - Fluxo de caixa
 - Pagamentos recorrentes
+
+### Estoque (`/estoque`)
+- Materiais e insumos
+- Movimentações e alertas de reposição
+
+### Billing (`/billing`)
+- Planos e assinaturas
+- Limites de uso por organização
 
 ### Relatórios (`/relatorios`, `/relatorios-ia`)
 - Relatórios operacionais

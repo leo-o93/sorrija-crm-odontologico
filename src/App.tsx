@@ -19,7 +19,12 @@ import CRM from "./pages/CRM";
 import Pacientes from "./pages/Pacientes";
 import Agenda from "./pages/Agenda";
 import Orcamentos from "./pages/Orcamentos";
+import Prontuario from "./pages/Prontuario";
+import Tratamentos from "./pages/Tratamentos";
+import DocumentosClinicos from "./pages/DocumentosClinicos";
 import Financeiro from "./pages/Financeiro";
+import Estoque from "./pages/Estoque";
+import Billing from "./pages/Billing";
 import Relatorios from "./pages/Relatorios";
 import Indicadores from "./pages/Indicadores";
 import Marketing from "./pages/Marketing";
@@ -113,6 +118,36 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/prontuario"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Prontuario />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tratamentos"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Tratamentos />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documentos-clinicos"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <DocumentosClinicos />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
       {/* Financeiro - Only admin can access */}
       <Route
         path="/financeiro"
@@ -120,6 +155,26 @@ function AppRoutes() {
           <ProtectedRoute requiredRole="admin">
             <AppLayout>
               <Financeiro />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/estoque"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AppLayout>
+              <Estoque />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/billing"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AppLayout>
+              <Billing />
             </AppLayout>
           </ProtectedRoute>
         }

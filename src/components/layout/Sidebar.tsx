@@ -14,7 +14,11 @@ import {
   Webhook,
   Brain,
   Activity,
-  Shield
+  Shield,
+  ClipboardList,
+  FileSignature,
+  Package,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
@@ -36,7 +40,12 @@ const allNavigation: Array<{
   { name: "Pacientes", href: "/pacientes", icon: Users, restrictedTo: null },
   { name: "Agenda", href: "/agenda", icon: Calendar, restrictedTo: null },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, restrictedTo: null },
+  { name: "Prontuário", href: "/prontuario", icon: ClipboardList, restrictedTo: null },
+  { name: "Planos de Tratamento", href: "/tratamentos", icon: FileText, restrictedTo: null },
+  { name: "Documentos", href: "/documentos-clinicos", icon: FileSignature, restrictedTo: null },
   { name: "Financeiro", href: "/financeiro", icon: DollarSign, restrictedTo: ['admin'] },
+  { name: "Estoque", href: "/estoque", icon: Package, restrictedTo: ['admin'] },
+  { name: "Billing", href: "/billing", icon: CreditCard, restrictedTo: ['admin'] },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3, restrictedTo: null },
   { name: "Relatórios IA", href: "/relatorios-ia", icon: Brain, restrictedTo: null },
   { name: "Indicadores", href: "/indicadores", icon: PieChart, restrictedTo: null },
