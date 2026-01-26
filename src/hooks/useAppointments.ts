@@ -105,7 +105,7 @@ export function useCreateAppointment() {
       if (error) throw error;
 
       // Se tem lead_id, atualizar o lead para marcá-lo como agendado
-      if (input.lead_id && input.status !== 'cancelled' && input.status !== 'completed') {
+      if (input.lead_id && input.status !== 'cancelled' && input.status !== 'attended' && input.status !== 'no_show') {
         const appointmentDate = input.appointment_date?.split('T')[0] || null;
         await supabase
           .from("leads")
@@ -146,7 +146,7 @@ export function useUpdateAppointment() {
       if (error) throw error;
 
       if (data.lead_id) {
-        if (data.status === "scheduled") {
+        if (data.status === "scheduled" || data.status === "rescheduled") {
           await supabase
             .from("leads")
             .update({
@@ -157,7 +157,7 @@ export function useUpdateAppointment() {
             .eq("id", data.lead_id);
         }
 
-        if (data.status === "completed" || data.status === "cancelled") {
+        if (data.status === "attended" || data.status === "cancelled" || data.status === "no_show") {
           // Buscar próximo agendamento ativo para o lead
           const { data: nextAppointment } = await supabase
             .from("appointments")

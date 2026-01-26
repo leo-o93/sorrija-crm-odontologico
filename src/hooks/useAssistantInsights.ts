@@ -59,7 +59,7 @@ export function useAssistantInsights() {
           differenceInDays(appointmentDate, now) === 0) &&
         isBefore(appointmentDate, upcomingThreshold);
       const isActiveStatus =
-        appointment.status === "scheduled" || appointment.status === "confirmed";
+        appointment.status === "scheduled" || appointment.status === "rescheduled";
       return isUpcoming && isActiveStatus;
     });
 

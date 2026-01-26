@@ -513,7 +513,15 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                             {format(new Date(apt.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
                           <Badge variant={apt.status === 'scheduled' ? 'default' : 'secondary'} className="text-xs">
-                            {apt.status === 'scheduled' ? 'Agendado' : apt.status === 'completed' ? 'Realizado' : 'Cancelado'}
+                            {apt.status === 'scheduled'
+                              ? 'Agendado'
+                              : apt.status === 'attended'
+                              ? 'Atendido'
+                              : apt.status === 'rescheduled'
+                              ? 'Reagendado'
+                              : apt.status === 'no_show'
+                              ? 'Faltou'
+                              : 'Cancelado'}
                           </Badge>
                         </div>
                         {apt.procedure && <p className="text-xs text-muted-foreground">{apt.procedure.name}</p>}

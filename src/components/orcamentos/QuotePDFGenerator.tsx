@@ -275,6 +275,7 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
             <tr>
               <th>Parcela</th>
               <th>Vencimento</th>
+              <th>Forma</th>
               <th class="text-right">Valor</th>
             </tr>
           </thead>
@@ -283,6 +284,7 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
               <tr>
                 <td>${payment.installment_number}ª Parcela</td>
                 <td>${format(new Date(payment.due_date), "dd/MM/yyyy", { locale: ptBR })}</td>
+                <td>${formatPaymentMethod(payment.payment_method)}</td>
                 <td class="text-right">R$ ${payment.amount.toFixed(2)}</td>
               </tr>
             `).join("")}
@@ -335,4 +337,16 @@ function getStatusLabel(status: string): string {
     converted: "Convertido",
   };
   return labels[status] || status;
+}
+
+function formatPaymentMethod(method?: string | null): string {
+  if (!method) return "-";
+  const labels: Record<string, string> = {
+    dinheiro: "Dinheiro",
+    cartao: "Cartão",
+    pix: "Pix",
+    transferencia: "Transferência",
+    boleto: "Boleto",
+  };
+  return labels[method] || method;
 }

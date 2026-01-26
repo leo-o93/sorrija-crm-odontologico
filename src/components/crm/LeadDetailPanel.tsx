@@ -52,8 +52,8 @@ const statusLabels: Record<string, string> = {
 
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
-  confirmed: { label: "Confirmado", color: "bg-green-100 text-green-800" },
-  completed: { label: "Concluído", color: "bg-emerald-100 text-emerald-800" },
+  attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
+  rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
   cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
   no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
 };
@@ -314,7 +314,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                         label: appointment.status, 
                         color: "bg-gray-100 text-gray-800" 
                       };
-                      const StatusIcon = appointment.status === "completed" ? CheckCircle :
+                      const StatusIcon = appointment.status === "attended" ? CheckCircle :
                         appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
                         Clock;
 
@@ -325,7 +325,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                         >
                           <div className="flex items-center gap-3">
                             <StatusIcon className={`h-4 w-4 ${
-                              appointment.status === "completed" ? "text-green-600" :
+                              appointment.status === "attended" ? "text-green-600" :
                               appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
                               "text-blue-600"
                             }`} />

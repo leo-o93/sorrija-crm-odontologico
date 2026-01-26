@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -66,6 +67,8 @@ interface PatientFormProps {
 export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) {
   const createPatient = useCreatePatient();
   const updatePatient = useUpdatePatient();
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const lastZipCodeRef = useRef<string | null>(null);
 
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchema),
@@ -87,6 +90,45 @@ export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) 
       notes: patient?.notes || "",
     },
   });
+
+  const zipCodeValue = form.watch("zip_code");
+
+  useEffect(() => {
+    const cleanedZip = zipCodeValue?.replace(/\D/g, "") || "";
+    if (cleanedZip.length !== 8 || cleanedZip === lastZipCodeRef.current) {
+      return;
+    }
+
+    let isActive = true;
+    lastZipCodeRef.current = cleanedZip;
+    setIsFetchingAddress(true);
+
+    fetch(`https://viacep.com.br/ws/${cleanedZip}/json/`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!isActive || data?.erro) return;
+        const addressParts = [data.logradouro, data.bairro].filter(Boolean);
+        if (addressParts.length > 0) {
+          form.setValue("address", addressParts.join(" - "));
+        }
+        if (data.localidade) {
+          form.setValue("city", data.localidade);
+        }
+        if (data.uf) {
+          form.setValue("state", data.uf);
+        }
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (isActive) {
+          setIsFetchingAddress(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [zipCodeValue, form]);
 
   const onSubmit = async (data: PatientFormValues) => {
     try {
@@ -235,6 +277,9 @@ export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) 
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
+                {isFetchingAddress && (
+                  <p className="text-xs text-muted-foreground">Buscando endereço...</p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
