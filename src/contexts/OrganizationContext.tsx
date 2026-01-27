@@ -80,21 +80,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
           setAvailableOrganizations(orgs);
 
-          const { data: preferenceData } = await supabase
-            .from('user_preferences' as any)
-            .select('last_organization_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          // Usar organização salva em localStorage, preferência no backend ou primeira disponível
+          // Usar organização salva em localStorage ou primeira disponível
           const savedOrgId = localStorage.getItem('currentOrganizationId');
-          const preferredOrgId = preferenceData?.last_organization_id ?? null;
 
           const selectedOrg = savedOrgId
             ? orgs.find(o => o.id === savedOrgId)
-            : preferredOrgId
-              ? orgs.find(o => o.id === preferredOrgId)
-              : orgs[0];
+            : orgs[0];
 
           setCurrentOrganization(selectedOrg || orgs[0]);
         }
