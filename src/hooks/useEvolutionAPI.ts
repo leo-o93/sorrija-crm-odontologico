@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEvolution } from '@/contexts/EvolutionContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
+import { safeJson } from '@/lib/http';
 import { toast } from 'sonner';
 
 interface ConnectionState {
@@ -45,7 +46,7 @@ export function useEvolutionAPI() {
       throw new Error('Failed to fetch connection state');
     }
 
-    return response.json();
+    return safeJson(response) as Promise<ConnectionState>;
   };
 
   const fetchQRCode = async (): Promise<{ code: string; base64: string }> => {
@@ -66,7 +67,7 @@ export function useEvolutionAPI() {
       throw new Error('Failed to fetch QR code');
     }
 
-    return response.json();
+    return safeJson(response) as Promise<{ code: string; base64: string }>;
   };
 
   const fetchContacts = async (): Promise<Contact[]> => {
@@ -86,7 +87,7 @@ export function useEvolutionAPI() {
       throw new Error('Failed to fetch contacts');
     }
 
-    return response.json();
+    return safeJson(response) as Promise<Contact[]>;
   };
 
   const syncContacts = useMutation({
