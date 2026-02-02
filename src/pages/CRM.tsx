@@ -8,6 +8,8 @@ import { Phone, MessageCircle, Plus, Search, Eye, GripVertical, ChevronLeft, Che
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
+import { useSources } from "@/hooks/useSources";
+import { useProcedures } from "@/hooks/useProcedures";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -23,6 +25,7 @@ import { TemperatureFilter } from "@/components/crm/TemperatureFilter";
 import { LeadTimer } from "@/components/crm/LeadTimer";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useSendMessage } from "@/hooks/useMessages";
@@ -35,6 +38,23 @@ import {
 } from "@/components/ui/pagination";
 
 const LEADS_PER_PAGE = 100;
+const MODAL_LEADS_PER_PAGE = 20;
+
+type OrganizationMember = {
+  user_id: string;
+  profiles: {
+    full_name: string | null;
+  } | null;
+};
+
+type LeadCardKind = "total" | "unscheduled" | "scheduled" | "lost";
+
+interface LeadCardModalProps {
+  title: string;
+  kind: LeadCardKind;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
 interface SortableLeadCardProps {
   lead: Lead;
@@ -157,6 +177,277 @@ function DroppableColumn({
       </SortableContext>
     </div>;
 }
+
+function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps) {
+  const { currentOrganization } = useOrganization();
+  const { data: statuses } = useLeadStatuses();
+  const { data: sources } = useSources();
+  const { data: procedures } = useProcedures();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [procedureFilter, setProcedureFilter] = useState("");
+  const [responsibleFilter, setResponsibleFilter] = useState("");
+  const [arrivalFrom, setArrivalFrom] = useState("");
+  const [arrivalTo, setArrivalTo] = useState("");
+  const [appointmentFrom, setAppointmentFrom] = useState("");
+  const [appointmentTo, setAppointmentTo] = useState("");
+  const [page, setPage] = useState(1);
+
+  const { data: members } = useQuery({
+    queryKey: ["organization-members", currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+      const { data, error } = await supabase
+        .from("organization_members")
+        .select("user_id, profiles(full_name)")
+        .eq("organization_id", currentOrganization.id);
+      if (error) throw error;
+      return data as OrganizationMember[];
+    },
+    enabled: !!currentOrganization?.id,
+  });
+
+  const { data: modalLeads, isLoading } = useQuery({
+    queryKey: [
+      "lead-card-modal",
+      currentOrganization?.id,
+      kind,
+      search,
+      statusFilter,
+      sourceFilter,
+      procedureFilter,
+      responsibleFilter,
+      arrivalFrom,
+      arrivalTo,
+      appointmentFrom,
+      appointmentTo,
+      page,
+    ],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return { data: [], count: 0 };
+
+      let query = supabase
+        .from("leads")
+        .select("id, name, phone, status, scheduled, appointment_date, created_at", { count: "exact" })
+        .eq("organization_id", currentOrganization.id)
+        .order("created_at", { ascending: false });
+
+      if (kind === "unscheduled") {
+        query = query.eq("scheduled", false);
+      }
+
+      if (kind === "scheduled") {
+        query = query.eq("scheduled", true);
+      }
+
+      if (kind === "lost") {
+        query = query.ilike("status", "%perdido%");
+      }
+
+      if (statusFilter) {
+        query = query.eq("status", statusFilter);
+      }
+
+      if (sourceFilter) {
+        query = query.eq("source_id", sourceFilter);
+      }
+
+      if (procedureFilter) {
+        query = query.eq("interest_id", procedureFilter);
+      }
+
+      if (responsibleFilter) {
+        query = query.eq("responsible_user_id", responsibleFilter);
+      }
+
+      if (arrivalFrom) {
+        query = query.gte("created_at", arrivalFrom);
+      }
+
+      if (arrivalTo) {
+        query = query.lte("created_at", `${arrivalTo}T23:59:59`);
+      }
+
+      if (kind === "scheduled") {
+        if (appointmentFrom) {
+          query = query.gte("appointment_date", appointmentFrom);
+        }
+
+        if (appointmentTo) {
+          query = query.lte("appointment_date", `${appointmentTo}T23:59:59`);
+        }
+      }
+
+      if (search.trim()) {
+        const phoneQuery = search.replace(/\D/g, "");
+        const searchFilter = phoneQuery.length > 0
+          ? `name.ilike.%${search}%,phone.ilike.%${phoneQuery}%`
+          : `name.ilike.%${search}%`;
+        query = query.or(searchFilter);
+      }
+
+      const start = (page - 1) * MODAL_LEADS_PER_PAGE;
+      const end = start + MODAL_LEADS_PER_PAGE - 1;
+      const { data, count, error } = await query.range(start, end);
+      if (error) throw error;
+      return { data: data as Lead[], count: count || 0 };
+    },
+    enabled: isOpen && !!currentOrganization?.id,
+  });
+
+  const totalPages = modalLeads ? Math.ceil((modalLeads.count || 0) / MODAL_LEADS_PER_PAGE) : 1;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            <Input
+              placeholder="Pesquisar por nome ou telefone"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos</SelectItem>
+                {statuses?.map((status) => (
+                  <SelectItem key={status.id} value={status.name}>
+                    {status.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={procedureFilter} onValueChange={setProcedureFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Interesse" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos</SelectItem>
+                {procedures?.map((procedure) => (
+                  <SelectItem key={procedure.id} value={procedure.id}>
+                    {procedure.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Fonte" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas</SelectItem>
+                {sources?.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={responsibleFilter} onValueChange={setResponsibleFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos</SelectItem>
+                {members?.map((member) => (
+                  <SelectItem key={member.user_id} value={member.user_id}>
+                    {member.profiles?.full_name || member.user_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="date"
+              value={arrivalFrom}
+              onChange={(event) => setArrivalFrom(event.target.value)}
+              placeholder="Data de chegada (de)"
+            />
+            <Input
+              type="date"
+              value={arrivalTo}
+              onChange={(event) => setArrivalTo(event.target.value)}
+              placeholder="Data de chegada (até)"
+            />
+            {kind === "scheduled" && (
+              <>
+                <Input
+                  type="date"
+                  value={appointmentFrom}
+                  onChange={(event) => setAppointmentFrom(event.target.value)}
+                  placeholder="Data de agendamento (de)"
+                />
+                <Input
+                  type="date"
+                  value={appointmentTo}
+                  onChange={(event) => setAppointmentTo(event.target.value)}
+                  placeholder="Data de agendamento (até)"
+                />
+              </>
+            )}
+          </div>
+
+          <div className="border rounded-md">
+            {isLoading ? (
+              <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Carregando leads...
+              </div>
+            ) : modalLeads?.data.length ? (
+              <div className="divide-y">
+                {modalLeads.data.map((lead) => (
+                  <div key={lead.id} className="p-3 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{lead.name}</div>
+                      <div className="text-xs text-muted-foreground">{lead.phone}</div>
+                    </div>
+                    <Badge variant="secondary">{lead.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">Nenhum lead encontrado.</div>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page === totalPages}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 export default function CRM() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -164,6 +455,7 @@ export default function CRM() {
   const sendMessage = useSendMessage();
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [activeCard, setActiveCard] = useState<LeadCardKind | null>(null);
   
   const {
     data: statuses,
@@ -457,6 +749,7 @@ export default function CRM() {
   const lostLeads = hasFilters
     ? (filteredLeads?.filter((lead) => (lead.status || "").toLowerCase().includes("perdido")).length || 0)
     : (lostCount || 0);
+  const scheduledRate = totalLeads > 0 ? (scheduledLeads / totalLeads) * 100 : 0;
   return <div className="p-6 space-y-6">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -492,7 +785,7 @@ export default function CRM() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card onClick={() => setActiveCard("total")} className="cursor-pointer hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total de Leads</CardTitle>
           </CardHeader>
@@ -500,7 +793,7 @@ export default function CRM() {
             <div className="text-2xl font-bold">{totalLeads}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setActiveCard("unscheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Não Agendado</CardTitle>
           </CardHeader>
@@ -508,15 +801,18 @@ export default function CRM() {
             <div className="text-2xl font-bold">{unscheduledLeads}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setActiveCard("scheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Agendados</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{scheduledLeads}</div>
+            <div className="text-xs text-muted-foreground">
+              {scheduledRate.toFixed(1)}% do total
+            </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setActiveCard("lost")} className="cursor-pointer hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Perdidos</CardTitle>
           </CardHeader>
@@ -525,6 +821,25 @@ export default function CRM() {
           </CardContent>
         </Card>
       </div>
+
+      {activeCard && (
+        <LeadCardModal
+          title={
+            activeCard === "total"
+              ? "Total de Leads"
+              : activeCard === "unscheduled"
+              ? "Leads Não Agendados"
+              : activeCard === "scheduled"
+              ? "Leads Agendados"
+              : "Leads Perdidos"
+          }
+          kind={activeCard}
+          isOpen={!!activeCard}
+          onOpenChange={(open) => {
+            if (!open) setActiveCard(null);
+          }}
+        />
+      )}
 
       {columns.length > 0 ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
