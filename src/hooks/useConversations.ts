@@ -90,7 +90,9 @@ export function useConversations(status: string = 'open', search: string = '') {
         .eq("organization_id", currentOrganization.id)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
-      if (status !== 'all') {
+      const conversationStatuses = new Set(['open', 'pending', 'resolved', 'archived']);
+
+      if (status !== 'all' && conversationStatuses.has(status)) {
         query = query.eq('status', status);
       }
 
