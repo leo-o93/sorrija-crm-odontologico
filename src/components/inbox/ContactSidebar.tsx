@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import { useUpdateLeadStatus, useDeleteLeadComplete } from '@/hooks/useLeads';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
-import { ConvertToPatientDialog } from '@/components/pacientes/ConvertToPatientDialog';
 import { QuickScheduleDialog } from './QuickScheduleDialog';
 import { ContactNotes } from './ContactNotes';
 import { ConversationActions } from './ConversationActions';
@@ -31,7 +30,6 @@ import {
   ChevronDown,
   MessageCircle,
   Edit,
-  UserPlus,
   AlertTriangle,
   FileText,
   Clock,
@@ -47,7 +45,6 @@ interface ContactSidebarProps {
 
 export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const navigate = useNavigate();
-  const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
@@ -101,6 +98,16 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
       });
       toast.success('Status do lead atualizado!');
     }
+  };
+
+  const handleDeactivateLead = async () => {
+    if (!conversation.lead_id) return;
+
+    const lostStatus =
+      leadStatuses?.find((status) => status.name.toLowerCase().includes('perdido'))?.name || 'perdido';
+
+    await handleLeadStatusChange(lostStatus);
+    toast.success('Lead marcado como perdido.');
   };
 
   const toggleSection = (section: keyof typeof sectionsOpen) => {
@@ -300,11 +307,11 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setShowConvertDialog(true)}
+                      onClick={handleDeactivateLead}
                       className="w-full"
                     >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Converter para Paciente
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Desativar Lead
                     </Button>
                     <Button
                       variant="outline"
@@ -543,12 +550,6 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
       {/* Dialogs */}
       {conversation.contact_type === 'lead' && conversation.lead_id && (
         <>
-          <ConvertToPatientDialog
-            open={showConvertDialog}
-            onOpenChange={setShowConvertDialog}
-            leadId={conversation.lead_id}
-            leadName={conversation.leads?.name || 'Lead'}
-          />
           <QuickScheduleDialog
             open={showScheduleDialog}
             onOpenChange={setShowScheduleDialog}

@@ -245,15 +245,30 @@ export default function CRM() {
     enabled: !!currentOrganization?.id,
   });
 
-  const { data: closedCount } = useQuery({
-    queryKey: ["leads-closed-count", currentOrganization?.id],
+  const { data: unscheduledCount } = useQuery({
+    queryKey: ["leads-unscheduled-count", currentOrganization?.id],
     queryFn: async () => {
       if (!currentOrganization?.id) return 0;
       const { count, error } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", currentOrganization.id)
-        .eq("status", "fechado");
+        .eq("scheduled", false);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!currentOrganization?.id,
+  });
+
+  const { data: lostCount } = useQuery({
+    queryKey: ["leads-lost-count", currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return 0;
+      const { count, error } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", currentOrganization.id)
+        .ilike("status", "%perdido%");
       if (error) throw error;
       return count || 0;
     },
@@ -398,6 +413,11 @@ export default function CRM() {
       if (temperatureFilter === "em_conversa") {
         // Filtro especial: leads quentes com substatus "em_conversa"
         result = result?.filter(lead => lead.temperature === "quente" && lead.hot_substatus === "em_conversa");
+      } else if (temperatureFilter === "faltou_cancelou") {
+        result = result?.filter((lead) => {
+          const normalizedStatus = lead.status?.toLowerCase() || "";
+          return normalizedStatus.includes("faltou") || normalizedStatus.includes("no_show") || normalizedStatus.includes("cancel");
+        });
       } else if (temperatureFilter === "agendado") {
         result = result?.filter(lead => lead.scheduled);
       } else {
@@ -431,8 +451,12 @@ export default function CRM() {
   const hasFilters = temperatureFilter || searchQuery.trim();
   const totalLeads = hasFilters ? (filteredLeads?.length || 0) : (leadsCount || 0);
   const scheduledLeads = hasFilters ? (filteredLeads?.filter(l => l.scheduled).length || 0) : (scheduledCount || 0);
-  const closedLeads = hasFilters ? (filteredLeads?.filter(l => l.status === "fechado").length || 0) : (closedCount || 0);
-  const conversionRate = totalLeads > 0 ? (closedLeads / totalLeads * 100).toFixed(1) : "0";
+  const unscheduledLeads = hasFilters
+    ? (filteredLeads?.filter((lead) => !lead.scheduled).length || 0)
+    : (unscheduledCount || 0);
+  const lostLeads = hasFilters
+    ? (filteredLeads?.filter((lead) => (lead.status || "").toLowerCase().includes("perdido")).length || 0)
+    : (lostCount || 0);
   return <div className="p-6 space-y-6">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -478,6 +502,14 @@ export default function CRM() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Não Agendado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{unscheduledLeads}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Agendados</CardTitle>
           </CardHeader>
           <CardContent>
@@ -486,18 +518,10 @@ export default function CRM() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Fechados</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Perdidos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{closedLeads}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Taxa de Conversão</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
+            <div className="text-2xl font-bold">{lostLeads}</div>
           </CardContent>
         </Card>
       </div>
