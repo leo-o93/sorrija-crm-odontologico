@@ -43,6 +43,7 @@ interface ContactSidebarProps {
 export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const navigate = useNavigate();
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showRetroScheduleDialog, setShowRetroScheduleDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
     temperature: true,
@@ -303,6 +304,15 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => setShowRetroScheduleDialog(true)}
+                      className="w-full"
+                    >
+                      <Repeat className="w-4 h-4 mr-2" />
+                      Agendar Retroativo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleDeactivateLead}
                       className="w-full"
                     >
@@ -321,15 +331,26 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                   </>
                 )}
                 {conversation.contact_type === 'patient' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowScheduleDialog(true)}
-                    className="w-full"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Novo Agendamento
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScheduleDialog(true)}
+                      className="w-full"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Novo Agendamento
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowRetroScheduleDialog(true)}
+                      className="w-full"
+                    >
+                      <Repeat className="w-4 h-4 mr-2" />
+                      Agendar Retroativo
+                    </Button>
+                  </>
                 )}
               </div>
             </CollapsibleContent>
@@ -476,6 +497,13 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             leadId={conversation.lead_id}
             contactName={conversation.leads?.name || 'Lead'}
           />
+          <QuickScheduleDialog
+            open={showRetroScheduleDialog}
+            onOpenChange={setShowRetroScheduleDialog}
+            leadId={conversation.lead_id}
+            contactName={conversation.leads?.name || 'Lead'}
+            allowPastDates
+          />
           <ConfirmDeleteLeadDialog
             open={showDeleteDialog}
             onOpenChange={setShowDeleteDialog}
@@ -494,12 +522,21 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
         </>
       )}
       {conversation.contact_type === 'patient' && conversation.patient_id && (
-        <QuickScheduleDialog
-          open={showScheduleDialog}
-          onOpenChange={setShowScheduleDialog}
-          patientId={conversation.patient_id}
-          contactName={conversation.patients?.name || 'Paciente'}
-        />
+        <>
+          <QuickScheduleDialog
+            open={showScheduleDialog}
+            onOpenChange={setShowScheduleDialog}
+            patientId={conversation.patient_id}
+            contactName={conversation.patients?.name || 'Paciente'}
+          />
+          <QuickScheduleDialog
+            open={showRetroScheduleDialog}
+            onOpenChange={setShowRetroScheduleDialog}
+            patientId={conversation.patient_id}
+            contactName={conversation.patients?.name || 'Paciente'}
+            allowPastDates
+          />
+        </>
       )}
     </ScrollArea>
   );
