@@ -398,6 +398,11 @@ export default function CRM() {
       if (temperatureFilter === "em_conversa") {
         // Filtro especial: leads quentes com substatus "em_conversa"
         result = result?.filter(lead => lead.temperature === "quente" && lead.hot_substatus === "em_conversa");
+      } else if (temperatureFilter === "faltou_cancelou") {
+        result = result?.filter((lead) => {
+          const normalizedStatus = lead.status?.toLowerCase() || "";
+          return normalizedStatus.includes("faltou") || normalizedStatus.includes("no_show") || normalizedStatus.includes("cancel");
+        });
       } else if (temperatureFilter === "agendado") {
         result = result?.filter(lead => lead.scheduled);
       } else {
