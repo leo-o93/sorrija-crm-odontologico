@@ -2064,7 +2064,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      contacts_search: {
+        Row: {
+          cpf: string | null
+          email: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          phone: string
+          type: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_send_messages: {

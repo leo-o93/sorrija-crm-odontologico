@@ -90,30 +90,27 @@ export function SearchEntityInput({
 
       if (selected?.id === value) return;
 
-      const fetchEntity = async (table: "leads" | "patients") => {
-        const { data } = await supabase
-          .from(table)
-          .select("id, name, phone, cpf, email")
-          .eq("id", value)
-          .eq("organization_id", organizationId)
-          .maybeSingle();
+      const query = supabase
+        .from("contacts_search")
+        .select("id, name, phone, cpf, email, type")
+        .eq("id", value)
+        .eq("organization_id", organizationId);
 
-        if (!data) return null;
-
-        return {
-          id: data.id,
-          name: data.name,
-          phone: data.phone,
-          cpf: "cpf" in data ? data.cpf : null,
-          email: "email" in data ? data.email : null,
-          type: table === "patients" ? "patient" : "lead",
-        } as SearchEntityResult;
-      };
-
-      const entity =
+      const { data } =
         entityType === "all"
-          ? (await fetchEntity("patients")) ?? (await fetchEntity("leads"))
-          : await fetchEntity(entityType === "patient" ? "patients" : "leads");
+          ? await query.maybeSingle()
+          : await query.eq("type", entityType).maybeSingle();
+
+      const entity = data
+        ? ({
+            id: data.id,
+            name: data.name,
+            phone: data.phone,
+            cpf: data.cpf,
+            email: data.email,
+            type: data.type,
+          } as SearchEntityResult)
+        : null;
 
       if (!isActive) return;
 
@@ -156,60 +153,31 @@ export function SearchEntityInput({
     const offset = currentPage * PAGE_SIZE;
     const rangeEnd = offset + PAGE_SIZE - 1;
 
-    const fetchLeads = async () => {
-      const { data } = await supabase
-        .from("leads")
-        .select("id, name, phone")
-        .eq("organization_id", organizationId)
-        .or(buildFilter(false))
-        .order("name")
-        .range(offset, rangeEnd);
+    let query = supabase
+      .from("contacts_search")
+      .select("id, name, phone, cpf, email, type")
+      .eq("organization_id", organizationId)
+      .or(buildFilter(true))
+      .order("name")
+      .range(offset, rangeEnd);
 
-      return (
-        data?.map((lead) => ({
-          id: lead.id,
-          name: lead.name,
-          phone: lead.phone,
-          type: "lead" as const,
-        })) ?? []
-      );
-    };
-
-    const fetchPatients = async () => {
-      const { data } = await supabase
-        .from("patients")
-        .select("id, name, phone, cpf, email")
-        .eq("organization_id", organizationId)
-        .or(buildFilter(true))
-        .order("name")
-        .range(offset, rangeEnd);
-
-      return (
-        data?.map((patient) => ({
-          id: patient.id,
-          name: patient.name,
-          phone: patient.phone,
-          cpf: patient.cpf,
-          email: patient.email,
-          type: "patient" as const,
-        })) ?? []
-      );
-    };
-
-    let nextResults: SearchEntityResult[] = [];
-    let hasMoreResults = false;
-
-    if (entityType === "lead") {
-      nextResults = await fetchLeads();
-      hasMoreResults = nextResults.length === PAGE_SIZE;
-    } else if (entityType === "patient") {
-      nextResults = await fetchPatients();
-      hasMoreResults = nextResults.length === PAGE_SIZE;
-    } else {
-      const [leadResults, patientResults] = await Promise.all([fetchLeads(), fetchPatients()]);
-      nextResults = [...leadResults, ...patientResults].sort((a, b) => a.name.localeCompare(b.name));
-      hasMoreResults = leadResults.length === PAGE_SIZE || patientResults.length === PAGE_SIZE;
+    if (entityType !== "all") {
+      query = query.eq("type", entityType);
     }
+
+    const { data } = await query;
+
+    const nextResults =
+      data?.map((entity) => ({
+        id: entity.id,
+        name: entity.name,
+        phone: entity.phone,
+        cpf: entity.cpf,
+        email: entity.email,
+        type: entity.type,
+      })) ?? [];
+
+    const hasMoreResults = nextResults.length === PAGE_SIZE;
 
     setResults((prev) => (append ? [...prev, ...nextResults] : nextResults));
     setHasMore(hasMoreResults);
