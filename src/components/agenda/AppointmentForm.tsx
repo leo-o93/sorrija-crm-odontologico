@@ -28,10 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { usePatients } from "@/hooks/usePatients";
-import { useLeads } from "@/hooks/useLeads";
 import { useProcedures } from "@/hooks/useProcedures";
 import type { Appointment } from "@/hooks/useAppointments";
+import { SearchEntityInput } from "@/components/common/SearchEntityInput";
 
 const isWithinBusinessHours = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
@@ -65,8 +64,6 @@ interface AppointmentFormProps {
 }
 
 export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }: AppointmentFormProps) {
-  const { data: patients } = usePatients();
-  const { data: leads } = useLeads();
   const { data: procedures } = useProcedures();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -164,20 +161,19 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
           render={({ field }) => (
             <FormItem>
               <FormLabel>Paciente</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um paciente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {patients?.map((patient) => (
-                    <SelectItem key={patient.id} value={patient.id}>
-                      {patient.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchEntityInput
+                  entityType="patient"
+                  value={field.value}
+                  placeholder="Buscar paciente"
+                  onSelect={(entity) => {
+                    field.onChange(entity?.id ?? "");
+                    if (entity) {
+                      form.setValue("lead_id", "");
+                    }
+                  }}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -189,20 +185,19 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
           render={({ field }) => (
             <FormItem>
               <FormLabel>Lead (Caso não seja paciente)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um lead" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {leads?.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id}>
-                      {lead.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchEntityInput
+                  entityType="lead"
+                  value={field.value}
+                  placeholder="Buscar lead"
+                  onSelect={(entity) => {
+                    field.onChange(entity?.id ?? "");
+                    if (entity) {
+                      form.setValue("patient_id", "");
+                    }
+                  }}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

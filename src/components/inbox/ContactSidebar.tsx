@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import { useUpdateLeadStatus, useDeleteLeadComplete } from '@/hooks/useLeads';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
-import { ConvertToPatientDialog } from '@/components/pacientes/ConvertToPatientDialog';
 import { QuickScheduleDialog } from './QuickScheduleDialog';
 import { ContactNotes } from './ContactNotes';
 import { ConversationActions } from './ConversationActions';
@@ -26,14 +25,10 @@ import {
   Phone,
   Mail,
   Calendar,
-  Stethoscope,
-  DollarSign,
   ChevronDown,
   MessageCircle,
   Edit,
-  UserPlus,
   AlertTriangle,
-  FileText,
   Clock,
   Thermometer,
 } from 'lucide-react';
@@ -47,13 +42,11 @@ interface ContactSidebarProps {
 
 export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const navigate = useNavigate();
-  const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
     temperature: true,
     actions: true,
-    info: true,
     budget: true,
     conversation: true,
     notes: false,
@@ -101,6 +94,16 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
       });
       toast.success('Status do lead atualizado!');
     }
+  };
+
+  const handleDeactivateLead = async () => {
+    if (!conversation.lead_id) return;
+
+    const lostStatus =
+      leadStatuses?.find((status) => status.name.toLowerCase().includes('perdido'))?.name || 'perdido';
+
+    await handleLeadStatusChange(lostStatus);
+    toast.success('Lead marcado como perdido.');
   };
 
   const toggleSection = (section: keyof typeof sectionsOpen) => {
@@ -300,11 +303,11 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setShowConvertDialog(true)}
+                      onClick={handleDeactivateLead}
                       className="w-full"
                     >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Converter para Paciente
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Desativar Lead
                     </Button>
                     <Button
                       variant="outline"
@@ -327,82 +330,6 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                     <Calendar className="w-4 h-4 mr-2" />
                     Novo Agendamento
                   </Button>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Informações Odontológicas */}
-        <Collapsible open={sectionsOpen.info} onOpenChange={() => toggleSection('info')}>
-          <Card className="overflow-hidden">
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
-              <span className="font-medium text-sm">Informações Odontológicas</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${sectionsOpen.info ? 'rotate-180' : ''}`} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="p-3 pt-0 space-y-2 text-sm">
-                {conversation.contact_type === 'lead' && conversation.leads && (
-                  <>
-                    {conversation.leads.procedures && (
-                      <div className="flex items-start gap-2">
-                        <Stethoscope className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-muted-foreground">Interesse:</span>
-                          <p className="font-medium">{conversation.leads.procedures.name}</p>
-                          <p className="text-xs text-muted-foreground">{conversation.leads.procedures.category}</p>
-                        </div>
-                      </div>
-                    )}
-                    {conversation.leads.sources && (
-                      <div className="flex items-start gap-2">
-                        <ExternalLink className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-muted-foreground">Fonte:</span>
-                          <p className="font-medium">{conversation.leads.sources.name}</p>
-                          <p className="text-xs text-muted-foreground">{conversation.leads.sources.channel}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Registro:</span>
-                      <span className="font-medium">
-                        {format(new Date(conversation.leads.registration_date), 'dd/MM/yyyy', { locale: ptBR })}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {conversation.contact_type === 'patient' && conversation.patients && (
-                  <>
-                    {conversation.patients.medical_history && (
-                      <div className="flex items-start gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-muted-foreground">Histórico Médico:</span>
-                          <p className="text-xs mt-1">{conversation.patients.medical_history}</p>
-                        </div>
-                      </div>
-                    )}
-                    {conversation.patients.allergies && (
-                      <div className="flex items-start gap-2 p-2 bg-destructive/10 rounded-md">
-                        <AlertTriangle className="w-4 h-4 text-destructive mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-destructive font-medium">Alergias:</span>
-                          <p className="text-xs mt-1">{conversation.patients.allergies}</p>
-                        </div>
-                      </div>
-                    )}
-                    {conversation.patients.medications && (
-                      <div className="flex items-start gap-2">
-                        <Stethoscope className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-muted-foreground">Medicamentos:</span>
-                          <p className="text-xs mt-1">{conversation.patients.medications}</p>
-                        </div>
-                      </div>
-                    )}
-                  </>
                 )}
               </div>
             </CollapsibleContent>
@@ -543,12 +470,6 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
       {/* Dialogs */}
       {conversation.contact_type === 'lead' && conversation.lead_id && (
         <>
-          <ConvertToPatientDialog
-            open={showConvertDialog}
-            onOpenChange={setShowConvertDialog}
-            leadId={conversation.lead_id}
-            leadName={conversation.leads?.name || 'Lead'}
-          />
           <QuickScheduleDialog
             open={showScheduleDialog}
             onOpenChange={setShowScheduleDialog}

@@ -212,22 +212,17 @@ export function useDeleteAppointment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // 1. Buscar o agendamento para obter lead_id antes de deletar
-      const { data: appointment } = await supabase
-        .from("appointments")
-        .select("lead_id")
-        .eq("id", id)
-        .single();
-
-      // 2. Deletar o agendamento
-      const { error } = await supabase
+      // 1. Deletar o agendamento e obter lead_id no retorno
+      const { data: appointment, error } = await supabase
         .from("appointments")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select("id, lead_id")
+        .maybeSingle();
 
       if (error) throw error;
 
-      // 3. Se tinha lead, verificar se ainda tem outros agendamentos ativos
+      // 2. Se tinha lead, verificar se ainda tem outros agendamentos ativos
       if (appointment?.lead_id) {
         const { data: otherAppointments } = await supabase
           .from("appointments")

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,8 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { useCreateQuote, QuoteItem, QuotePayment } from "@/hooks/useQuotes";
 import { useProcedures } from "@/hooks/useProcedures";
-import { useLeads } from "@/hooks/useLeads";
-import { usePatients } from "@/hooks/usePatients";
+import { SearchEntityInput } from "@/components/common/SearchEntityInput";
 
 const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
 
@@ -39,8 +38,6 @@ interface QuoteFormProps {
 export function QuoteForm({ onSuccess }: QuoteFormProps) {
   const createQuote = useCreateQuote();
   const { data: procedures } = useProcedures();
-  const { data: leads } = useLeads();
-  const { data: patients } = usePatients();
 
   const [items, setItems] = useState<QuoteItem[]>([
     { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 },
@@ -58,26 +55,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   });
 
   const contactType = form.watch("contact_type");
-  const selectedLeadId = form.watch("lead_id");
-  const selectedPatientId = form.watch("patient_id");
-
-  // Preencher dados automaticamente quando selecionar lead ou paciente
-  useEffect(() => {
-    if (contactType === "lead" && selectedLeadId) {
-      const lead = leads?.find((l) => l.id === selectedLeadId);
-      if (lead) {
-        form.setValue("contact_name", lead.name);
-        form.setValue("contact_phone", lead.phone);
-      }
-    } else if (contactType === "patient" && selectedPatientId) {
-      const patient = patients?.find((p) => p.id === selectedPatientId);
-      if (patient) {
-        form.setValue("contact_name", patient.name);
-        form.setValue("contact_phone", patient.phone);
-        form.setValue("contact_email", patient.email || "");
-      }
+  const handleSelectEntity = (
+    entity: { id: string; name: string; phone: string; type: "lead" | "patient"; email?: string | null } | null
+  ) => {
+    if (!entity) return;
+    form.setValue("contact_name", entity.name);
+    form.setValue("contact_phone", entity.phone);
+    if (entity.type === "patient") {
+      form.setValue("contact_email", entity.email || "");
     }
-  }, [contactType, selectedLeadId, selectedPatientId, leads, patients, form]);
+  };
 
   const addItem = () => {
     setItems([...items, { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 }]);
@@ -205,20 +192,21 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Selecionar Lead</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um lead" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {leads?.map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>
-                            {lead.name} - {lead.phone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchEntityInput
+                        entityType="lead"
+                        value={field.value}
+                        placeholder="Buscar lead"
+                        onSelect={(entity) => {
+                          field.onChange(entity?.id ?? "");
+                          if (entity) {
+                            form.setValue("patient_id", "");
+                            form.setValue("contact_email", "");
+                            handleSelectEntity(entity);
+                          }
+                        }}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -232,20 +220,21 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Selecionar Paciente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um paciente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {patients?.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id}>
-                            {patient.name} - {patient.phone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchEntityInput
+                        entityType="patient"
+                        value={field.value}
+                        placeholder="Buscar paciente"
+                        onSelect={(entity) => {
+                          field.onChange(entity?.id ?? "");
+                          if (entity) {
+                            form.setValue("lead_id", "");
+                            form.setValue("contact_email", "");
+                            handleSelectEntity(entity);
+                          }
+                        }}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
