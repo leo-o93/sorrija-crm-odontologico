@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Plus, CalendarDays, List } from "lucide-react";
+import { useEffect, useState } from "react";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+import { Plus, CalendarDays, List, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -20,21 +20,56 @@ import {
   useDeleteAppointment,
   type Appointment,
 } from "@/hooks/useAppointments";
+import { useSearchParams } from "react-router-dom";
 
 export default function Agenda() {
-  const [currentDate] = useState(new Date());
-  const [view, setView] = useState<"week" | "month">("week");
+  const [searchParams] = useSearchParams();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<"today" | "week" | "month">("week");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
-  const startDate = format(startOfMonth(currentDate), "yyyy-MM-dd");
-  const endDate = format(endOfMonth(currentDate), "yyyy-MM-dd");
+  const startDate = format(
+    view === "month"
+      ? startOfMonth(currentDate)
+      : view === "week"
+      ? startOfWeek(currentDate)
+      : startOfDay(currentDate),
+    "yyyy-MM-dd"
+  );
+  const endDate = format(
+    view === "month"
+      ? endOfMonth(currentDate)
+      : view === "week"
+      ? endOfWeek(currentDate)
+      : endOfDay(currentDate),
+    "yyyy-MM-dd"
+  );
 
   const { data: appointments, isLoading } = useAppointments({
     startDate,
     endDate,
   });
+
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (!dateParam) return;
+    const parsedDate = new Date(`${dateParam}T00:00:00`);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      setCurrentDate(parsedDate);
+      setView("today");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const appointmentId = searchParams.get("appointment");
+    if (!appointmentId || !appointments) return;
+    const found = appointments.find((apt) => apt.id === appointmentId);
+    if (found) {
+      setSelectedAppointment(found);
+    }
+  }, [appointments, searchParams]);
 
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
@@ -86,9 +121,45 @@ export default function Agenda() {
             Gerencie seus agendamentos e consultas
           </p>
         </div>
-        <div className="flex gap-2">
-          <Tabs value={view} onValueChange={(v) => setView(v as "week" | "month")}>
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCurrentDate(new Date());
+                setView("today");
+              }}
+            >
+              Hoje
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCurrentDate(new Date());
+                setView("week");
+              }}
+            >
+              Semana
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCurrentDate(new Date());
+                setView("month");
+              }}
+            >
+              Mês
+            </Button>
+          </div>
+          <Tabs value={view} onValueChange={(v) => setView(v as "today" | "week" | "month")}>
             <TabsList>
+              <TabsTrigger value="today" className="gap-2">
+                <Sun className="h-4 w-4" />
+                Hoje
+              </TabsTrigger>
               <TabsTrigger value="week" className="gap-2">
                 <CalendarDays className="h-4 w-4" />
                 Semana
@@ -112,6 +183,8 @@ export default function Agenda() {
           onDateClick={handleDateClick}
           onAppointmentClick={handleAppointmentClick}
           view={view}
+          currentDate={currentDate}
+          onDateChange={setCurrentDate}
         />
       </Card>
 
