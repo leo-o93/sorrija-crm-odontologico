@@ -1509,85 +1509,6 @@ export type Database = {
           },
         ]
       }
-      professional_availability: {
-        Row: {
-          created_at: string
-          end_time: string
-          id: string
-          is_active: boolean
-          professional_id: string
-          start_time: string
-          weekday: number
-        }
-        Insert: {
-          created_at?: string
-          end_time: string
-          id?: string
-          is_active?: boolean
-          professional_id: string
-          start_time: string
-          weekday: number
-        }
-        Update: {
-          created_at?: string
-          end_time?: string
-          id?: string
-          is_active?: boolean
-          professional_id?: string
-          start_time?: string
-          weekday?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "professional_availability_professional_id_fkey"
-            columns: ["professional_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      professionals: {
-        Row: {
-          active: boolean
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          organization_id: string
-          phone: string | null
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          organization_id: string
-          phone?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          organization_id?: string
-          phone?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "professionals_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           active: boolean
@@ -2143,18 +2064,7 @@ export type Database = {
       }
     }
     Views: {
-      contacts_search: {
-        Row: {
-          cpf: string | null
-          email: string | null
-          id: string
-          name: string
-          organization_id: string | null
-          phone: string
-          type: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_send_messages: {

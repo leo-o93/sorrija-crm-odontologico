@@ -1,14 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
-export type ProfessionalAvailability =
-  Database["public"]["Tables"]["professional_availability"]["Row"];
-export type ProfessionalAvailabilityInsert =
-  Database["public"]["Tables"]["professional_availability"]["Insert"];
-export type ProfessionalAvailabilityUpdate =
-  Database["public"]["Tables"]["professional_availability"]["Update"];
+// Define types locally since the table may not be in generated types yet
+export interface ProfessionalAvailability {
+  id: string;
+  professional_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type ProfessionalAvailabilityInsert = Omit<ProfessionalAvailability, "id" | "created_at">;
+export type ProfessionalAvailabilityUpdate = Partial<ProfessionalAvailabilityInsert>;
 
 export function useProfessionalAvailability(professionalId?: string) {
   return useQuery({
@@ -16,14 +22,14 @@ export function useProfessionalAvailability(professionalId?: string) {
     queryFn: async () => {
       if (!professionalId) return [];
       const { data, error } = await supabase
-        .from("professional_availability")
+        .from("professional_availability" as any)
         .select("*")
         .eq("professional_id", professionalId)
         .order("weekday", { ascending: true })
         .order("start_time", { ascending: true });
 
       if (error) throw error;
-      return data as ProfessionalAvailability[];
+      return (data || []) as unknown as ProfessionalAvailability[];
     },
     enabled: !!professionalId,
   });
@@ -35,13 +41,13 @@ export function useCreateProfessionalAvailability() {
   return useMutation({
     mutationFn: async (input: ProfessionalAvailabilityInsert) => {
       const { data, error } = await supabase
-        .from("professional_availability")
+        .from("professional_availability" as any)
         .insert(input)
         .select()
         .single();
 
       if (error) throw error;
-      return data as ProfessionalAvailability;
+      return data as unknown as ProfessionalAvailability;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -63,14 +69,14 @@ export function useUpdateProfessionalAvailability() {
     mutationFn: async (input: ProfessionalAvailabilityUpdate & { id: string }) => {
       const { id, ...updates } = input;
       const { data, error } = await supabase
-        .from("professional_availability")
+        .from("professional_availability" as any)
         .update(updates)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as ProfessionalAvailability;
+      return data as unknown as ProfessionalAvailability;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({
@@ -91,7 +97,7 @@ export function useDeleteProfessionalAvailability() {
   return useMutation({
     mutationFn: async (input: { id: string; professionalId: string }) => {
       const { error } = await supabase
-        .from("professional_availability")
+        .from("professional_availability" as any)
         .delete()
         .eq("id", input.id);
 
