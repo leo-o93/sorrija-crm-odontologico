@@ -17,6 +17,7 @@ import { HistoryDetailDialog } from "@/components/pacientes/HistoryDetailDialog"
 import { HistoryType, AppointmentHistoryItem, AttendanceHistoryItem, QuoteHistoryItem, SaleHistoryItem, NonContractedQuoteItem } from "@/types/history";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -66,6 +67,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
   const [historyDialogTitle, setHistoryDialogTitle] = useState("");
   const deleteLeadComplete = useDeleteLeadComplete();
+  const { data: leadStatuses } = useLeadStatuses();
 
   // Helper to safely extract arrays from JSON
   const getHistoryArray = <T,>(data: unknown): T[] => {
@@ -148,6 +150,9 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
 
   if (!lead) return null;
 
+  const statusMeta = leadStatuses?.find((status) => status.name === lead.status);
+  const statusLabel = statusMeta?.title || statusLabels[lead.status] || lead.status;
+
   const openWhatsApp = () => {
     const phone = lead.phone.replace(/\D/g, "");
     const formattedPhone = phone.startsWith("55") ? phone : `55${phone}`;
@@ -204,7 +209,9 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold">{lead.name}</h2>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <Badge>{statusLabels[lead.status] || lead.status}</Badge>
+                  <Badge className={statusMeta?.color ? `${statusMeta.color} text-white` : undefined}>
+                    {statusLabel}
+                  </Badge>
                   <TemperatureBadge temperature={lead.temperature} />
                   {(lead.scheduled || (lead.temperature === "quente" && lead.hot_substatus)) && (
                     <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="md" />

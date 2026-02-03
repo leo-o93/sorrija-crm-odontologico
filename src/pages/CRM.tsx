@@ -297,6 +297,7 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
   });
 
   const totalPages = modalLeads ? Math.ceil((modalLeads.count || 0) / MODAL_LEADS_PER_PAGE) : 1;
+  const resolveStatusMeta = (status: string) => statuses?.find((item) => item.name === status);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -401,15 +402,21 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
               </div>
             ) : modalLeads?.data.length ? (
               <div className="divide-y">
-                {modalLeads.data.map((lead) => (
-                  <div key={lead.id} className="p-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{lead.name}</div>
-                      <div className="text-xs text-muted-foreground">{lead.phone}</div>
+                {modalLeads.data.map((lead) => {
+                  const statusMeta = resolveStatusMeta(lead.status);
+                  const statusLabel = statusMeta?.title || lead.status;
+                  return (
+                    <div key={lead.id} className="p-3 flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{lead.name}</div>
+                        <div className="text-xs text-muted-foreground">{lead.phone}</div>
+                      </div>
+                      <Badge className={statusMeta?.color ? `${statusMeta.color} text-white` : undefined}>
+                        {statusLabel}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary">{lead.status}</Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-4 text-sm text-muted-foreground">Nenhum lead encontrado.</div>
