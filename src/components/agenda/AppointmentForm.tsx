@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -95,6 +96,23 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
       notes: appointment?.notes || "",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      appointment_date: appointment?.appointment_date
+        ? new Date(appointment.appointment_date)
+        : defaultDate || new Date(),
+      appointment_time: appointment?.appointment_date
+        ? format(new Date(appointment.appointment_date), "HH:mm")
+        : "09:00",
+      status: appointment?.status || "scheduled",
+      patient_id: appointment?.patient_id || "",
+      lead_id: appointment?.lead_id || "",
+      procedure_id: appointment?.procedure_id || "",
+      professional_id: appointment?.professional_id || "",
+      notes: appointment?.notes || "",
+    });
+  }, [appointment, defaultDate, form]);
 
   const professionalId = form.watch("professional_id");
   const { data: availability } = useProfessionalAvailability(professionalId || undefined);
