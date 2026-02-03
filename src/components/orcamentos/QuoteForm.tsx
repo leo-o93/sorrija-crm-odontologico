@@ -101,12 +101,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   };
 
   const addPayment = () => {
+    const total = calculateTotal();
+    const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remaining = Math.max(total - paymentsTotal, 0);
+
     setPayments([
       ...payments,
       {
         installment_number: payments.length + 1,
         due_date: new Date().toISOString().split("T")[0],
-        amount: calculateTotal(),
+        amount: remaining > 0 ? remaining : total,
         payment_method: "dinheiro",
         status: "pending",
       },
@@ -132,6 +136,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
       return;
     }
 
+    const total = calculateTotal();
+    const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const hasInvalidPayment = payments.some(
+      (payment) => !payment.payment_method || !payment.due_date || payment.amount <= 0
+    );
+
+    if (paymentsTotal > total || hasInvalidPayment) {
+      return;
+    }
+
     await createQuote.mutateAsync({
       lead_id: data.contact_type === "lead" ? data.lead_id : undefined,
       patient_id: data.contact_type === "patient" ? data.patient_id : undefined,
@@ -153,6 +167,14 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
 
     onSuccess?.();
   };
+
+  const total = calculateTotal();
+  const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const remaining = total - paymentsTotal;
+  const hasInvalidPayment = payments.some(
+    (payment) => !payment.payment_method || !payment.due_date || payment.amount <= 0
+  );
+  const exceedsTotal = paymentsTotal > total;
 
   return (
     <Form {...form}>
@@ -483,11 +505,34 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 </div>
               ))
             )}
+            {payments.length > 0 && (
+              <div className="rounded-lg border p-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total do orçamento</span>
+                  <span className="font-medium">R$ {total.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total parcelado</span>
+                  <span className="font-medium">R$ {paymentsTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Saldo restante</span>
+                  <span className={remaining < 0 ? "font-medium text-destructive" : "font-medium"}>
+                    R$ {remaining.toFixed(2)}
+                  </span>
+                </div>
+                {(hasInvalidPayment || exceedsTotal) && (
+                  <p className="text-destructive text-xs">
+                    Confira as parcelas: informe forma e vencimento, valor maior que zero e evite soma acima do total.
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={createQuote.isPending}>
+          <Button type="submit" disabled={createQuote.isPending || hasInvalidPayment || exceedsTotal}>
             {createQuote.isPending ? "Criando..." : "Criar Orçamento"}
           </Button>
         </div>
