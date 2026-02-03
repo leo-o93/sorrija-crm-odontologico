@@ -114,7 +114,9 @@ export function useCreateAppointment() {
             appointment_date: appointmentDate,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", input.lead_id);
+          .eq("id", input.lead_id)
+          .select("id")
+          .single();
       }
 
       return appointment;
@@ -154,7 +156,9 @@ export function useUpdateAppointment() {
               appointment_date: data.appointment_date?.split("T")[0] ?? null,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", data.lead_id);
+            .eq("id", data.lead_id)
+            .select("id")
+            .single();
         }
 
         if (data.status === "attended" || data.status === "cancelled" || data.status === "no_show") {
@@ -178,7 +182,9 @@ export function useUpdateAppointment() {
                 appointment_date: nextAppointment.appointment_date?.split('T')[0],
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", data.lead_id);
+              .eq("id", data.lead_id)
+              .select("id")
+              .single();
           } else {
             // Sem mais agendamentos, desmarcar
             await supabase
@@ -188,7 +194,9 @@ export function useUpdateAppointment() {
                 appointment_date: null,
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", data.lead_id);
+              .eq("id", data.lead_id)
+              .select("id")
+              .single();
           }
         }
       }
@@ -241,7 +249,9 @@ export function useDeleteAppointment() {
               appointment_date: null,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", appointment.lead_id);
+            .eq("id", appointment.lead_id)
+            .select("id")
+            .single();
         } else {
           // Atualizar com a próxima data de agendamento
           await supabase
@@ -251,7 +261,9 @@ export function useDeleteAppointment() {
               appointment_date: otherAppointments[0].appointment_date?.split('T')[0],
               updated_at: new Date().toISOString(),
             })
-            .eq("id", appointment.lead_id);
+            .eq("id", appointment.lead_id)
+            .select("id")
+            .single();
         }
       }
     },
