@@ -110,6 +110,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           patient_id: string | null
+          professional_id: string | null
           procedure_id: string | null
           status: string
           updated_at: string
@@ -122,6 +123,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           procedure_id?: string | null
           status?: string
           updated_at?: string
@@ -134,6 +136,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           procedure_id?: string | null
           status?: string
           updated_at?: string
@@ -161,10 +164,88 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_procedure_id_fkey"
             columns: ["procedure_id"]
             isOneToOne: false
             referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_queue: {
+        Row: {
+          appointment_id: string | null
+          checked_in_at: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          lead_id: string | null
+          organization_id: string
+          patient_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id?: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_queue_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -564,6 +645,108 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "integration_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          room_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "internal_chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_chat_room_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_chat_room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "internal_chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_chat_rooms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_chat_rooms_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1509,6 +1692,132 @@ export type Database = {
           },
         ]
       }
+      professional_availability: {
+        Row: {
+          break_end: string | null
+          break_start: string | null
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          professional_id: string
+          slot_minutes: number
+          start_time: string
+          weekday: number
+        }
+        Insert: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          professional_id: string
+          slot_minutes?: number
+          start_time: string
+          weekday: number
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          professional_id?: string
+          slot_minutes?: number
+          start_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_time_off: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_time: string
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_time_off_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
@@ -1545,6 +1854,9 @@ export type Database = {
           procedure_name: string
           quantity: number
           quote_id: string
+          specialty: string | null
+          subtotal: number
+          tooth: string | null
           total_price: number
           unit_price: number
         }
@@ -1556,6 +1868,9 @@ export type Database = {
           procedure_name: string
           quantity?: number
           quote_id: string
+          specialty?: string | null
+          subtotal?: number
+          tooth?: string | null
           total_price: number
           unit_price: number
         }
@@ -1567,6 +1882,9 @@ export type Database = {
           procedure_name?: string
           quantity?: number
           quote_id?: string
+          specialty?: string | null
+          subtotal?: number
+          tooth?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -1645,7 +1963,9 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           organization_id: string | null
+          payment_type: string | null
           patient_id: string | null
+          professional_id: string | null
           quote_number: string
           status: string
           total_amount: number
@@ -1665,7 +1985,9 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organization_id?: string | null
+          payment_type?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           quote_number: string
           status?: string
           total_amount?: number
@@ -1685,7 +2007,9 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organization_id?: string | null
+          payment_type?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           quote_number?: string
           status?: string
           total_amount?: number
@@ -1712,6 +2036,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -2064,7 +2395,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      contacts_search: {
+        Row: {
+          cpf: string | null
+          email: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          phone: string
+          type: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_send_messages: {

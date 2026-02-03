@@ -32,8 +32,10 @@ import Cadastros from "./pages/Cadastros";
 import Configuracoes from "./pages/Configuracoes";
 import Webhooks from "./pages/Webhooks";
 import Conversas from "./pages/Conversas";
+import ChatInterno from "./pages/ChatInterno";
 import RelatoriosIA from "./pages/RelatoriosIA";
 import Admin from "./pages/Admin";
+import FilaAtendimento from "./pages/FilaAtendimento";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -248,6 +250,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <Conversas />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat-interno"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <ChatInterno />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/fila-atendimento"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <FilaAtendimento />
             </AppLayout>
           </ProtectedRoute>
         }

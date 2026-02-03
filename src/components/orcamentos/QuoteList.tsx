@@ -24,6 +24,9 @@ const statusColors: Record<string, string> = {
   rejected: "bg-red-500",
   expired: "bg-orange-500",
   converted: "bg-purple-500",
+  not_closed: "bg-red-500",
+  partially_closed: "bg-yellow-500",
+  closed: "bg-emerald-500",
 };
 
 const statusLabels: Record<string, string> = {
@@ -33,6 +36,9 @@ const statusLabels: Record<string, string> = {
   rejected: "Rejeitado",
   expired: "Expirado",
   converted: "Convertido",
+  not_closed: "Não fechou",
+  partially_closed: "Fechou parte",
+  closed: "Fechou tudo",
 };
 
 export function QuoteList({ onViewQuote }: QuoteListProps) {
@@ -100,6 +106,9 @@ export function QuoteList({ onViewQuote }: QuoteListProps) {
             <SelectItem value="rejected">Rejeitado</SelectItem>
             <SelectItem value="expired">Expirado</SelectItem>
             <SelectItem value="converted">Convertido</SelectItem>
+            <SelectItem value="not_closed">Não fechou</SelectItem>
+            <SelectItem value="partially_closed">Fechou parte</SelectItem>
+            <SelectItem value="closed">Fechou tudo</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -115,6 +124,12 @@ export function QuoteList({ onViewQuote }: QuoteListProps) {
           </TabsTrigger>
           <TabsTrigger value="approved">
             Aprovados ({quotes?.filter((q) => q.status === "approved").length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="partially_closed">
+            Fechou parte ({quotes?.filter((q) => q.status === "partially_closed").length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="closed">
+            Fechou tudo ({quotes?.filter((q) => q.status === "closed").length || 0})
           </TabsTrigger>
         </TabsList>
 
@@ -144,11 +159,24 @@ export function QuoteList({ onViewQuote }: QuoteListProps) {
                         Telefone: <span className="text-foreground">{quote.contact_phone}</span>
                       </p>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Criado em:{" "}
+                        Data do orçamento:{" "}
                         <span className="text-foreground">
                           {format(new Date(quote.created_at), "dd/MM/yyyy", { locale: ptBR })}
                         </span>
                       </p>
+                      {quote.professional?.name && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Profissional: <span className="text-foreground">{quote.professional.name}</span>
+                        </p>
+                      )}
+                      {quote.payment_type && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Convênio / Particular:{" "}
+                          <span className="text-foreground">
+                            {quote.payment_type === "convenio" ? "Convênio" : "Particular"}
+                          </span>
+                        </p>
+                      )}
                       <div className="flex items-center gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Itens</p>
@@ -259,6 +287,56 @@ export function QuoteList({ onViewQuote }: QuoteListProps) {
         <TabsContent value="approved" className="space-y-4 mt-4">
           {quotes
             ?.filter((q) => q.status === "approved")
+            .map((quote) => (
+              <Card key={quote.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">#{quote.quote_number}</h3>
+                      <p className="text-sm text-muted-foreground">{quote.contact_name}</p>
+                      <p className="text-sm font-bold">R$ {quote.final_amount.toFixed(2)}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewQuote?.(quote.id)}
+                    >
+                      Ver
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+        </TabsContent>
+
+        <TabsContent value="partially_closed" className="space-y-4 mt-4">
+          {quotes
+            ?.filter((q) => q.status === "partially_closed")
+            .map((quote) => (
+              <Card key={quote.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">#{quote.quote_number}</h3>
+                      <p className="text-sm text-muted-foreground">{quote.contact_name}</p>
+                      <p className="text-sm font-bold">R$ {quote.final_amount.toFixed(2)}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewQuote?.(quote.id)}
+                    >
+                      Ver
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+        </TabsContent>
+
+        <TabsContent value="closed" className="space-y-4 mt-4">
+          {quotes
+            ?.filter((q) => q.status === "closed")
             .map((quote) => (
               <Card key={quote.id}>
                 <CardContent className="p-6">
