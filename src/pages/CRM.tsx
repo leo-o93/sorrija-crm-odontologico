@@ -16,6 +16,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
@@ -198,12 +199,30 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
     queryKey: ["organization-members", currentOrganization?.id],
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
-      const { data, error } = await supabase
+      // Fetch organization members
+      const { data: membersData, error: membersError } = await supabase
         .from("organization_members")
-        .select("user_id, profiles(full_name)")
+        .select("user_id")
         .eq("organization_id", currentOrganization.id);
-      if (error) throw error;
-      return data as OrganizationMember[];
+      if (membersError) throw membersError;
+      
+      // Fetch profiles separately
+      const userIds = membersData?.map(m => m.user_id) || [];
+      if (userIds.length === 0) return [];
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      if (profilesError) throw profilesError;
+      
+      // Combine data
+      return membersData.map(member => ({
+        user_id: member.user_id,
+        profiles: profilesData?.find(p => p.id === member.user_id) 
+          ? { full_name: profilesData.find(p => p.id === member.user_id)?.full_name || null }
+          : null
+      })) as OrganizationMember[];
     },
     enabled: !!currentOrganization?.id,
   });
