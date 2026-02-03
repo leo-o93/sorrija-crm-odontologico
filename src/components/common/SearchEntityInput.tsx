@@ -51,23 +51,6 @@ const formatEntityLabel = (entity: SearchEntityResult | null) => {
   return `${entity.name}${phoneLabel}`;
 };
 
-// Helper to safely extract data from response
-const parseContactData = (data: unknown): SearchEntityResult | null => {
-  if (!data || typeof data !== 'object') return null;
-  const record = data as Record<string, unknown>;
-  const typeValue = record.type;
-  const entityType = typeValue === "lead" ? "lead" : "patient";
-  
-  return {
-    id: String(record.id || ""),
-    name: String(record.name || ""),
-    phone: String(record.phone || ""),
-    cpf: record.cpf ? String(record.cpf) : null,
-    email: record.email ? String(record.email) : null,
-    type: entityType,
-  };
-};
-
 export function SearchEntityInput({
   value,
   entityType,
@@ -107,16 +90,30 @@ export function SearchEntityInput({
 
       if (selected?.id === value) return;
 
-      const { data } = await supabase
-        .from("contacts_search" as any)
+      const query = supabase
+        .from("contacts_search")
         .select("id, name, phone, cpf, email, type")
         .eq("id", value)
-        .eq("organization_id", organizationId)
-        .maybeSingle();
+        .eq("organization_id", organizationId);
+
+      const { data } =
+        entityType === "all"
+          ? await query.maybeSingle()
+          : await query.eq("type", entityType).maybeSingle();
+
+      const entity = data
+        ? ({
+            id: data.id,
+            name: data.name,
+            phone: data.phone,
+            cpf: data.cpf,
+            email: data.email,
+            type: data.type,
+          } as SearchEntityResult)
+        : null;
 
       if (!isActive) return;
 
-      const entity = parseContactData(data);
       if (entity) {
         setSelected(entity);
       }
@@ -156,8 +153,8 @@ export function SearchEntityInput({
     const offset = currentPage * PAGE_SIZE;
     const rangeEnd = offset + PAGE_SIZE - 1;
 
-    let dbQuery = supabase
-      .from("contacts_search" as any)
+    let query = supabase
+      .from("contacts_search")
       .select("id, name, phone, cpf, email, type")
       .eq("organization_id", organizationId)
       .or(buildFilter(true))
@@ -165,15 +162,20 @@ export function SearchEntityInput({
       .range(offset, rangeEnd);
 
     if (entityType !== "all") {
-      dbQuery = dbQuery.eq("type", entityType);
+      query = query.eq("type", entityType);
     }
 
-    const { data } = await dbQuery;
+    const { data } = await query;
 
-    const nextResults: SearchEntityResult[] = 
-      (Array.isArray(data) ? data : [])
-        .map(parseContactData)
-        .filter((item): item is SearchEntityResult => item !== null);
+    const nextResults =
+      data?.map((entity) => ({
+        id: entity.id,
+        name: entity.name,
+        phone: entity.phone,
+        cpf: entity.cpf,
+        email: entity.email,
+        type: entity.type,
+      })) ?? [];
 
     const hasMoreResults = nextResults.length === PAGE_SIZE;
 
