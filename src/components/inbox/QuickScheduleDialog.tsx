@@ -18,6 +18,7 @@ interface QuickScheduleDialogProps {
   leadId?: string | null;
   patientId?: string | null;
   contactName: string;
+  allowPastDates?: boolean;
 }
 
 export function QuickScheduleDialog({ 
@@ -25,7 +26,8 @@ export function QuickScheduleDialog({
   onOpenChange, 
   leadId, 
   patientId,
-  contactName 
+  contactName,
+  allowPastDates = false
 }: QuickScheduleDialogProps) {
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState<string>('09:00');
@@ -79,6 +81,7 @@ export function QuickScheduleDialog({
               selected={date}
               onSelect={setDate}
               disabled={(date) => {
+                if (allowPastDates) return false;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 return date < today;

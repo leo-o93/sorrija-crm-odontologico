@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Phone, 
   MessageCircle, 
@@ -26,7 +28,7 @@ import {
   Loader2,
   ChevronRight
 } from "lucide-react";
-import { Patient, useDeletePatient, useTogglePatientActive } from "@/hooks/usePatients";
+import { Patient, useDeletePatient, useTogglePatientActive, useUpdatePatient } from "@/hooks/usePatients";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { QuickScheduleDialog } from "@/components/inbox/QuickScheduleDialog";
@@ -36,6 +38,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryDetailDialog } from "./HistoryDetailDialog";
+import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import type { 
   HistoryType,
   AppointmentHistoryItem, 
@@ -60,6 +63,7 @@ interface PatientDetailPanelProps {
 
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
+  confirmed: { label: "Confirmado", color: "bg-emerald-100 text-emerald-800" },
   attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
   rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
   cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
@@ -73,8 +77,15 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
   const [historyDialogTitle, setHistoryDialogTitle] = useState("");
+  const [notesDraft, setNotesDraft] = useState(patient?.notes || "");
   const deletePatient = useDeletePatient();
   const toggleActive = useTogglePatientActive();
+  const updatePatient = useUpdatePatient();
+  const { data: leadStatuses } = useLeadStatuses();
+
+  useEffect(() => {
+    setNotesDraft(patient?.notes || "");
+  }, [patient?.notes]);
 
   // Real-time calculated metrics
   const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
@@ -140,6 +151,36 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     enabled: !!patient?.id && open,
   });
 
+  const { data: allAppointments, isLoading: allAppointmentsLoading } = useQuery({
+    queryKey: ["patient-appointments", patient?.id],
+    queryFn: async () => {
+      if (!patient?.id) return [];
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*, procedures(name)")
+        .eq("patient_id", patient.id)
+        .order("appointment_date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!patient?.id && open,
+  });
+
+  const { data: patientLead } = useQuery({
+    queryKey: ["patient-lead", patient?.lead_id],
+    queryFn: async () => {
+      if (!patient?.lead_id) return null;
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, status")
+        .eq("id", patient.lead_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!patient?.lead_id && open,
+  });
+
   if (!patient) return null;
 
   const handleCall = () => {
@@ -167,6 +208,11 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
   const handleEditSuccess = () => {
     setEditOpen(false);
+  };
+
+  const handleSaveNotes = async () => {
+    if (notesDraft === (patient.notes || "")) return;
+    await updatePatient.mutateAsync({ id: patient.id, notes: notesDraft });
   };
 
   // PRIORITIZE stored values (from import) over calculated
@@ -213,6 +259,11 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     }
   };
 
+  const leadStatusMeta = patientLead?.status
+    ? leadStatuses?.find((status) => status.name === patientLead.status)
+    : null;
+  const leadStatusLabel = leadStatusMeta?.title || patientLead?.status;
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -225,6 +276,11 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                   <Badge variant={patient.active ? "default" : "secondary"}>
                     {patient.active ? "Ativo" : "Inativo"}
                   </Badge>
+                  {leadStatusLabel && (
+                    <Badge className={leadStatusMeta?.color ? `${leadStatusMeta.color} text-white` : undefined}>
+                      Funil: {leadStatusLabel}
+                    </Badge>
+                  )}
                   {patient.cpf && (
                     <span className="text-sm text-muted-foreground">
                       CPF: {patient.cpf}
@@ -283,365 +339,379 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
           <Separator className="my-4" />
 
-          {/* Patient Metrics - Clickable cards */}
-          <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
-            <h4 className="font-medium text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Métricas do Paciente
-              {metricsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-            </h4>
-            
-            <div className="grid grid-cols-3 gap-2 text-sm">
-              <button
-                onClick={() => openHistoryDialog("appointments", "Agendamentos")}
-                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
-              >
-                <p className="text-xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                  Agendamentos
-                  {appointmentsHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
-                </p>
-              </button>
-              <button
-                onClick={() => openHistoryDialog("attendances", "Atendimentos")}
-                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
-              >
-                <p className="text-xl font-bold text-green-600">{displayMetrics.totalAttendances}</p>
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                  Atendimentos
-                  {attendancesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
-                </p>
-              </button>
-              <button
-                onClick={() => openHistoryDialog("quotes", "Orçamentos")}
-                className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
-              >
-                <p className="text-xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                  Orçamentos
-                  {quotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
-                </p>
-              </button>
-            </div>
-            
-            <button
-              onClick={() => openHistoryDialog("sales", "Vendas / Receita")}
-              className="w-full text-center p-3 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
-            >
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(displayMetrics.totalRevenue)}
-              </p>
-              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                Receita Total do Paciente
-                {salesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
-              </p>
-            </button>
-          </div>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">Resumo</TabsTrigger>
+              <TabsTrigger value="appointments">Agendamentos</TabsTrigger>
+              <TabsTrigger value="notes">Notas</TabsTrigger>
+            </TabsList>
 
-          {/* Non-Contracted Quotes Section */}
-          {((patient.total_non_contracted_quote_items ?? 0) > 0 || nonContractedQuotesHistory.length > 0) && (
-            <>
-              <Separator className="my-4" />
-              <div className="space-y-3 p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200">
-                <h4 className="font-medium text-sm flex items-center gap-2 text-orange-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  Orçamentos Não Contratados
+            <TabsContent value="overview" className="space-y-4">
+              {/* Patient Metrics - Clickable cards */}
+              <div className="space-y-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Métricas do Paciente
+                  {metricsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                 </h4>
                 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center p-2 bg-background rounded border">
-                    <p className="text-xl font-bold text-orange-600">
-                      {patient.total_non_contracted_quote_items ?? nonContractedQuotesHistory.length}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Itens</p>
-                  </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
                   <button
-                    onClick={() => nonContractedQuotesHistory.length > 0 && openHistoryDialog("non_contracted_quotes", "Orçamentos Não Contratados")}
-                    className={`text-center p-2 bg-background rounded border transition-colors ${
-                      nonContractedQuotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-                    }`}
-                    disabled={nonContractedQuotesHistory.length === 0}
+                    onClick={() => openHistoryDialog("appointments", "Agendamentos")}
+                    className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
                   >
-                    <p className="text-xl font-bold text-orange-600">
-                      {formatCurrency(patient.total_non_contracted_quote_value ?? 0)}
-                    </p>
+                    <p className="text-xl font-bold text-blue-600">{displayMetrics.totalAppointments}</p>
                     <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                      Valor Total
-                      {nonContractedQuotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                      Agendamentos
+                      {appointmentsHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => openHistoryDialog("attendances", "Atendimentos")}
+                    className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
+                  >
+                    <p className="text-xl font-bold text-green-600">{displayMetrics.totalAttendances}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      Atendimentos
+                      {attendancesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => openHistoryDialog("quotes", "Orçamentos")}
+                    className="text-center p-2 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
+                  >
+                    <p className="text-xl font-bold text-purple-600">{displayMetrics.totalQuotes}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      Orçamentos
+                      {quotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
                     </p>
                   </button>
                 </div>
                 
-                {patient.top_non_contracted_procedures && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Top Procedimentos: </span>
-                    <span className="font-medium">{patient.top_non_contracted_procedures}</span>
-                  </div>
-                )}
-                {patient.top_non_contracted_specialties && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Top Especialidades: </span>
-                    <span className="font-medium">{patient.top_non_contracted_specialties}</span>
-                  </div>
-                )}
+                <button
+                  onClick={() => openHistoryDialog("sales", "Vendas / Receita")}
+                  className="w-full text-center p-3 bg-background rounded border transition-colors hover:bg-muted cursor-pointer"
+                >
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(displayMetrics.totalRevenue)}
+                  </p>
+                  <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                    Receita Total do Paciente
+                    {salesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                  </p>
+                </button>
               </div>
-            </>
-          )}
 
-          <Separator className="my-4" />
+              {/* Non-Contracted Quotes Section */}
+              {((patient.total_non_contracted_quote_items ?? 0) > 0 || nonContractedQuotesHistory.length > 0) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-3 p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200">
+                    <h4 className="font-medium text-sm flex items-center gap-2 text-orange-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      Orçamentos Não Contratados
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-background rounded border">
+                        <p className="text-xl font-bold text-orange-600">
+                          {patient.total_non_contracted_quote_items ?? nonContractedQuotesHistory.length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Itens</p>
+                      </div>
+                      <button
+                        onClick={() => nonContractedQuotesHistory.length > 0 && openHistoryDialog("non_contracted_quotes", "Orçamentos Não Contratados")}
+                        className={`text-center p-2 bg-background rounded border transition-colors ${
+                          nonContractedQuotesHistory.length > 0 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                        }`}
+                        disabled={nonContractedQuotesHistory.length === 0}
+                      >
+                        <p className="text-xl font-bold text-orange-600">
+                          {formatCurrency(patient.total_non_contracted_quote_value ?? 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                          Valor Total
+                          {nonContractedQuotesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
+                        </p>
+                      </button>
+                    </div>
+                    
+                    {patient.top_non_contracted_procedures && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Top Procedimentos: </span>
+                        <span className="font-medium">{patient.top_non_contracted_procedures}</span>
+                      </div>
+                    )}
+                    {patient.top_non_contracted_specialties && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Top Especialidades: </span>
+                        <span className="font-medium">{patient.top_non_contracted_specialties}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-          {/* Appointment History - Always visible */}
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Histórico de Consultas
-              {appointmentsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-            </h4>
-            
-            {recentAppointments && recentAppointments.length > 0 ? (
-              <div className="space-y-2">
-                {recentAppointments.map((appointment) => {
-                  const statusInfo = appointmentStatusLabels[appointment.status] || { 
-                    label: appointment.status, 
-                    color: "bg-gray-100 text-gray-800" 
-                  };
-                  const StatusIcon = appointment.status === "attended" ? CheckCircle :
-                    appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
-                    Clock;
+              {/* Last Sale Info */}
+              {patient.last_sale_date && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Última Venda
+                    </h4>
+                    <div className="text-sm space-y-1 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                      <p className="flex justify-between">
+                        <span className="text-muted-foreground">Data:</span>
+                        <span className="font-medium">{format(new Date(patient.last_sale_date), "dd/MM/yyyy")}</span>
+                      </p>
+                      {patient.last_sale_amount && (
+                        <p className="flex justify-between">
+                          <span className="text-muted-foreground">Valor:</span>
+                          <span className="font-medium text-green-600">{formatCurrency(patient.last_sale_amount)}</span>
+                        </p>
+                      )}
+                      {patient.last_sale_payment_method && (
+                        <p className="flex justify-between">
+                          <span className="text-muted-foreground">Pagamento:</span>
+                          <span className="font-medium">{patient.last_sale_payment_method}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
-                  return (
-                    <div 
-                      key={appointment.id} 
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <StatusIcon className={`h-4 w-4 ${
-                          appointment.status === "attended" ? "text-green-600" :
-                          appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
-                          "text-blue-600"
-                        }`} />
-                        <div>
-                          <p className="text-sm font-medium">
-                            {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {appointment.procedures?.name || "Consulta"}
+              {/* Contracted Values */}
+              {((patient.contracted_value && patient.contracted_value > 0) || (patient.non_contracted_value && patient.non_contracted_value > 0)) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Valores de Contrato
+                    </h4>
+                    <div className="flex gap-3">
+                      {patient.contracted_value && patient.contracted_value > 0 && (
+                        <div className="flex-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
+                          <p className="text-xs text-muted-foreground">Contratado</p>
+                          <p className="text-lg font-bold text-green-600">
+                            {formatCurrency(patient.contracted_value)}
                           </p>
                         </div>
-                      </div>
-                      <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
-                        {statusInfo.label}
-                      </Badge>
+                      )}
+                      {patient.non_contracted_value && patient.non_contracted_value > 0 && (
+                        <div className="flex-1 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg text-center">
+                          <p className="text-xs text-muted-foreground">Não Contratado</p>
+                          <p className="text-lg font-bold text-red-600">
+                            {formatCurrency(patient.non_contracted_value)}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : hasStoredHistoryOnly ? (
-              <div className="text-center py-4 bg-muted/30 rounded-lg">
-                <p className="text-sm font-medium text-foreground">
-                  Dados históricos importados
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {patient.total_appointments} agendamentos, {patient.total_attendances ?? 0} atendimentos
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum agendamento encontrado
-              </p>
-            )}
-          </div>
-
-          <Separator className="my-4" />
-
-          {/* Last Sale Info */}
-          {patient.last_sale_date && (
-            <>
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  Última Venda
-                </h4>
-                <div className="text-sm space-y-1 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <p className="flex justify-between">
-                    <span className="text-muted-foreground">Data:</span>
-                    <span className="font-medium">{format(new Date(patient.last_sale_date), "dd/MM/yyyy")}</span>
-                  </p>
-                  {patient.last_sale_amount && (
-                    <p className="flex justify-between">
-                      <span className="text-muted-foreground">Valor:</span>
-                      <span className="font-medium text-green-600">{formatCurrency(patient.last_sale_amount)}</span>
-                    </p>
-                  )}
-                  {patient.last_sale_payment_method && (
-                    <p className="flex justify-between">
-                      <span className="text-muted-foreground">Pagamento:</span>
-                      <span className="font-medium">{patient.last_sale_payment_method}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Separator className="my-4" />
-            </>
-          )}
-
-          {/* Contracted Values */}
-          {((patient.contracted_value && patient.contracted_value > 0) || (patient.non_contracted_value && patient.non_contracted_value > 0)) && (
-            <>
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Valores de Contrato
-                </h4>
-                <div className="flex gap-3">
-                  {patient.contracted_value && patient.contracted_value > 0 && (
-                    <div className="flex-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground">Contratado</p>
-                      <p className="text-lg font-bold text-green-600">
-                        {formatCurrency(patient.contracted_value)}
+                    {patient.contract_date && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Data de contratação: {format(new Date(patient.contract_date), "dd/MM/yyyy")}
                       </p>
-                    </div>
-                  )}
-                  {patient.non_contracted_value && patient.non_contracted_value > 0 && (
-                    <div className="flex-1 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground">Não Contratado</p>
-                      <p className="text-lg font-bold text-red-600">
-                        {formatCurrency(patient.non_contracted_value)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {patient.contract_date && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Data de contratação: {format(new Date(patient.contract_date), "dd/MM/yyyy")}
-                  </p>
-                )}
-              </div>
-              <Separator className="my-4" />
-            </>
-          )}
-
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-sm text-muted-foreground">Informações de Contato</h4>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{patient.phone}</span>
-              </div>
-              {patient.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{patient.email}</span>
-                </div>
-              )}
-              {patient.birth_date && (
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    Nascimento: {format(new Date(patient.birth_date), "dd/MM/yyyy", { locale: ptBR })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Address */}
-          {(patient.address || patient.city || patient.state || patient.zip_code) && (
-            <>
-              <Separator className="my-4" />
-              <div className="space-y-4">
-                <h4 className="font-medium text-sm text-muted-foreground">Endereço</h4>
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm space-y-1">
-                    {patient.address && <p>{patient.address}</p>}
-                    {(patient.city || patient.state) && (
-                      <p>{[patient.city, patient.state].filter(Boolean).join(" / ")}</p>
                     )}
-                    {patient.zip_code && <p>CEP: {patient.zip_code}</p>}
                   </div>
-                </div>
-              </div>
-            </>
-          )}
+                </>
+              )}
 
-          {/* Medical Information */}
-          {(patient.medical_history || patient.allergies || patient.medications) && (
-            <>
+              {/* Contact Information */}
               <Separator className="my-4" />
               <div className="space-y-4">
-                <h4 className="font-medium text-sm text-muted-foreground">Informações Médicas</h4>
+                <h4 className="font-medium text-sm text-muted-foreground">Informações de Contato</h4>
                 <div className="space-y-3">
-                  {patient.medical_history && (
-                    <div className="flex items-start gap-3">
-                      <Heart className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Histórico Médico</p>
-                        <p className="text-sm">{patient.medical_history}</p>
-                      </div>
-                    </div>
-                  )}
-                  {patient.allergies && (
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Alergias</p>
-                        <p className="text-sm">{patient.allergies}</p>
-                      </div>
-                    </div>
-                  )}
-                  {patient.medications && (
-                    <div className="flex items-start gap-3">
-                      <Pill className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Medicamentos</p>
-                        <p className="text-sm">{patient.medications}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Emergency Contact */}
-          {(patient.emergency_contact_name || patient.emergency_contact_phone) && (
-            <>
-              <Separator className="my-4" />
-              <div className="space-y-4">
-                <h4 className="font-medium text-sm text-muted-foreground">Contato de Emergência</h4>
-                <div className="flex items-start gap-3">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm space-y-1">
-                    {patient.emergency_contact_name && <p>{patient.emergency_contact_name}</p>}
-                    {patient.emergency_contact_phone && <p>{patient.emergency_contact_phone}</p>}
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{patient.phone}</span>
                   </div>
+                  {patient.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{patient.email}</span>
+                    </div>
+                  )}
+                  {patient.birth_date && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        Nascimento: {format(new Date(patient.birth_date), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </>
-          )}
 
-          {/* Notes */}
-          {patient.notes && (
-            <>
+              {/* Address */}
+              {(patient.address || patient.city || patient.state || patient.zip_code) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Endereço</h4>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="text-sm space-y-1">
+                        {patient.address && <p>{patient.address}</p>}
+                        {(patient.city || patient.state) && (
+                          <p>{[patient.city, patient.state].filter(Boolean).join(" / ")}</p>
+                        )}
+                        {patient.zip_code && <p>CEP: {patient.zip_code}</p>}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Medical Information */}
+              {(patient.medical_history || patient.allergies || patient.medications) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Informações Médicas</h4>
+                    <div className="space-y-3">
+                      {patient.medical_history && (
+                        <div className="flex items-start gap-3">
+                          <Heart className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Histórico Médico</p>
+                            <p className="text-sm">{patient.medical_history}</p>
+                          </div>
+                        </div>
+                      )}
+                      {patient.allergies && (
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Alergias</p>
+                            <p className="text-sm">{patient.allergies}</p>
+                          </div>
+                        </div>
+                      )}
+                      {patient.medications && (
+                        <div className="flex items-start gap-3">
+                          <Pill className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Medicamentos</p>
+                            <p className="text-sm">{patient.medications}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Emergency Contact */}
+              {(patient.emergency_contact_name || patient.emergency_contact_phone) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Contato de Emergência</h4>
+                    <div className="flex items-start gap-3">
+                      <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="text-sm space-y-1">
+                        {patient.emergency_contact_name && <p>{patient.emergency_contact_name}</p>}
+                        {patient.emergency_contact_phone && <p>{patient.emergency_contact_phone}</p>}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Metadata */}
               <Separator className="my-4" />
-              <div className="space-y-4">
-                <h4 className="font-medium text-sm text-muted-foreground">Observações</h4>
-                <div className="flex items-start gap-3">
-                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <p className="text-sm">{patient.notes}</p>
-                </div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Criado em: {format(new Date(patient.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                <p>Atualizado em: {format(new Date(patient.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
               </div>
-            </>
-          )}
+            </TabsContent>
 
-          {/* Metadata */}
-          <Separator className="my-4" />
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>Criado em: {format(new Date(patient.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-            <p>Atualizado em: {format(new Date(patient.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-          </div>
+            <TabsContent value="appointments" className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Agendamentos do paciente
+                </h4>
+                <Button size="sm" onClick={() => setScheduleOpen(true)}>
+                  Novo agendamento
+                </Button>
+              </div>
+
+              {allAppointmentsLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando agendamentos...</p>
+              ) : allAppointments && allAppointments.length > 0 ? (
+                <div className="space-y-2">
+                  {allAppointments.map((appointment) => {
+                    const statusInfo = appointmentStatusLabels[appointment.status] || { 
+                      label: appointment.status, 
+                      color: "bg-gray-100 text-gray-800" 
+                    };
+                    const StatusIcon = appointment.status === "attended" ? CheckCircle :
+                      appointment.status === "cancelled" || appointment.status === "no_show" ? XCircle :
+                      Clock;
+
+                    return (
+                      <div 
+                        key={appointment.id} 
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <StatusIcon className={`h-4 w-4 ${
+                            appointment.status === "attended" ? "text-green-600" :
+                            appointment.status === "cancelled" || appointment.status === "no_show" ? "text-red-600" :
+                            "text-blue-600"
+                          }`} />
+                          <div>
+                            <p className="text-sm font-medium">
+                              {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {appointment.procedures?.name || "Consulta"}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                          {statusInfo.label}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum agendamento encontrado
+                </p>
+              )}
+
+              {appointmentsLoading && (
+                <p className="text-xs text-muted-foreground">Atualizando histórico recente...</p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="notes" className="space-y-3">
+              <h4 className="font-medium text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Observações
+              </h4>
+              <Textarea
+                rows={6}
+                placeholder="Anote informações importantes sobre o paciente..."
+                value={notesDraft}
+                onChange={(event) => setNotesDraft(event.target.value)}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {notesDraft.length} caracteres
+                </span>
+                <Button size="sm" onClick={handleSaveNotes} disabled={updatePatient.isPending}>
+                  Salvar notas
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
 
