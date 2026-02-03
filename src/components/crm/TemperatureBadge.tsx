@@ -24,11 +24,18 @@ const temperatureConfig: Record<string, {
     borderColor: "border-blue-300 dark:border-blue-700",
   },
   quente: {
-    label: "Quente",
+    label: "Faltou/Cancelou",
     icon: Flame,
-    bgColor: "bg-orange-100 dark:bg-orange-900/30",
-    textColor: "text-orange-700 dark:text-orange-300",
-    borderColor: "border-orange-300 dark:border-orange-700",
+    bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
+    textColor: "text-yellow-700 dark:text-yellow-300",
+    borderColor: "border-yellow-300 dark:border-yellow-700",
+  },
+  faltou_cancelou: {
+    label: "Faltou/Cancelou",
+    icon: Flame,
+    bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
+    textColor: "text-yellow-700 dark:text-yellow-300",
+    borderColor: "border-yellow-300 dark:border-yellow-700",
   },
   frio: {
     label: "Frio",

@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { normalizeRole } from '@/lib/roles';
 import type { AppRole } from '@/lib/roles';
 
 interface UserRole {
@@ -75,8 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!orgMemberError && orgMemberData) {
         // Map old roles to new simplified roles
-        const role = orgMemberData.role as AppRole;
-        setUserRole({ role });
+        const role = normalizeRole(orgMemberData.role);
+        if (role) {
+          setUserRole({ role });
+        } else {
+          setUserRole(null);
+        }
         return;
       }
 
@@ -90,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       // Map old roles to new simplified roles
-      const role = data?.role as AppRole | undefined;
+      const role = normalizeRole(data?.role);
       if (role) {
         setUserRole({ role });
       } else {
