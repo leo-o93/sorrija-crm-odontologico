@@ -30,6 +30,9 @@ const statusColors: Record<string, string> = {
   rejected: "bg-red-500",
   expired: "bg-orange-500",
   converted: "bg-purple-500",
+  not_closed: "bg-red-500",
+  partially_closed: "bg-yellow-500",
+  closed: "bg-emerald-500",
 };
 
 const statusLabels: Record<string, string> = {
@@ -39,6 +42,9 @@ const statusLabels: Record<string, string> = {
   rejected: "Rejeitado",
   expired: "Expirado",
   converted: "Convertido",
+  not_closed: "Não fechou",
+  partially_closed: "Fechou parte",
+  closed: "Fechou tudo",
 };
 
 const paymentMethodLabels: Record<string, string> = {
@@ -56,6 +62,13 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
 
   const handleStatusChange = async (newStatus: string) => {
     if (!quoteId) return;
+
+    if (["partially_closed", "closed"].includes(newStatus)) {
+      if (!quote?.quote_payments || quote.quote_payments.length === 0) {
+        toast.error("Adicione um pagamento antes de fechar o orçamento.");
+        return;
+      }
+    }
     
     setIsUpdating(true);
     try {
@@ -96,7 +109,7 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                   </Badge>
                 </div>
                 <p className="text-muted-foreground">
-                  Criado em {format(new Date(quote.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  Data do orçamento: {format(new Date(quote.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -139,6 +152,20 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                     </p>
                   </div>
                 )}
+                {quote.payment_type && (
+                  <div>
+                    <p className="text-muted-foreground">Convênio / Particular</p>
+                    <p className="font-medium">
+                      {quote.payment_type === "convenio" ? "Convênio" : "Particular"}
+                    </p>
+                  </div>
+                )}
+                {quote.professional?.name && (
+                  <div>
+                    <p className="text-muted-foreground">Profissional responsável</p>
+                    <p className="font-medium">{quote.professional.name}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -152,9 +179,11 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                   <TableHeader>
                     <TableRow>
                       <TableHead>Procedimento</TableHead>
+                      <TableHead>Dentes</TableHead>
+                      <TableHead>Especialidade</TableHead>
                       <TableHead className="text-center">Qtd</TableHead>
                       <TableHead className="text-right">Valor Unit.</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -166,10 +195,12 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                             <p className="text-sm text-muted-foreground">{item.description}</p>
                           )}
                         </TableCell>
+                        <TableCell>{item.tooth || "-"}</TableCell>
+                        <TableCell>{item.specialty || "-"}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
                         <TableCell className="text-right">R$ {item.unit_price.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-medium">
-                          R$ {item.total_price.toFixed(2)}
+                          R$ {(item.subtotal ?? item.total_price).toFixed(2)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -257,7 +288,7 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 justify-end">
+            <div className="flex flex-wrap gap-2 justify-end">
               {quote.status === "draft" && (
                 <Button
                   onClick={() => handleStatusChange("sent")}
@@ -267,22 +298,30 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                   Marcar como Enviado
                 </Button>
               )}
-              {quote.status === "sent" && (
+              {!["not_closed", "partially_closed", "closed"].includes(quote.status) && (
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => handleStatusChange("rejected")}
+                    onClick={() => handleStatusChange("not_closed")}
                     disabled={isUpdating}
                   >
                     {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
-                    Rejeitar
+                    Não fechou
                   </Button>
                   <Button
-                    onClick={() => handleStatusChange("approved")}
+                    variant="outline"
+                    onClick={() => handleStatusChange("partially_closed")}
                     disabled={isUpdating}
                   >
                     {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    Aprovar
+                    Fechou parte
+                  </Button>
+                  <Button
+                    onClick={() => handleStatusChange("closed")}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                    Fechou tudo
                   </Button>
                 </>
               )}

@@ -8,8 +8,11 @@ export interface QuoteItem {
   procedure_id?: string;
   procedure_name: string;
   description?: string;
+  tooth?: string;
+  specialty?: string;
   quantity: number;
   unit_price: number;
+  subtotal: number;
   total_price: number;
 }
 
@@ -31,11 +34,22 @@ export interface Quote {
   contact_name: string;
   contact_phone: string;
   contact_email?: string;
+  payment_type?: "particular" | "convenio" | null;
+  professional_id?: string | null;
   total_amount: number;
   discount_percentage: number;
   discount_amount: number;
   final_amount: number;
-  status: 'draft' | 'sent' | 'approved' | 'rejected' | 'expired' | 'converted';
+  status:
+    | "draft"
+    | "sent"
+    | "approved"
+    | "rejected"
+    | "expired"
+    | "converted"
+    | "not_closed"
+    | "partially_closed"
+    | "closed";
   valid_until?: string;
   notes?: string;
   created_by?: string;
@@ -45,6 +59,7 @@ export interface Quote {
   quote_payments?: QuotePayment[];
   leads?: { name: string; phone: string };
   patients?: { name: string; phone: string };
+  professional?: { id: string; name: string } | null;
 }
 
 export function useQuotes(filters?: { status?: string; search?: string }) {
@@ -61,6 +76,7 @@ export function useQuotes(filters?: { status?: string; search?: string }) {
           *,
           leads(name, phone),
           patients(name, phone),
+          professional:professionals(id, name),
           quote_items(*),
           quote_payments(*)
         `)
@@ -93,6 +109,7 @@ export function useQuote(id: string) {
           *,
           leads(name, phone),
           patients(name, phone),
+          professional:professionals(id, name),
           quote_items(*),
           quote_payments(*)
         `)
@@ -112,6 +129,8 @@ interface CreateQuoteInput {
   contact_name: string;
   contact_phone: string;
   contact_email?: string;
+  payment_type?: "particular" | "convenio" | null;
+  professional_id?: string | null;
   valid_until?: string;
   notes?: string;
   items: QuoteItem[];
@@ -126,6 +145,23 @@ export function useCreateQuote() {
   return useMutation({
     mutationFn: async (input: CreateQuoteInput) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
+
+      if (input.patient_id) {
+        const activeStatuses = ["draft", "sent", "approved", "partially_closed"];
+        const { data: activeQuote, error: activeError } = await supabase
+          .from("quotes")
+          .select("id, status")
+          .eq("patient_id", input.patient_id)
+          .eq("organization_id", currentOrganization.id)
+          .in("status", activeStatuses)
+          .limit(1)
+          .maybeSingle();
+
+        if (activeError) throw activeError;
+        if (activeQuote) {
+          throw new Error("Já existe um orçamento ativo para este paciente.");
+        }
+      }
 
       // Gerar número do orçamento
       const { data: quoteNumber, error: numberError } = await supabase
@@ -148,6 +184,8 @@ export function useCreateQuote() {
           contact_name: input.contact_name,
           contact_phone: input.contact_phone,
           contact_email: input.contact_email,
+          payment_type: input.payment_type ?? null,
+          professional_id: input.professional_id ?? null,
           total_amount: totalAmount,
           discount_percentage: 0,
           discount_amount: discountAmount,
@@ -168,8 +206,11 @@ export function useCreateQuote() {
         procedure_id: item.procedure_id,
         procedure_name: item.procedure_name,
         description: item.description,
+        tooth: item.tooth,
+        specialty: item.specialty,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        subtotal: item.subtotal,
         total_price: item.total_price,
       }));
 
@@ -207,9 +248,13 @@ export function useCreateQuote() {
       });
     },
     onError: (error) => {
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível criar o orçamento";
       toast({
         title: "Erro",
-        description: "Não foi possível criar o orçamento",
+        description,
         variant: "destructive",
       });
       console.error("Error creating quote:", error);

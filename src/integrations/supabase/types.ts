@@ -1752,6 +1752,9 @@ export type Database = {
           procedure_name: string
           quantity: number
           quote_id: string
+          specialty: string | null
+          subtotal: number
+          tooth: string | null
           total_price: number
           unit_price: number
         }
@@ -1763,6 +1766,9 @@ export type Database = {
           procedure_name: string
           quantity?: number
           quote_id: string
+          specialty?: string | null
+          subtotal?: number
+          tooth?: string | null
           total_price: number
           unit_price: number
         }
@@ -1774,6 +1780,9 @@ export type Database = {
           procedure_name?: string
           quantity?: number
           quote_id?: string
+          specialty?: string | null
+          subtotal?: number
+          tooth?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -1852,7 +1861,9 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           organization_id: string | null
+          payment_type: string | null
           patient_id: string | null
+          professional_id: string | null
           quote_number: string
           status: string
           total_amount: number
@@ -1872,7 +1883,9 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organization_id?: string | null
+          payment_type?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           quote_number: string
           status?: string
           total_amount?: number
@@ -1892,7 +1905,9 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organization_id?: string | null
+          payment_type?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           quote_number?: string
           status?: string
           total_amount?: number
@@ -1919,6 +1934,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]

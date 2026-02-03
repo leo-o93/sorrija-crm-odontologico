@@ -12,6 +12,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useCreateQuote, QuoteItem, QuotePayment } from "@/hooks/useQuotes";
 import { useProcedures } from "@/hooks/useProcedures";
 import { SearchEntityInput } from "@/components/common/SearchEntityInput";
+import { useProfessionals } from "@/hooks/useProfessionals";
 
 const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
 
@@ -22,6 +23,8 @@ const quoteSchema = z.object({
   contact_name: z.string().min(1, "Nome é obrigatório"),
   contact_phone: z.string().min(1, "Telefone é obrigatório").regex(phoneRegex, "Telefone inválido"),
   contact_email: z.string().email("Email inválido").optional().or(z.literal("")),
+  payment_type: z.enum(["particular", "convenio"]),
+  professional_id: z.string().optional(),
   valid_until: z
     .string()
     .optional()
@@ -45,9 +48,10 @@ interface QuoteFormProps {
 export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
   const createQuote = useCreateQuote();
   const { data: procedures } = useProcedures();
+  const { data: professionals } = useProfessionals(true);
 
   const [items, setItems] = useState<QuoteItem[]>([
-    { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 },
+    { procedure_name: "", quantity: 1, unit_price: 0, subtotal: 0, total_price: 0, tooth: "", specialty: "" },
   ]);
   const [payments, setPayments] = useState<QuotePayment[]>([]);
 
@@ -58,6 +62,8 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
       contact_name: "",
       contact_phone: "",
       contact_email: "",
+      payment_type: "particular",
+      professional_id: "",
     },
   });
 
@@ -89,7 +95,10 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
   };
 
   const addItem = () => {
-    setItems([...items, { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 }]);
+    setItems([
+      ...items,
+      { procedure_name: "", quantity: 1, unit_price: 0, subtotal: 0, total_price: 0, tooth: "", specialty: "" },
+    ]);
   };
 
   const removeItem = (index: number) => {
@@ -102,7 +111,9 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
 
     // Recalcular total do item
     if (field === "quantity" || field === "unit_price") {
-      newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price;
+      const subtotal = newItems[index].quantity * newItems[index].unit_price;
+      newItems[index].subtotal = subtotal;
+      newItems[index].total_price = subtotal;
     }
 
     // Se selecionou um procedimento, preencher com dados do procedimento
@@ -111,7 +122,10 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
       if (procedure) {
         newItems[index].procedure_name = procedure.name;
         newItems[index].unit_price = procedure.default_price || 0;
-        newItems[index].total_price = newItems[index].quantity * (procedure.default_price || 0);
+        newItems[index].specialty = procedure.category;
+        const subtotal = newItems[index].quantity * (procedure.default_price || 0);
+        newItems[index].subtotal = subtotal;
+        newItems[index].total_price = subtotal;
       }
     }
 
@@ -119,7 +133,7 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
   };
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.total_price, 0);
+    return items.reduce((sum, item) => sum + item.subtotal, 0);
   };
 
   const addPayment = () => {
@@ -174,6 +188,8 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
       contact_name: data.contact_name,
       contact_phone: data.contact_phone,
       contact_email: data.contact_email,
+      payment_type: data.payment_type,
+      professional_id: data.professional_id || undefined,
       valid_until: data.valid_until,
       notes: data.notes,
       items: items.filter((item) => item.procedure_name),
@@ -287,6 +303,53 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
 
             <FormField
               control={form.control}
+              name="payment_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Convênio / Particular</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="particular">Particular</SelectItem>
+                      <SelectItem value="convenio">Convênio</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="professional_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profissional responsável</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o profissional" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {professionals?.filter((prof) => prof.active).map((professional) => (
+                        <SelectItem key={professional.id} value={professional.id}>
+                          {professional.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="contact_name"
               render={({ field }) => (
                 <FormItem>
@@ -356,7 +419,7 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
           <CardContent className="space-y-4">
             {items.map((item, index) => (
               <div key={index} className="flex gap-2 items-start p-4 border rounded-lg">
-                <div className="flex-1 grid grid-cols-4 gap-2">
+                <div className="flex-1 grid grid-cols-6 gap-2">
                   <div className="col-span-2">
                     <label className="text-sm font-medium">Procedimento</label>
                     <Select
@@ -374,6 +437,22 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium">Especialidade</label>
+                    <Input
+                      value={item.specialty || ""}
+                      onChange={(e) => updateItem(index, "specialty", e.target.value)}
+                      placeholder="Ex.: Ortodontia"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Dentes</label>
+                    <Input
+                      value={item.tooth || ""}
+                      onChange={(e) => updateItem(index, "tooth", e.target.value)}
+                      placeholder="Ex.: 11, 21"
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Qtd</label>
@@ -394,8 +473,8 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
                       onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                  <div className="col-span-4">
-                    <label className="text-sm font-medium">Total: R$ {item.total_price.toFixed(2)}</label>
+                  <div className="col-span-6">
+                    <label className="text-sm font-medium">Subtotal: R$ {item.subtotal.toFixed(2)}</label>
                   </div>
                 </div>
                 {items.length > 1 && (

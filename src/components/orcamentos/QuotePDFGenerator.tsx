@@ -74,6 +74,9 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
         .status-rejected { background: #fee2e2; color: #dc2626; }
         .status-expired { background: #ffedd5; color: #ea580c; }
         .status-converted { background: #f3e8ff; color: #9333ea; }
+        .status-not_closed { background: #fee2e2; color: #dc2626; }
+        .status-partially_closed { background: #fef3c7; color: #b45309; }
+        .status-closed { background: #dcfce7; color: #15803d; }
         
         .section {
           margin-bottom: 24px;
@@ -215,6 +218,18 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
             <p>${quote.contact_email}</p>
           </div>
           ` : ""}
+          ${quote.payment_type ? `
+          <div class="client-field">
+            <label>Convênio / Particular</label>
+            <p>${quote.payment_type === "convenio" ? "Convênio" : "Particular"}</p>
+          </div>
+          ` : ""}
+          ${quote.professional?.name ? `
+          <div class="client-field">
+            <label>Profissional responsável</label>
+            <p>${quote.professional.name}</p>
+          </div>
+          ` : ""}
         </div>
         ${quote.valid_until ? `
         <div class="validity">
@@ -229,9 +244,11 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
           <thead>
             <tr>
               <th>Procedimento</th>
+              <th>Dentes</th>
+              <th>Especialidade</th>
               <th class="text-center">Qtd</th>
               <th class="text-right">Valor Unit.</th>
-              <th class="text-right">Total</th>
+              <th class="text-right">Subtotal</th>
             </tr>
           </thead>
           <tbody>
@@ -241,9 +258,11 @@ export async function generateQuotePDF(quote: Quote, organization?: Organization
                   <strong>${item.procedure_name}</strong>
                   ${item.description ? `<br><small style="color: #6b7280">${item.description}</small>` : ""}
                 </td>
+                <td>${item.tooth || "-"}</td>
+                <td>${item.specialty || "-"}</td>
                 <td class="text-center">${item.quantity}</td>
                 <td class="text-right">R$ ${item.unit_price.toFixed(2)}</td>
-                <td class="text-right"><strong>R$ ${item.total_price.toFixed(2)}</strong></td>
+                <td class="text-right"><strong>R$ ${(item.subtotal ?? item.total_price).toFixed(2)}</strong></td>
               </tr>
             `).join("") || ""}
           </tbody>
@@ -335,6 +354,9 @@ function getStatusLabel(status: string): string {
     rejected: "Rejeitado",
     expired: "Expirado",
     converted: "Convertido",
+    not_closed: "Não fechou",
+    partially_closed: "Fechou parte",
+    closed: "Fechou tudo",
   };
   return labels[status] || status;
 }
