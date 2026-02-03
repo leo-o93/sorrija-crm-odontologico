@@ -35,10 +35,15 @@ import { QuickScheduleDialog } from "@/components/inbox/QuickScheduleDialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { PatientForm } from "./PatientForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryDetailDialog } from "./HistoryDetailDialog";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
+import { useDeleteAppointment, useUpdateAppointment } from "@/hooks/useAppointments";
+import { QuoteForm } from "@/components/orcamentos/QuoteForm";
+import { QuoteDetailDialog } from "@/components/orcamentos/QuoteDetailDialog";
+import { useNavigate } from "react-router-dom";
 import type { 
   HistoryType,
   AppointmentHistoryItem, 
@@ -74,6 +79,9 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [createQuoteOpen, setCreateQuoteOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
   const [historyDialogTitle, setHistoryDialogTitle] = useState("");
@@ -81,7 +89,10 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const deletePatient = useDeletePatient();
   const toggleActive = useTogglePatientActive();
   const updatePatient = useUpdatePatient();
+  const updateAppointment = useUpdateAppointment();
+  const deleteAppointment = useDeleteAppointment();
   const { data: leadStatuses } = useLeadStatuses();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setNotesDraft(patient?.notes || "");
@@ -141,7 +152,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
       const { data } = await supabase
         .from("appointments")
-        .select("*, procedures(name)")
+        .select("*, procedures(name), professionals(name)")
         .eq("patient_id", patient.id)
         .order("appointment_date", { ascending: false })
         .limit(5);
@@ -157,9 +168,24 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
       if (!patient?.id) return [];
       const { data, error } = await supabase
         .from("appointments")
-        .select("*, procedures(name)")
+        .select("*, procedures(name), professionals(name)")
         .eq("patient_id", patient.id)
         .order("appointment_date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!patient?.id && open,
+  });
+
+  const { data: patientQuotes, isLoading: quotesLoading } = useQuery({
+    queryKey: ["patient-quotes", patient?.id],
+    queryFn: async () => {
+      if (!patient?.id) return [];
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("id, status, final_amount, created_at, quote_number")
+        .eq("patient_id", patient.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -195,6 +221,19 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
   const handleToggleActive = () => {
     toggleActive.mutate({ id: patient.id, active: !patient.active });
+  };
+
+  const handleOpenAgenda = (appointmentId: string, date: string) => {
+    const appointmentDate = format(new Date(date), "yyyy-MM-dd");
+    navigate(`/agenda?date=${appointmentDate}&appointment=${appointmentId}`);
+  };
+
+  const handleUpdateAppointment = (data: any) => {
+    updateAppointment.mutate(data);
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    deleteAppointment.mutate(id);
   };
 
   const handleDelete = () => {
@@ -340,9 +379,10 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
           <Separator className="my-4" />
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Resumo</TabsTrigger>
               <TabsTrigger value="appointments">Agendamentos</TabsTrigger>
+              <TabsTrigger value="quotes">Orçamentos</TabsTrigger>
               <TabsTrigger value="notes">Notas</TabsTrigger>
             </TabsList>
 
@@ -656,7 +696,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                     return (
                       <div 
                         key={appointment.id} 
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                        className="flex flex-col gap-3 p-3 bg-muted/50 rounded-lg md:flex-row md:items-center md:justify-between"
                       >
                         <div className="flex items-center gap-3">
                           <StatusIcon className={`h-4 w-4 ${
@@ -670,12 +710,43 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {appointment.procedures?.name || "Consulta"}
+                              {appointment.professionals?.name ? ` • ${appointment.professionals.name}` : ""}
                             </p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
-                          {statusInfo.label}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-2 justify-end">
+                          <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenAgenda(appointment.id, appointment.appointment_date)}
+                          >
+                            Abrir na agenda
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedAppointment(appointment)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUpdateAppointment({ id: appointment.id, status: "confirmed" })}
+                          >
+                            Confirmar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUpdateAppointment({ id: appointment.id, status: "cancelled" })}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -688,6 +759,55 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
 
               {appointmentsLoading && (
                 <p className="text-xs text-muted-foreground">Atualizando histórico recente...</p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="quotes" className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Orçamentos do paciente
+                </h4>
+                <Button size="sm" onClick={() => setCreateQuoteOpen(true)}>
+                  Criar orçamento
+                </Button>
+              </div>
+
+              {quotesLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando orçamentos...</p>
+              ) : patientQuotes && patientQuotes.length > 0 ? (
+                <div className="space-y-2">
+                  {patientQuotes.map((quote) => (
+                    <div
+                      key={quote.id}
+                      className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          Orçamento #{quote.quote_number || quote.id.slice(0, 6)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(quote.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {quote.status}
+                        </Badge>
+                        <span className="text-sm font-medium">
+                          {formatCurrency(Number(quote.final_amount || 0))}
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedQuote(quote)}>
+                          Ver detalhes
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum orçamento encontrado
+                </p>
               )}
             </TabsContent>
 
@@ -721,6 +841,38 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
         onOpenChange={setScheduleOpen}
         patientId={patient.id}
         contactName={patient.name}
+      />
+
+      <AppointmentDialog
+        appointment={selectedAppointment}
+        open={!!selectedAppointment}
+        onOpenChange={(open) => !open && setSelectedAppointment(null)}
+        onUpdate={handleUpdateAppointment}
+        onDelete={handleDeleteAppointment}
+      />
+
+      <Dialog open={createQuoteOpen} onOpenChange={setCreateQuoteOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Orçamento</DialogTitle>
+          </DialogHeader>
+          <QuoteForm
+            initialContact={{
+              id: patient.id,
+              name: patient.name,
+              phone: patient.phone,
+              type: "patient",
+              email: patient.email,
+            }}
+            onSuccess={() => setCreateQuoteOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <QuoteDetailDialog
+        quoteId={selectedQuote?.id || null}
+        open={!!selectedQuote}
+        onOpenChange={(open) => !open && setSelectedQuote(null)}
       />
 
       {/* Edit Dialog */}

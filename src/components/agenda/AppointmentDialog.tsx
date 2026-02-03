@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AppointmentForm } from "./AppointmentForm";
 import type { Appointment } from "@/hooks/useAppointments";
+import { useNavigate } from "react-router-dom";
 
 interface AppointmentDialogProps {
   appointment: Appointment | null;
@@ -59,6 +60,7 @@ export function AppointmentDialog({
 }: AppointmentDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const navigate = useNavigate();
 
   if (!appointment && !isEditing) return null;
 
@@ -171,6 +173,15 @@ export function AppointmentDialog({
                 <Separator />
 
                 <div className="flex gap-2 justify-end">
+                  {appointment.patient?.id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/pacientes?id=${appointment.patient?.id}`)}
+                    >
+                      Abrir Paciente
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

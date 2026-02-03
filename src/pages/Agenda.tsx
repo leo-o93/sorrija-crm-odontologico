@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
 import { Plus, CalendarDays, List, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,10 @@ import {
   useDeleteAppointment,
   type Appointment,
 } from "@/hooks/useAppointments";
+import { useSearchParams } from "react-router-dom";
 
 export default function Agenda() {
+  const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"today" | "week" | "month">("week");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -49,6 +51,25 @@ export default function Agenda() {
     startDate,
     endDate,
   });
+
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (!dateParam) return;
+    const parsedDate = new Date(`${dateParam}T00:00:00`);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      setCurrentDate(parsedDate);
+      setView("today");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const appointmentId = searchParams.get("appointment");
+    if (!appointmentId || !appointments) return;
+    const found = appointments.find((apt) => apt.id === appointmentId);
+    if (found) {
+      setSelectedAppointment(found);
+    }
+  }, [appointments, searchParams]);
 
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,9 +33,16 @@ type QuoteFormValues = z.infer<typeof quoteSchema>;
 
 interface QuoteFormProps {
   onSuccess?: () => void;
+  initialContact?: {
+    id: string;
+    name: string;
+    phone: string;
+    type: "lead" | "patient";
+    email?: string | null;
+  };
 }
 
-export function QuoteForm({ onSuccess }: QuoteFormProps) {
+export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
   const createQuote = useCreateQuote();
   const { data: procedures } = useProcedures();
 
@@ -55,6 +62,21 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   });
 
   const contactType = form.watch("contact_type");
+
+  useEffect(() => {
+    if (!initialContact) return;
+    form.setValue("contact_type", initialContact.type);
+    if (initialContact.type === "patient") {
+      form.setValue("patient_id", initialContact.id);
+      form.setValue("lead_id", "");
+    } else {
+      form.setValue("lead_id", initialContact.id);
+      form.setValue("patient_id", "");
+    }
+    form.setValue("contact_name", initialContact.name);
+    form.setValue("contact_phone", initialContact.phone);
+    form.setValue("contact_email", initialContact.email || "");
+  }, [form, initialContact]);
   const handleSelectEntity = (
     entity: { id: string; name: string; phone: string; type: "lead" | "patient"; email?: string | null } | null
   ) => {
