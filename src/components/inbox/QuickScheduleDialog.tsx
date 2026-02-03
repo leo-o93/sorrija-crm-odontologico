@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useCreateAppointment } from '@/hooks/useAppointments';
 import { useProcedures } from '@/hooks/useProcedures';
+import { useProfessionals } from '@/hooks/useProfessionals';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -18,6 +19,7 @@ interface QuickScheduleDialogProps {
   leadId?: string | null;
   patientId?: string | null;
   contactName: string;
+  allowPastDates?: boolean;
 }
 
 export function QuickScheduleDialog({ 
@@ -25,15 +27,18 @@ export function QuickScheduleDialog({
   onOpenChange, 
   leadId, 
   patientId,
-  contactName 
+  contactName,
+  allowPastDates = false
 }: QuickScheduleDialogProps) {
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState<string>('09:00');
   const [procedureId, setProcedureId] = useState<string>('');
+  const [professionalId, setProfessionalId] = useState<string>('');
   const [notes, setNotes] = useState('');
 
   const createAppointment = useCreateAppointment();
   const { data: procedures } = useProcedures();
+  const { data: professionals } = useProfessionals(true);
 
   const handleSubmit = async () => {
     if (!date) return;
@@ -47,6 +52,7 @@ export function QuickScheduleDialog({
       lead_id: leadId || undefined,
       patient_id: patientId || undefined,
       procedure_id: procedureId || undefined,
+      professional_id: professionalId || undefined,
       notes: notes || undefined,
       status: 'scheduled',
     });
@@ -55,6 +61,7 @@ export function QuickScheduleDialog({
     setDate(undefined);
     setTime('09:00');
     setProcedureId('');
+    setProfessionalId('');
     setNotes('');
   };
 
@@ -79,6 +86,7 @@ export function QuickScheduleDialog({
               selected={date}
               onSelect={setDate}
               disabled={(date) => {
+                if (allowPastDates) return false;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 return date < today;
@@ -112,6 +120,22 @@ export function QuickScheduleDialog({
                 {procedures?.map((proc) => (
                   <SelectItem key={proc.id} value={proc.id}>
                     {proc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Profissional</Label>
+            <Select value={professionalId} onValueChange={setProfessionalId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                {professionals?.filter((prof) => prof.active).map((prof) => (
+                  <SelectItem key={prof.id} value={prof.id}>
+                    {prof.name}
                   </SelectItem>
                 ))}
               </SelectContent>

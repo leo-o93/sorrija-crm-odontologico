@@ -135,7 +135,11 @@ Este documento contém os testes manuais necessários para validar o funcionamen
 - [ ] Criar novo agendamento
 - [ ] Editar agendamento
 - [ ] Excluir agendamento
-- [ ] Alterar status
+- [ ] Alterar status (agendado, confirmado, cancelado, atendido, atenção)
+- [ ] Reagendar agendamento
+- [ ] Agendamento retroativo (data passada)
+- [ ] Modal abre e salva sem refresh
+- [ ] UI atualiza sem erro/204
 
 ---
 

@@ -10,6 +10,8 @@ import { PatientList } from "@/components/pacientes/PatientList";
 import { PatientForm } from "@/components/pacientes/PatientForm";
 import { PatientDetailPanel } from "@/components/pacientes/PatientDetailPanel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Pagination,
   PaginationContent,
@@ -28,6 +30,7 @@ export default function Pacientes() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
+  const patientIdParam = searchParams.get("id");
 
   // Debounce search
   useEffect(() => {
@@ -44,6 +47,28 @@ export default function Pacientes() {
       setSearch(urlSearch);
     }
   }, [searchParams]);
+
+  const { data: patientFromParam } = useQuery({
+    queryKey: ["patient-by-id", patientIdParam],
+    queryFn: async () => {
+      if (!patientIdParam) return null;
+      const { data, error } = await supabase
+        .from("patients")
+        .select("*")
+        .eq("id", patientIdParam)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Patient | null;
+    },
+    enabled: !!patientIdParam,
+  });
+
+  useEffect(() => {
+    if (patientFromParam) {
+      setSelectedPatient(patientFromParam);
+      setDetailPanelOpen(true);
+    }
+  }, [patientFromParam]);
   
   const { data: paginatedData, isLoading } = usePatientsPaginated({
     page,
