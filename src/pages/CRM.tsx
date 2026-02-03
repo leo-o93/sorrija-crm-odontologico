@@ -16,6 +16,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
