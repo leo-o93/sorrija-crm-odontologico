@@ -34,6 +34,7 @@ interface AppointmentDialogProps {
 
 const statusLabels = {
   scheduled: "Agendado",
+  confirmed: "Confirmado",
   attended: "Atendido",
   rescheduled: "Reagendado",
   no_show: "Faltou",
@@ -42,6 +43,7 @@ const statusLabels = {
 
 const statusVariants = {
   scheduled: "default",
+  confirmed: "secondary",
   attended: "outline",
   rescheduled: "secondary",
   no_show: "destructive",
