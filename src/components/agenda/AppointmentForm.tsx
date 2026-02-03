@@ -28,15 +28,24 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { usePatients } from "@/hooks/usePatients";
-import { useLeads } from "@/hooks/useLeads";
 import { useProcedures } from "@/hooks/useProcedures";
 import type { Appointment } from "@/hooks/useAppointments";
+import { SearchEntityInput } from "@/components/common/SearchEntityInput";
+import { useProfessionals } from "@/hooks/useProfessionals";
+import { useProfessionalAvailability } from "@/hooks/useProfessionalAvailability";
+import { useProfessionalTimeOff } from "@/hooks/useProfessionalTimeOff";
 
 const isWithinBusinessHours = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   const total = hours * 60 + minutes;
   return total >= 8 * 60 && total <= 18 * 60;
+};
+
+const isWithinRange = (time: string, start: string, end: string) => {
+  const value = Number(time.replace(":", ""));
+  const startValue = Number(start.replace(":", ""));
+  const endValue = Number(end.replace(":", ""));
+  return value >= startValue && value <= endValue;
 };
 
 const formSchema = z.object({
@@ -48,6 +57,7 @@ const formSchema = z.object({
   patient_id: z.string().optional(),
   lead_id: z.string().optional(),
   procedure_id: z.string().optional(),
+  professional_id: z.string().optional(),
   notes: z.string().optional(),
 }).refine((data) => data.patient_id || data.lead_id, {
   message: "Selecione um paciente ou lead",
@@ -65,9 +75,8 @@ interface AppointmentFormProps {
 }
 
 export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }: AppointmentFormProps) {
-  const { data: patients } = usePatients();
-  const { data: leads } = useLeads();
   const { data: procedures } = useProcedures();
+  const { data: professionals } = useProfessionals(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,14 +91,54 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
       patient_id: appointment?.patient_id || "",
       lead_id: appointment?.lead_id || "",
       procedure_id: appointment?.procedure_id || "",
+      professional_id: appointment?.professional_id || "",
       notes: appointment?.notes || "",
     },
   });
+
+  const professionalId = form.watch("professional_id");
+  const { data: availability } = useProfessionalAvailability(professionalId || undefined);
+  const { data: timeOff } = useProfessionalTimeOff(professionalId || undefined);
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     const appointmentDateTime = new Date(values.appointment_date);
     const [hours, minutes] = values.appointment_time.split(":");
     appointmentDateTime.setHours(parseInt(hours), parseInt(minutes));
+
+    if (values.professional_id) {
+      const weekday = appointmentDateTime.getDay();
+      const isAvailable = availability?.some((slot) => {
+        if (!slot.is_active) return false;
+        if (slot.weekday !== weekday) return false;
+        const withinSlot = isWithinRange(values.appointment_time, slot.start_time, slot.end_time);
+        if (!withinSlot) return false;
+        if (slot.break_start && slot.break_end) {
+          const inBreak = isWithinRange(values.appointment_time, slot.break_start, slot.break_end);
+          return !inBreak;
+        }
+        return true;
+      });
+
+      if (!isAvailable) {
+        form.setError("appointment_time", {
+          message: "Horário fora da disponibilidade do profissional.",
+        });
+        return;
+      }
+
+      const dateKey = appointmentDateTime.toISOString().split("T")[0];
+      const hasTimeOff = timeOff?.some((item) => {
+        if (item.date !== dateKey) return false;
+        return isWithinRange(values.appointment_time, item.start_time, item.end_time);
+      });
+
+      if (hasTimeOff) {
+        form.setError("appointment_time", {
+          message: "O profissional está em folga neste horário.",
+        });
+        return;
+      }
+    }
 
     onSubmit({
       appointment_date: appointmentDateTime.toISOString(),
@@ -97,6 +146,7 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
       patient_id: values.patient_id || null,
       lead_id: values.lead_id || null,
       procedure_id: values.procedure_id || null,
+      professional_id: values.professional_id || null,
       notes: values.notes || null,
     });
   };
@@ -164,20 +214,19 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
           render={({ field }) => (
             <FormItem>
               <FormLabel>Paciente</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um paciente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {patients?.map((patient) => (
-                    <SelectItem key={patient.id} value={patient.id}>
-                      {patient.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchEntityInput
+                  entityType="patient"
+                  value={field.value}
+                  placeholder="Buscar paciente"
+                  onSelect={(entity) => {
+                    field.onChange(entity?.id ?? "");
+                    if (entity) {
+                      form.setValue("lead_id", "");
+                    }
+                  }}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -189,20 +238,19 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
           render={({ field }) => (
             <FormItem>
               <FormLabel>Lead (Caso não seja paciente)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um lead" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {leads?.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id}>
-                      {lead.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchEntityInput
+                  entityType="lead"
+                  value={field.value}
+                  placeholder="Buscar lead"
+                  onSelect={(entity) => {
+                    field.onChange(entity?.id ?? "");
+                    if (entity) {
+                      form.setValue("patient_id", "");
+                    }
+                  }}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -235,6 +283,31 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
 
         <FormField
           control={form.control}
+          name="professional_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Profissional</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um profissional" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {professionals?.filter((prof) => prof.active).map((professional) => (
+                    <SelectItem key={professional.id} value={professional.id}>
+                      {professional.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="status"
           render={({ field }) => (
             <FormItem>
@@ -247,6 +320,7 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="scheduled">Agendado</SelectItem>
+                  <SelectItem value="confirmed">Confirmado</SelectItem>
                   <SelectItem value="attended">Atendido</SelectItem>
                   <SelectItem value="rescheduled">Reagendado</SelectItem>
                   <SelectItem value="no_show">Faltou</SelectItem>

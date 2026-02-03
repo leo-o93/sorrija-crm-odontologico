@@ -36,12 +36,12 @@ export function TemperatureActions({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleTemperatureChange("quente", "em_conversa")}
+            onClick={() => handleTemperatureChange("faltou_cancelou", "em_conversa")}
             disabled={isLoading}
-            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+            className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
           >
             <Flame className="h-4 w-4 mr-1" />
-            Marcar Quente
+            Marcar Faltou/Cancelou
           </Button>
           <Button
             size="sm"
@@ -67,6 +67,7 @@ export function TemperatureActions({
       );
 
     case "quente":
+    case "faltou_cancelou":
       return (
         <div className="flex flex-wrap gap-2">
           <Button
@@ -98,12 +99,12 @@ export function TemperatureActions({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleTemperatureChange("quente", "em_conversa")}
+            onClick={() => handleTemperatureChange("faltou_cancelou", "em_conversa")}
             disabled={isLoading}
-            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+            className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
           >
             <RotateCcw className="h-4 w-4 mr-1" />
-            Reativar como Quente
+            Reativar como Faltou/Cancelou
           </Button>
           <Button
             size="sm"
@@ -124,12 +125,12 @@ export function TemperatureActions({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleTemperatureChange("quente", "em_conversa")}
+            onClick={() => handleTemperatureChange("faltou_cancelou", "em_conversa")}
             disabled={isLoading}
-            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+            className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
           >
             <RotateCcw className="h-4 w-4 mr-1" />
-            Reativar como Quente
+            Reativar como Faltou/Cancelou
           </Button>
         </div>
       );
