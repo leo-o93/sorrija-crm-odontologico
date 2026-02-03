@@ -179,6 +179,77 @@ export type Database = {
           },
         ]
       }
+      attendance_queue: {
+        Row: {
+          appointment_id: string | null
+          checked_in_at: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          lead_id: string | null
+          organization_id: string
+          patient_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id?: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_queue_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           assigned_user_id: string | null
