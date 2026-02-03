@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Clock, User, Phone, FileText, Trash2 } from "lucide-react";
+import { Calendar, Clock, User, Phone, FileText, Trash2, Stethoscope } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -144,6 +144,16 @@ export function AppointmentDialog({
                         <div className="text-sm text-muted-foreground">
                           {appointment.procedure.category}
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {appointment.professional && (
+                    <div className="flex items-center gap-2">
+                      <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">{appointment.professional.name}</div>
+                        <div className="text-sm text-muted-foreground">Profissional</div>
                       </div>
                     </div>
                   )}

@@ -22,6 +22,12 @@ import {
   useDeleteProfessionalAvailability,
   type ProfessionalAvailability,
 } from "@/hooks/useProfessionalAvailability";
+import {
+  useProfessionalTimeOff,
+  useCreateProfessionalTimeOff,
+  useDeleteProfessionalTimeOff,
+  type ProfessionalTimeOff,
+} from "@/hooks/useProfessionalTimeOff";
 
 const weekdayOptions = [
   { value: 0, label: "Domingo" },
@@ -139,14 +145,27 @@ function AvailabilityRow({
   const deleteAvailability = useDeleteProfessionalAvailability();
   const [startTime, setStartTime] = useState(availability.start_time);
   const [endTime, setEndTime] = useState(availability.end_time);
+  const [slotMinutes, setSlotMinutes] = useState(String(availability.slot_minutes ?? 30));
+  const [breakStart, setBreakStart] = useState(availability.break_start ?? "");
+  const [breakEnd, setBreakEnd] = useState(availability.break_end ?? "");
 
   const handleUpdateTimes = async () => {
     if (toMinutes(startTime) >= toMinutes(endTime)) return;
-    if (startTime === availability.start_time && endTime === availability.end_time) return;
+    const slotValue = Number(slotMinutes) || 30;
+    const noChanges =
+      startTime === availability.start_time &&
+      endTime === availability.end_time &&
+      slotValue === availability.slot_minutes &&
+      (breakStart || null) === availability.break_start &&
+      (breakEnd || null) === availability.break_end;
+    if (noChanges) return;
     await updateAvailability.mutateAsync({
       id: availability.id,
       start_time: startTime,
       end_time: endTime,
+      slot_minutes: slotValue,
+      break_start: breakStart || null,
+      break_end: breakEnd || null,
     });
   };
 
@@ -158,6 +177,12 @@ function AvailabilityRow({
         </p>
         <p className="text-xs text-muted-foreground">
           {availability.start_time} - {availability.end_time}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Slot: {availability.slot_minutes ?? 30} min
+          {availability.break_start && availability.break_end
+            ? ` • Intervalo ${availability.break_start} - ${availability.break_end}`
+            : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -171,6 +196,27 @@ function AvailabilityRow({
           type="time"
           value={endTime}
           onChange={(event) => setEndTime(event.target.value)}
+          onBlur={handleUpdateTimes}
+        />
+        <Input
+          type="number"
+          min="5"
+          step="5"
+          value={slotMinutes}
+          onChange={(event) => setSlotMinutes(event.target.value)}
+          onBlur={handleUpdateTimes}
+          className="w-24"
+        />
+        <Input
+          type="time"
+          value={breakStart}
+          onChange={(event) => setBreakStart(event.target.value)}
+          onBlur={handleUpdateTimes}
+        />
+        <Input
+          type="time"
+          value={breakEnd}
+          onChange={(event) => setBreakEnd(event.target.value)}
           onBlur={handleUpdateTimes}
         />
         <div className="flex items-center gap-2">
@@ -207,10 +253,20 @@ function ProfessionalAvailabilityManager({
 }) {
   const { data: availability, isLoading } = useProfessionalAvailability(professional.id);
   const createAvailability = useCreateProfessionalAvailability();
+  const { data: timeOffList, isLoading: timeOffLoading } = useProfessionalTimeOff(professional.id);
+  const createTimeOff = useCreateProfessionalTimeOff();
+  const deleteTimeOff = useDeleteProfessionalTimeOff();
   const [weekday, setWeekday] = useState(1);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("12:00");
   const [isActive, setIsActive] = useState(true);
+  const [slotMinutes, setSlotMinutes] = useState("30");
+  const [breakStart, setBreakStart] = useState("");
+  const [breakEnd, setBreakEnd] = useState("");
+  const [timeOffDate, setTimeOffDate] = useState("");
+  const [timeOffStart, setTimeOffStart] = useState("08:00");
+  const [timeOffEnd, setTimeOffEnd] = useState("18:00");
+  const [timeOffReason, setTimeOffReason] = useState("");
 
   const handleAddAvailability = async () => {
     if (toMinutes(startTime) >= toMinutes(endTime)) return;
@@ -220,7 +276,24 @@ function ProfessionalAvailabilityManager({
       start_time: startTime,
       end_time: endTime,
       is_active: isActive,
+      slot_minutes: Number(slotMinutes) || 30,
+      break_start: breakStart || null,
+      break_end: breakEnd || null,
     });
+  };
+
+  const handleAddTimeOff = async () => {
+    if (!timeOffDate) return;
+    if (toMinutes(timeOffStart) >= toMinutes(timeOffEnd)) return;
+    await createTimeOff.mutateAsync({
+      professional_id: professional.id,
+      date: timeOffDate,
+      start_time: timeOffStart,
+      end_time: timeOffEnd,
+      reason: timeOffReason.trim() || null,
+    });
+    setTimeOffDate("");
+    setTimeOffReason("");
   };
 
   return (
@@ -253,6 +326,33 @@ function ProfessionalAvailabilityManager({
               <Input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Slot (min)</label>
+              <Input
+                type="number"
+                min="5"
+                step="5"
+                value={slotMinutes}
+                onChange={(event) => setSlotMinutes(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Intervalo</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="time"
+                  value={breakStart}
+                  onChange={(event) => setBreakStart(event.target.value)}
+                />
+                <Input
+                  type="time"
+                  value={breakEnd}
+                  onChange={(event) => setBreakEnd(event.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
         <div className="flex items-center justify-between rounded-md border p-3">
           <div>
@@ -280,6 +380,81 @@ function ProfessionalAvailabilityManager({
           <p className="text-sm text-muted-foreground">Nenhum horário cadastrado.</p>
         )}
       </div>
+
+      <div className="rounded-md border p-4 space-y-3">
+        <h3 className="text-sm font-semibold">Folgas e bloqueios</h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Data</label>
+            <Input type="date" value={timeOffDate} onChange={(event) => setTimeOffDate(event.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Início</label>
+              <Input type="time" value={timeOffStart} onChange={(event) => setTimeOffStart(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fim</label>
+              <Input type="time" value={timeOffEnd} onChange={(event) => setTimeOffEnd(event.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Motivo (opcional)</label>
+          <Input value={timeOffReason} onChange={(event) => setTimeOffReason(event.target.value)} />
+        </div>
+        <Button onClick={handleAddTimeOff} disabled={createTimeOff.isPending}>
+          Adicionar folga
+        </Button>
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">Folgas cadastradas</h4>
+          {timeOffLoading ? (
+            <p className="text-sm text-muted-foreground">Carregando folgas...</p>
+          ) : timeOffList && timeOffList.length > 0 ? (
+            <div className="space-y-2">
+              {timeOffList.map((item) => (
+                <TimeOffRow
+                  key={item.id}
+                  timeOff={item}
+                  onDelete={() => deleteTimeOff.mutate({ id: item.id, professionalId: professional.id })}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma folga cadastrada.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimeOffRow({
+  timeOff,
+  onDelete,
+}: {
+  timeOff: ProfessionalTimeOff;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border p-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p className="text-sm font-medium">{timeOff.date}</p>
+        <p className="text-xs text-muted-foreground">
+          {timeOff.start_time} - {timeOff.end_time}
+        </p>
+        {timeOff.reason && (
+          <p className="text-xs text-muted-foreground">{timeOff.reason}</p>
+        )}
+      </div>
+      <Button
+        variant="outline"
+        size="icon"
+        className="text-destructive hover:text-destructive"
+        onClick={onDelete}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

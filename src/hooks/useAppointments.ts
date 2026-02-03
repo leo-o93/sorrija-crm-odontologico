@@ -11,6 +11,7 @@ export interface Appointment {
   patient_id: string | null;
   lead_id: string | null;
   procedure_id: string | null;
+  professional_id: string | null;
   created_at: string;
   updated_at: string;
   patient?: {
@@ -28,6 +29,10 @@ export interface Appointment {
     name: string;
     category: string;
   };
+  professional?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface CreateAppointmentInput {
@@ -37,6 +42,7 @@ export interface CreateAppointmentInput {
   patient_id?: string;
   lead_id?: string;
   procedure_id?: string;
+  professional_id?: string;
 }
 
 export interface UpdateAppointmentInput extends Partial<CreateAppointmentInput> {
@@ -61,7 +67,8 @@ export function useAppointments(filters?: {
           *,
           patient:patients(id, name, phone),
           lead:leads(id, name, phone),
-          procedure:procedures(id, name, category)
+          procedure:procedures(id, name, category),
+          professional:professionals(id, name)
         `)
         .eq("organization_id", currentOrganization.id)
         .order("appointment_date", { ascending: true });

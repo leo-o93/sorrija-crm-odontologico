@@ -110,6 +110,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           patient_id: string | null
+          professional_id: string | null
           procedure_id: string | null
           status: string
           updated_at: string
@@ -122,6 +123,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           procedure_id?: string | null
           status?: string
           updated_at?: string
@@ -134,6 +136,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           patient_id?: string | null
+          professional_id?: string | null
           procedure_id?: string | null
           status?: string
           updated_at?: string
@@ -158,6 +161,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
           {
@@ -1511,35 +1521,82 @@ export type Database = {
       }
       professional_availability: {
         Row: {
+          break_end: string | null
+          break_start: string | null
           created_at: string
           end_time: string
           id: string
           is_active: boolean
           professional_id: string
+          slot_minutes: number
           start_time: string
           weekday: number
         }
         Insert: {
+          break_end?: string | null
+          break_start?: string | null
           created_at?: string
           end_time: string
           id?: string
           is_active?: boolean
           professional_id: string
+          slot_minutes?: number
           start_time: string
           weekday: number
         }
         Update: {
+          break_end?: string | null
+          break_start?: string | null
           created_at?: string
           end_time?: string
           id?: string
           is_active?: boolean
           professional_id?: string
+          slot_minutes?: number
           start_time?: string
           weekday?: number
         }
         Relationships: [
           {
             foreignKeyName: "professional_availability_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_time_off: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_time: string
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_time_off_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
