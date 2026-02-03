@@ -51,6 +51,17 @@ const formatEntityLabel = (entity: SearchEntityResult | null) => {
   return `${entity.name}${phoneLabel}`;
 };
 
+const formatSecondaryInfo = (entity: SearchEntityResult) => {
+  const details = [];
+  if (entity.phone) {
+    details.push(entity.phone);
+  }
+  if (entity.cpf) {
+    details.push(`CPF: ${entity.cpf}`);
+  }
+  return details.join(" • ");
+};
+
 export function SearchEntityInput({
   value,
   entityType,
@@ -251,54 +262,69 @@ export function SearchEntityInput({
               <>
                 {groupedResults.leads.length > 0 && (
                   <CommandGroup heading="Leads">
-                    {groupedResults.leads.map((lead) => (
-                      <CommandItem key={lead.id} onSelect={() => handleSelect(lead)}>
-                        <div className="flex flex-col">
-                          <span className="text-sm">
-                            {highlightText(lead.name, debouncedQuery)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {highlightText(lead.phone ?? "", debouncedQuery.replace(/\D/g, ""))}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
+                    {groupedResults.leads.map((lead) => {
+                      const secondaryInfo = formatSecondaryInfo(lead);
+                      return (
+                        <CommandItem key={lead.id} onSelect={() => handleSelect(lead)}>
+                          <div className="flex flex-col">
+                            <span className="text-sm">
+                              {highlightText(lead.name, debouncedQuery)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {secondaryInfo
+                                ? highlightText(secondaryInfo, debouncedQuery.replace(/\D/g, ""))
+                                : "Sem contato"}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 )}
                 {groupedResults.patients.length > 0 && (
                   <CommandGroup heading="Pacientes">
-                    {groupedResults.patients.map((patient) => (
-                      <CommandItem key={patient.id} onSelect={() => handleSelect(patient)}>
-                        <div className="flex flex-col">
-                          <span className="text-sm">
-                            {highlightText(patient.name, debouncedQuery)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {highlightText(patient.phone ?? "", debouncedQuery.replace(/\D/g, ""))}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
+                    {groupedResults.patients.map((patient) => {
+                      const secondaryInfo = formatSecondaryInfo(patient);
+                      return (
+                        <CommandItem key={patient.id} onSelect={() => handleSelect(patient)}>
+                          <div className="flex flex-col">
+                            <span className="text-sm">
+                              {highlightText(patient.name, debouncedQuery)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {secondaryInfo
+                                ? highlightText(secondaryInfo, debouncedQuery.replace(/\D/g, ""))
+                                : "Sem contato"}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 )}
               </>
             ) : (
               <CommandGroup>
-                {results.map((result) => (
-                  <CommandItem key={result.id} onSelect={() => handleSelect(result)}>
-                    <div className="flex items-center gap-2">
-                      <UserRound className="h-4 w-4 text-muted-foreground" />
-                      <div className="flex flex-col">
-                        <span className="text-sm">
-                          {highlightText(result.name, debouncedQuery)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {highlightText(result.phone ?? "", debouncedQuery.replace(/\D/g, ""))}
-                        </span>
+                {results.map((result) => {
+                  const secondaryInfo = formatSecondaryInfo(result);
+                  return (
+                    <CommandItem key={result.id} onSelect={() => handleSelect(result)}>
+                      <div className="flex items-center gap-2">
+                        <UserRound className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex flex-col">
+                          <span className="text-sm">
+                            {highlightText(result.name, debouncedQuery)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {secondaryInfo
+                              ? highlightText(secondaryInfo, debouncedQuery.replace(/\D/g, ""))
+                              : "Sem contato"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </CommandItem>
-                ))}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             )}
             {hasMore && !isLoading && (

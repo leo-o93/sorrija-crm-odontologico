@@ -95,7 +95,7 @@ function SortableLeadCard({
     e.stopPropagation();
     onOpenConversation();
   };
-  return <Card ref={setNodeRef} style={style} className={cn("hover:shadow-md transition-all", isDragging ? "ring-2 ring-primary shadow-lg" : "", lead.temperature === "quente" && "border-l-4 border-l-orange-400", lead.temperature === "frio" && "border-l-4 border-l-slate-400", lead.temperature === "perdido" && "border-l-4 border-l-red-400", lead.temperature === "novo" && "border-l-4 border-l-blue-400")}>
+  return <Card ref={setNodeRef} style={style} className={cn("hover:shadow-md transition-all", isDragging ? "ring-2 ring-primary shadow-lg" : "", (lead.temperature === "quente" || lead.temperature === "faltou_cancelou") && "border-l-4 border-l-yellow-400", lead.temperature === "frio" && "border-l-4 border-l-slate-400", lead.temperature === "perdido" && "border-l-4 border-l-red-400", lead.temperature === "novo" && "border-l-4 border-l-blue-400")}>
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-start gap-2">
           <button ref={setActivatorNodeRef} className="cursor-grab hover:bg-muted p-1 rounded touch-none flex-shrink-0 mt-0.5" {...attributes} {...listeners}>
@@ -115,7 +115,9 @@ function SortableLeadCard({
           {lead.procedures && <Badge variant="secondary" className="text-xs py-0 px-2">
               {lead.procedures.name}
             </Badge>}
-          {(lead.scheduled || lead.temperature === "quente" && lead.hot_substatus) && <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="sm" />}
+          {(lead.scheduled || (lead.temperature === "quente" && lead.hot_substatus) || (lead.temperature === "faltou_cancelou" && lead.hot_substatus)) && (
+            <HotSubstatusBadge substatus={lead.hot_substatus} scheduled={lead.scheduled} size="sm" />
+          )}
           <LeadTimer lastInteractionAt={lead.last_interaction_at} createdAt={lead.created_at} showIcon={true} />
         </div>
         <div className="flex gap-1">
@@ -711,8 +713,8 @@ export default function CRM() {
     let result = leads;
     if (temperatureFilter) {
       if (temperatureFilter === "em_conversa") {
-        // Filtro especial: leads quentes com substatus "em_conversa"
-        result = result?.filter(lead => lead.temperature === "quente" && lead.hot_substatus === "em_conversa");
+        // Filtro especial: leads com substatus "em_conversa"
+        result = result?.filter(lead => lead.hot_substatus === "em_conversa");
       } else if (temperatureFilter === "faltou_cancelou") {
         result = result?.filter((lead) => {
           const normalizedStatus = lead.status?.toLowerCase() || "";
