@@ -20,6 +20,23 @@ export const roleLabels: Record<AppRole, string> = {
   usuario: 'Usuário',
 };
 
+const roleAliases: Record<string, AppRole> = {
+  admin: 'admin',
+  administrador: 'admin',
+  gerente: 'gerente',
+  manager: 'gerente',
+  comercial: 'comercial',
+  sales: 'comercial',
+  recepcao: 'recepcao',
+  recepção: 'recepcao',
+  reception: 'recepcao',
+  receptionist: 'recepcao',
+  dentista: 'dentista',
+  dentist: 'dentista',
+  usuario: 'usuario',
+  user: 'usuario',
+};
+
 export const roleBadgeVariants: Record<
   AppRole,
   'default' | 'secondary' | 'destructive' | 'outline'
@@ -37,4 +54,13 @@ export const getRoleLabel = (role: AppRole | string) => {
     return roleLabels[role as AppRole];
   }
   return 'Usuário';
+};
+
+export const normalizeRole = (role?: string | null): AppRole | null => {
+  if (!role) return null;
+  if (appRoles.includes(role as AppRole)) {
+    return role as AppRole;
+  }
+  const normalized = role.toLowerCase();
+  return roleAliases[normalized] ?? null;
 };

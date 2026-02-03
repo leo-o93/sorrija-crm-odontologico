@@ -34,6 +34,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      const { data: preferenceData } = await supabase
+        .from('user_preferences' as any)
+        .select('last_organization_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const preferredOrgId = preferenceData?.last_organization_id ?? null;
+
       // Verificar se é Super Admin
       const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
 
@@ -51,8 +58,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
         // Usar organização salva em localStorage ou primeira disponível
         const savedOrgId = localStorage.getItem('currentOrganizationId');
-        const selectedOrg = savedOrgId 
-          ? (allOrgs || []).find(o => o.id === savedOrgId) 
+        const selectedOrgId = preferredOrgId ?? savedOrgId;
+        const selectedOrg = selectedOrgId
+          ? (allOrgs || []).find(o => o.id === selectedOrgId)
           : (allOrgs || [])[0];
 
         setCurrentOrganization(selectedOrg || (allOrgs || [])[0]);
@@ -82,9 +90,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
           // Usar organização salva em localStorage ou primeira disponível
           const savedOrgId = localStorage.getItem('currentOrganizationId');
-
-          const selectedOrg = savedOrgId
-            ? orgs.find(o => o.id === savedOrgId)
+          const selectedOrgId = preferredOrgId ?? savedOrgId;
+          const selectedOrg = selectedOrgId
+            ? orgs.find(o => o.id === selectedOrgId)
             : orgs[0];
 
           setCurrentOrganization(selectedOrg || orgs[0]);
