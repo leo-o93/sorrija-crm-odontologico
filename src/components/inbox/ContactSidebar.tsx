@@ -463,6 +463,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                           <Badge variant={apt.status === 'scheduled' ? 'default' : 'secondary'} className="text-xs">
                             {apt.status === 'scheduled'
                               ? 'Agendado'
+                              : apt.status === 'confirmed'
+                              ? 'Confirmado'
                               : apt.status === 'attended'
                               ? 'Atendido'
                               : apt.status === 'rescheduled'
