@@ -10,6 +10,8 @@ O SORRI JÁ é uma plataforma completa que integra:
 - **Gestão de Pacientes** - Cadastro completo com histórico
 - **Agenda** - Agendamento de consultas e procedimentos
 - **Orçamentos** - Criação e acompanhamento de orçamentos
+- **Fila de Atendimento** - Painel diário com status e ações rápidas
+- **Profissionais** - Cadastro e disponibilidade por profissional
 - **Financeiro** - Controle de contas a pagar e receber
 - **Relatórios com IA** - Análises inteligentes e recomendações
 - **Multi-tenant** - Suporte a múltiplas organizações
@@ -92,6 +94,11 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 - Visualização de mídia
 - Agendamento rápido
 
+### Fila de Atendimento (`/fila-atendimento`)
+- Painel diário por status (aguardando, atendidos, faltas/cancelados)
+- Contadores por status e busca rápida
+- Ações rápidas de confirmação e atendimento
+
 ### Pacientes (`/pacientes`)
 - Cadastro completo de pacientes
 - Conversão de leads em pacientes
@@ -100,12 +107,18 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 ### Agenda (`/agenda`)
 - Calendário de agendamentos
 - Visualização por dia/semana/mês
+- Atalho de visualização "Hoje"
 - Status de confirmação
+
+### Profissionais (`/cadastros`)
+- Cadastro de profissionais e funções
+- Disponibilidade por dias e horários
 
 ### Orçamentos (`/orcamentos`)
 - Criação de orçamentos
 - Itens e procedimentos
 - Acompanhamento de aprovação
+- Pagamentos com parcelas e validações de soma
 
 ### Prontuário (`/prontuario`)
 - Anamnese estruturada
@@ -146,6 +159,7 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 - Templates de mensagem
 - Gatilhos de interesse
 - Regras de temperatura
+- Profissionais e disponibilidade
 
 ### Configurações (`/configuracoes`)
 - Configurações gerais
@@ -158,6 +172,10 @@ O projeto utiliza Lovable Cloud, que configura automaticamente:
 |------|-----------|--------|
 | **Super Admin** | Administrador global | Todas as organizações, painel admin |
 | **admin** | Administrador da organização | Financeiro, Configurações, Webhooks |
+| **gerente** | Gestão operacional | CRM, Agenda, Relatórios |
+| **comercial** | Vendas | CRM, Orçamentos, Conversas |
+| **recepcao** | Atendimento | Agenda, Fila de Atendimento, Pacientes |
+| **dentista** | Clínico | Agenda, Prontuário, Planos de Tratamento |
 | **usuario** | Usuário operacional | CRM, Conversas, Pacientes, Agenda, Orçamentos |
 
 ## 🧪 Testes
@@ -187,6 +205,14 @@ src/
 └── test/
     └── setup.ts              # Setup global
 ```
+
+## 🔁 Ajustes recentes (release contínuo)
+- Fila de atendimento com ações rápidas e filtros.
+- Profissionais e disponibilidade com gerenciamento dedicado.
+- Busca unificada de contatos (leads/pacientes) com seleção inteligente.
+- Agenda com foco em "Hoje" e navegação controlada.
+- Validações de parcelas no orçamento (soma, vencimento, método).
+- Normalização de papéis de usuário e parsing seguro de HTTP.
 
 ## 🔒 Segurança
 
