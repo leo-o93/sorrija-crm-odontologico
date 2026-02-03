@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,8 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { useCreateQuote, QuoteItem, QuotePayment } from "@/hooks/useQuotes";
 import { useProcedures } from "@/hooks/useProcedures";
-import { useLeads } from "@/hooks/useLeads";
-import { usePatients } from "@/hooks/usePatients";
+import { SearchEntityInput } from "@/components/common/SearchEntityInput";
 
 const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
 
@@ -39,8 +38,6 @@ interface QuoteFormProps {
 export function QuoteForm({ onSuccess }: QuoteFormProps) {
   const createQuote = useCreateQuote();
   const { data: procedures } = useProcedures();
-  const { data: leads } = useLeads();
-  const { data: patients } = usePatients();
 
   const [items, setItems] = useState<QuoteItem[]>([
     { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 },
@@ -58,26 +55,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   });
 
   const contactType = form.watch("contact_type");
-  const selectedLeadId = form.watch("lead_id");
-  const selectedPatientId = form.watch("patient_id");
-
-  // Preencher dados automaticamente quando selecionar lead ou paciente
-  useEffect(() => {
-    if (contactType === "lead" && selectedLeadId) {
-      const lead = leads?.find((l) => l.id === selectedLeadId);
-      if (lead) {
-        form.setValue("contact_name", lead.name);
-        form.setValue("contact_phone", lead.phone);
-      }
-    } else if (contactType === "patient" && selectedPatientId) {
-      const patient = patients?.find((p) => p.id === selectedPatientId);
-      if (patient) {
-        form.setValue("contact_name", patient.name);
-        form.setValue("contact_phone", patient.phone);
-        form.setValue("contact_email", patient.email || "");
-      }
+  const handleSelectEntity = (
+    entity: { id: string; name: string; phone: string; type: "lead" | "patient"; email?: string | null } | null
+  ) => {
+    if (!entity) return;
+    form.setValue("contact_name", entity.name);
+    form.setValue("contact_phone", entity.phone);
+    if (entity.type === "patient") {
+      form.setValue("contact_email", entity.email || "");
     }
-  }, [contactType, selectedLeadId, selectedPatientId, leads, patients, form]);
+  };
 
   const addItem = () => {
     setItems([...items, { procedure_name: "", quantity: 1, unit_price: 0, total_price: 0 }]);
@@ -114,12 +101,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
   };
 
   const addPayment = () => {
+    const total = calculateTotal();
+    const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remaining = Math.max(total - paymentsTotal, 0);
+
     setPayments([
       ...payments,
       {
         installment_number: payments.length + 1,
         due_date: new Date().toISOString().split("T")[0],
-        amount: calculateTotal(),
+        amount: remaining > 0 ? remaining : total,
         payment_method: "dinheiro",
         status: "pending",
       },
@@ -145,6 +136,16 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
       return;
     }
 
+    const total = calculateTotal();
+    const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const hasInvalidPayment = payments.some(
+      (payment) => !payment.payment_method || !payment.due_date || payment.amount <= 0
+    );
+
+    if (paymentsTotal > total || hasInvalidPayment) {
+      return;
+    }
+
     await createQuote.mutateAsync({
       lead_id: data.contact_type === "lead" ? data.lead_id : undefined,
       patient_id: data.contact_type === "patient" ? data.patient_id : undefined,
@@ -166,6 +167,14 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
 
     onSuccess?.();
   };
+
+  const total = calculateTotal();
+  const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const remaining = total - paymentsTotal;
+  const hasInvalidPayment = payments.some(
+    (payment) => !payment.payment_method || !payment.due_date || payment.amount <= 0
+  );
+  const exceedsTotal = paymentsTotal > total;
 
   return (
     <Form {...form}>
@@ -205,20 +214,21 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Selecionar Lead</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um lead" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {leads?.map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>
-                            {lead.name} - {lead.phone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchEntityInput
+                        entityType="lead"
+                        value={field.value}
+                        placeholder="Buscar lead"
+                        onSelect={(entity) => {
+                          field.onChange(entity?.id ?? "");
+                          if (entity) {
+                            form.setValue("patient_id", "");
+                            form.setValue("contact_email", "");
+                            handleSelectEntity(entity);
+                          }
+                        }}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -232,20 +242,21 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Selecionar Paciente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um paciente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {patients?.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id}>
-                            {patient.name} - {patient.phone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchEntityInput
+                        entityType="patient"
+                        value={field.value}
+                        placeholder="Buscar paciente"
+                        onSelect={(entity) => {
+                          field.onChange(entity?.id ?? "");
+                          if (entity) {
+                            form.setValue("lead_id", "");
+                            form.setValue("contact_email", "");
+                            handleSelectEntity(entity);
+                          }
+                        }}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -494,11 +505,34 @@ export function QuoteForm({ onSuccess }: QuoteFormProps) {
                 </div>
               ))
             )}
+            {payments.length > 0 && (
+              <div className="rounded-lg border p-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total do orçamento</span>
+                  <span className="font-medium">R$ {total.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total parcelado</span>
+                  <span className="font-medium">R$ {paymentsTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Saldo restante</span>
+                  <span className={remaining < 0 ? "font-medium text-destructive" : "font-medium"}>
+                    R$ {remaining.toFixed(2)}
+                  </span>
+                </div>
+                {(hasInvalidPayment || exceedsTotal) && (
+                  <p className="text-destructive text-xs">
+                    Confira as parcelas: informe forma e vencimento, valor maior que zero e evite soma acima do total.
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={createQuote.isPending}>
+          <Button type="submit" disabled={createQuote.isPending || hasInvalidPayment || exceedsTotal}>
             {createQuote.isPending ? "Criando..." : "Criar Orçamento"}
           </Button>
         </div>

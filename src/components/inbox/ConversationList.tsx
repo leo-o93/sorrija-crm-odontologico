@@ -18,6 +18,13 @@ interface ConversationListProps {
   onStatusFilterChange: (status: string) => void;
 }
 
+const normalizeStatus = (status?: string | null) => (status || "").toLowerCase();
+
+const matchesLeadStatus = (leadStatus: string | null | undefined, matchers: string[]) => {
+  const normalized = normalizeStatus(leadStatus);
+  return matchers.some((matcher) => normalized.includes(matcher));
+};
+
 export function ConversationList({
   conversations,
   isLoading,
@@ -39,15 +46,42 @@ export function ConversationList({
   };
 
   const filteredConversations = useMemo(() => {
-    if (!searchQuery) return conversations;
-    
     const query = searchQuery.toLowerCase();
-    return conversations.filter((conv) => {
+
+    const statusFiltered = conversations.filter((conv) => {
+      switch (statusFilter) {
+        case "open":
+        case "pending":
+        case "resolved":
+        case "archived":
+          return conv.status === statusFilter;
+        case "patient":
+          return conv.contact_type === "patient";
+        case "scheduled":
+          return conv.contact_type === "lead" && !!conv.leads?.scheduled;
+        case "lost":
+          return conv.contact_type === "lead" && matchesLeadStatus(conv.leads?.status, ["perdido", "perdida"]);
+        case "no_show":
+          return (
+            conv.contact_type === "lead" &&
+            matchesLeadStatus(conv.leads?.status, ["faltou", "no_show", "cancel", "cancelad", "cance"])
+          );
+        case "alert":
+          return conv.contact_type === "lead" && (conv.leads?.no_show_count ?? 0) > 0;
+        case "all":
+        default:
+          return true;
+      }
+    });
+
+    if (!query) return statusFiltered;
+
+    return statusFiltered.filter((conv) => {
       const name = getContactName(conv).toLowerCase();
       const phone = conv.phone.toLowerCase();
       return name.includes(query) || phone.includes(query);
     });
-  }, [conversations, searchQuery]);
+  }, [conversations, searchQuery, statusFilter]);
 
   return (
     <div className="flex flex-col h-full">
@@ -68,9 +102,17 @@ export function ConversationList({
         </div>
 
         <Tabs value={statusFilter} onValueChange={onStatusFilterChange}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="open">Abertas</TabsTrigger>
-            <TabsTrigger value="pending">Pendentes</TabsTrigger>
+            <TabsTrigger value="patient">Paciente</TabsTrigger>
+            <TabsTrigger value="scheduled">Agendado</TabsTrigger>
+          </TabsList>
+          <TabsList className="grid w-full grid-cols-3 mt-2">
+            <TabsTrigger value="lost">Perdido</TabsTrigger>
+            <TabsTrigger value="no_show">Faltou/Cancelou</TabsTrigger>
+            <TabsTrigger value="alert">Alerta</TabsTrigger>
+          </TabsList>
+          <TabsList className="grid w-full grid-cols-2 mt-2">
             <TabsTrigger value="resolved">Resolvidas</TabsTrigger>
             <TabsTrigger value="all">Todas</TabsTrigger>
           </TabsList>

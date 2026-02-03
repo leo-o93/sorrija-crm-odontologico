@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +11,14 @@ interface AppointmentCalendarProps {
   appointments: Appointment[];
   onDateClick: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
-  view: "week" | "month";
+  view: "week" | "month" | "today";
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
 }
 
 const statusColors = {
   scheduled: "bg-blue-500",
+  confirmed: "bg-emerald-500",
   attended: "bg-green-500",
   rescheduled: "bg-purple-500",
   no_show: "bg-red-500",
@@ -25,6 +27,7 @@ const statusColors = {
 
 const statusLabels = {
   scheduled: "Agendado",
+  confirmed: "Confirmado",
   attended: "Atendido",
   rescheduled: "Reagendado",
   no_show: "Faltou",
@@ -35,10 +38,10 @@ export function AppointmentCalendar({
   appointments, 
   onDateClick, 
   onAppointmentClick,
-  view 
+  view,
+  currentDate,
+  onDateChange
 }: AppointmentCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-
   const weekStart = startOfWeek(currentDate, { locale: ptBR });
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -57,23 +60,25 @@ export function AppointmentCalendar({
 
   const goToPrevious = () => {
     if (view === "week") {
-      setCurrentDate(addDays(currentDate, -7));
+      onDateChange(addDays(currentDate, -7));
     } else {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+      onDateChange(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     }
   };
 
   const goToNext = () => {
     if (view === "week") {
-      setCurrentDate(addDays(currentDate, 7));
+      onDateChange(addDays(currentDate, 7));
     } else {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+      onDateChange(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     }
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    onDateChange(new Date());
   };
+
+  const todayAppointments = getAppointmentsForDay(currentDate);
 
   return (
     <div className="space-y-4">
@@ -94,7 +99,55 @@ export function AppointmentCalendar({
         </h2>
       </div>
 
-      {view === "week" ? (
+      {view === "today" ? (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">
+                {format(currentDate, "dd 'de' MMMM", { locale: ptBR })}
+              </h3>
+              <p className="text-sm text-muted-foreground">Agendamentos de hoje</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => onDateClick(currentDate)}>
+              Novo agendamento
+            </Button>
+          </div>
+
+          {todayAppointments.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6">
+              Nenhum agendamento para hoje.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayAppointments.map((apt) => (
+                <button
+                  key={apt.id}
+                  onClick={() => onAppointmentClick(apt)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        {format(new Date(apt.appointment_date), "HH:mm")}
+                      </div>
+                      <div className="text-sm">
+                        {apt.patient?.name || apt.lead?.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {apt.procedure?.name || "Consulta"}
+                      </div>
+                    </div>
+                    <Badge variant="secondary">
+                      {statusLabels[apt.status as keyof typeof statusLabels] || apt.status}
+                    </Badge>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </Card>
+      ) : view === "week" ? (
         <div className="grid grid-cols-7 gap-2">
           {days.map((day) => {
             const dayAppointments = getAppointmentsForDay(day);

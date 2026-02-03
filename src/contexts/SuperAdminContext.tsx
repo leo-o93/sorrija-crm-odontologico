@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Organization } from '@/types/organization';
 import type { AppRole } from '@/lib/roles';
+import { safeJson } from '@/lib/http';
 
 interface AuditLog {
   id: string;
@@ -109,12 +110,16 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    const payload = await safeJson(response);
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro na operação');
+      const errorMessage =
+        (payload && typeof payload === 'object' && 'error' in payload && payload.error) ||
+        'Erro na operação';
+      throw new Error(String(errorMessage));
     }
 
-    return response.json();
+    return payload;
   };
 
   const loadOrganizations = async () => {

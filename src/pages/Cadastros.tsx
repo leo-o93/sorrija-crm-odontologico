@@ -8,6 +8,7 @@ import { MessageTemplatesManager } from "@/components/cadastros/MessageTemplates
 import { CRMSettingsManager } from "@/components/cadastros/CRMSettingsManager";
 import { TemperatureRulesManager } from "@/components/cadastros/TemperatureRulesManager";
 import { SpreadsheetImport } from "@/components/cadastros/SpreadsheetImport";
+import { ProfessionalsManager } from "@/components/cadastros/ProfessionalsManager";
 
 export default function Cadastros() {
   const [activeTab, setActiveTab] = useState("sources");
@@ -32,6 +33,7 @@ export default function Cadastros() {
           <TabsTrigger value="temperature-rules">Regras de Transição</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="crm-settings">Config. CRM</TabsTrigger>
+          <TabsTrigger value="professionals">Profissionais</TabsTrigger>
           <TabsTrigger value="import">Importar Planilha</TabsTrigger>
         </TabsList>
 
@@ -61,6 +63,10 @@ export default function Cadastros() {
 
         <TabsContent value="crm-settings" className="space-y-4">
           <CRMSettingsManager onNavigateToRules={handleNavigateToRules} />
+        </TabsContent>
+
+        <TabsContent value="professionals" className="space-y-4">
+          <ProfessionalsManager />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">
