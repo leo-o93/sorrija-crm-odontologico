@@ -35,6 +35,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ContactSidebarProps {
   conversation: Conversation;
@@ -460,18 +461,34 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                           <span className="font-medium">
                             {format(new Date(apt.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
-                          <Badge variant={apt.status === 'scheduled' ? 'default' : 'secondary'} className="text-xs">
-                            {apt.status === 'scheduled'
-                              ? 'Agendado'
-                              : apt.status === 'confirmed'
-                              ? 'Confirmado'
-                              : apt.status === 'attended'
-                              ? 'Atendido'
-                              : apt.status === 'rescheduled'
-                              ? 'Reagendado'
-                              : apt.status === 'no_show'
-                              ? 'Faltou'
-                              : 'Cancelado'}
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-xs",
+                              apt.status === "scheduled"
+                                ? "bg-blue-100 text-blue-800"
+                                : apt.status === "confirmed"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : apt.status === "attended"
+                                ? "bg-black text-white"
+                                : apt.status === "rescheduled"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : apt.status === "no_show"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-purple-100 text-purple-800"
+                            )}
+                          >
+                            {apt.status === "scheduled"
+                              ? "Agendado"
+                              : apt.status === "confirmed"
+                              ? "Confirmado"
+                              : apt.status === "attended"
+                              ? "Atendido"
+                              : apt.status === "rescheduled"
+                              ? "Atenção"
+                              : apt.status === "no_show"
+                              ? "Faltou"
+                              : "Cancelado"}
                           </Badge>
                         </div>
                         {apt.procedure && <p className="text-xs text-muted-foreground">{apt.procedure.name}</p>}
