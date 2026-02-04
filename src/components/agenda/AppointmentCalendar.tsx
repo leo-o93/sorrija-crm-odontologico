@@ -3,9 +3,9 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Appointment } from "@/hooks/useAppointments";
+import { TodayView } from "@/components/agenda/TodayView";
 
 interface AppointmentCalendarProps {
   appointments: Appointment[];
@@ -19,19 +19,10 @@ interface AppointmentCalendarProps {
 const statusColors = {
   scheduled: "bg-blue-500",
   confirmed: "bg-emerald-500",
-  attended: "bg-green-500",
-  rescheduled: "bg-purple-500",
+  attended: "bg-black",
+  rescheduled: "bg-yellow-500",
   no_show: "bg-red-500",
-  cancelled: "bg-gray-500",
-};
-
-const statusLabels = {
-  scheduled: "Agendado",
-  confirmed: "Confirmado",
-  attended: "Atendido",
-  rescheduled: "Reagendado",
-  no_show: "Faltou",
-  cancelled: "Cancelado",
+  cancelled: "bg-purple-500",
 };
 
 export function AppointmentCalendar({ 
@@ -118,33 +109,10 @@ export function AppointmentCalendar({
               Nenhum agendamento para hoje.
             </div>
           ) : (
-            <div className="space-y-2">
-              {todayAppointments.map((apt) => (
-                <button
-                  key={apt.id}
-                  onClick={() => onAppointmentClick(apt)}
-                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {format(new Date(apt.appointment_date), "HH:mm")}
-                      </div>
-                      <div className="text-sm">
-                        {apt.patient?.name || apt.lead?.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {apt.procedure?.name || "Consulta"}
-                      </div>
-                    </div>
-                    <Badge variant="secondary">
-                      {statusLabels[apt.status as keyof typeof statusLabels] || apt.status}
-                    </Badge>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <TodayView
+              appointments={todayAppointments}
+              onAppointmentClick={onAppointmentClick}
+            />
           )}
         </Card>
       ) : view === "week" ? (

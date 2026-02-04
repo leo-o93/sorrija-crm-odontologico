@@ -688,6 +688,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_read_at: string | null
           role: string
           room_id: string
           user_id: string
@@ -695,6 +696,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_read_at?: string | null
           role?: string
           room_id: string
           user_id: string
@@ -702,6 +704,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_read_at?: string | null
           role?: string
           room_id?: string
           user_id?: string
@@ -722,6 +725,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_private: boolean
           name: string
           organization_id: string
           updated_at: string
@@ -731,6 +735,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           name: string
           organization_id: string
           updated_at?: string
@@ -740,6 +745,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           name?: string
           organization_id?: string
           updated_at?: string
@@ -1475,6 +1481,7 @@ export type Database = {
           address: string | null
           allergies: string | null
           appointments_history: Json | null
+          archived_at: string | null
           attendances_history: Json | null
           birth_date: string | null
           city: string | null
@@ -1497,6 +1504,7 @@ export type Database = {
           non_contracted_value: number | null
           notes: string | null
           organization_id: string | null
+          patient_origin: string | null
           phone: string
           quotes_history: Json | null
           sales_history: Json | null
@@ -1518,6 +1526,7 @@ export type Database = {
           address?: string | null
           allergies?: string | null
           appointments_history?: Json | null
+          archived_at?: string | null
           attendances_history?: Json | null
           birth_date?: string | null
           city?: string | null
@@ -1540,6 +1549,7 @@ export type Database = {
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
+          patient_origin?: string | null
           phone: string
           quotes_history?: Json | null
           sales_history?: Json | null
@@ -1561,6 +1571,7 @@ export type Database = {
           address?: string | null
           allergies?: string | null
           appointments_history?: Json | null
+          archived_at?: string | null
           attendances_history?: Json | null
           birth_date?: string | null
           city?: string | null
@@ -1583,6 +1594,7 @@ export type Database = {
           non_contracted_value?: number | null
           notes?: string | null
           organization_id?: string | null
+          patient_origin?: string | null
           phone?: string
           quotes_history?: Json | null
           sales_history?: Json | null
@@ -1614,6 +1626,55 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      patient_notes: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          id: string
+          note: string
+          organization_id: string
+          patient_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note: string
+          organization_id: string
+          patient_id: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string
+          organization_id?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          }
         ]
       }
       payment_methods: {

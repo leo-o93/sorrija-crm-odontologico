@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Phone, 
   MessageCircle, 
   Calendar, 
@@ -13,10 +13,7 @@ import {
   Trash2,
   Mail,
   MapPin,
-  Heart,
   AlertTriangle,
-  Pill,
-  User,
   FileText,
   Power,
   BarChart3,
@@ -28,7 +25,7 @@ import {
   Loader2,
   ChevronRight
 } from "lucide-react";
-import { Patient, useDeletePatient, useTogglePatientActive, useUpdatePatient } from "@/hooks/usePatients";
+import { Patient, useDeletePatient, useTogglePatientActive } from "@/hooks/usePatients";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { QuickScheduleDialog } from "@/components/inbox/QuickScheduleDialog";
@@ -36,7 +33,7 @@ import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { PatientForm } from "./PatientForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryDetailDialog } from "./HistoryDetailDialog";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
@@ -44,6 +41,8 @@ import { useDeleteAppointment, useUpdateAppointment } from "@/hooks/useAppointme
 import { QuoteForm } from "@/components/orcamentos/QuoteForm";
 import { QuoteDetailDialog } from "@/components/orcamentos/QuoteDetailDialog";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import type { 
   HistoryType,
   AppointmentHistoryItem, 
@@ -66,13 +65,21 @@ interface PatientDetailPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface PatientNote {
+  id: string;
+  note: string;
+  created_at: string;
+  author_id: string | null;
+  profiles?: { full_name: string | null } | null;
+}
+
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
   confirmed: { label: "Confirmado", color: "bg-emerald-100 text-emerald-800" },
-  attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
-  rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
-  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
-  no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
+  attended: { label: "Atendido", color: "bg-black text-white" },
+  rescheduled: { label: "Atenção", color: "bg-yellow-100 text-yellow-800" },
+  cancelled: { label: "Cancelado", color: "bg-purple-100 text-purple-800" },
+  no_show: { label: "Não Compareceu", color: "bg-red-100 text-red-800" },
 };
 
 export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetailPanelProps) {
@@ -85,18 +92,22 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyDialogType, setHistoryDialogType] = useState<HistoryType>("appointments");
   const [historyDialogTitle, setHistoryDialogTitle] = useState("");
-  const [notesDraft, setNotesDraft] = useState(patient?.notes || "");
+  const [newNote, setNewNote] = useState("");
   const deletePatient = useDeletePatient();
   const toggleActive = useTogglePatientActive();
-  const updatePatient = useUpdatePatient();
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
   const { data: leadStatuses } = useLeadStatuses();
+  const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    setNotesDraft(patient?.notes || "");
-  }, [patient?.notes]);
+    if (!open) {
+      setNewNote("");
+    }
+  }, [open]);
 
   // Real-time calculated metrics
   const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
@@ -220,7 +231,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   };
 
   const handleToggleActive = () => {
-    toggleActive.mutate({ id: patient.id, active: !patient.active });
+    const isArchived = Boolean(patient.archived_at);
+    toggleActive.mutate({ id: patient.id, active: isArchived });
   };
 
   const handleOpenAgenda = (appointmentId: string, date: string) => {
@@ -249,10 +261,55 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     setEditOpen(false);
   };
 
-  const handleSaveNotes = async () => {
-    if (notesDraft === (patient.notes || "")) return;
-    await updatePatient.mutateAsync({ id: patient.id, notes: notesDraft });
-  };
+  const { data: patientNotes, isLoading: patientNotesLoading } = useQuery({
+    queryKey: ["patient-notes", patient.id],
+    queryFn: async () => {
+      if (!currentOrganization?.id) return [];
+      const { data, error } = await supabase
+        .from("patient_notes")
+        .select("id, note, created_at, author_id, profiles(full_name)")
+        .eq("organization_id", currentOrganization.id)
+        .eq("patient_id", patient.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as PatientNote[];
+    },
+    enabled: open && !!patient?.id,
+  });
+
+  const createNote = useMutation({
+    mutationFn: async (note: string) => {
+      if (!currentOrganization?.id || !user?.id) {
+        throw new Error("Usuário não identificado");
+      }
+      const { error } = await supabase
+        .from("patient_notes")
+        .insert({
+          organization_id: currentOrganization.id,
+          patient_id: patient.id,
+          author_id: user.id,
+          note,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patient-notes", patient.id] });
+      setNewNote("");
+    },
+  });
+
+  const deleteNote = useMutation({
+    mutationFn: async (noteId: string) => {
+      const { error } = await supabase
+        .from("patient_notes")
+        .delete()
+        .eq("id", noteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patient-notes", patient.id] });
+    },
+  });
 
   // PRIORITIZE stored values (from import) over calculated
   // Use whichever is higher to ensure we show the best data available
@@ -312,8 +369,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
               <div>
                 <SheetTitle className="text-xl">{patient.name}</SheetTitle>
                 <div className="flex items-center gap-2 mt-2">
-                  <Badge variant={patient.active ? "default" : "secondary"}>
-                    {patient.active ? "Ativo" : "Inativo"}
+                  <Badge variant={patient.archived_at ? "secondary" : "default"}>
+                    {patient.archived_at ? "Arquivado" : "Ativo"}
                   </Badge>
                   {leadStatusLabel && (
                     <Badge className={leadStatusMeta?.color ? `${leadStatusMeta.color} text-white` : undefined}>
@@ -373,7 +430,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
             onClick={handleToggleActive}
           >
             <Power className="h-4 w-4 mr-2" />
-            {patient.active ? "Inativar Paciente" : "Ativar Paciente"}
+            {patient.archived_at ? "Desarquivar Paciente" : "Arquivar Paciente"}
           </Button>
 
           <Separator className="my-4" />
@@ -436,7 +493,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                     {formatCurrency(displayMetrics.totalRevenue)}
                   </p>
                   <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                    Receita Total do Paciente
+                    Pagamentos
                     {salesHistory.length > 0 && <ChevronRight className="h-3 w-3" />}
                   </p>
                 </button>
@@ -605,61 +662,16 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                 </>
               )}
 
-              {/* Medical Information */}
-              {(patient.medical_history || patient.allergies || patient.medications) && (
+              {patient.patient_origin && (
                 <>
                   <Separator className="my-4" />
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-sm text-muted-foreground">Informações Médicas</h4>
-                    <div className="space-y-3">
-                      {patient.medical_history && (
-                        <div className="flex items-start gap-3">
-                          <Heart className="h-4 w-4 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Histórico Médico</p>
-                            <p className="text-sm">{patient.medical_history}</p>
-                          </div>
-                        </div>
-                      )}
-                      {patient.allergies && (
-                        <div className="flex items-start gap-3">
-                          <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Alergias</p>
-                            <p className="text-sm">{patient.allergies}</p>
-                          </div>
-                        </div>
-                      )}
-                      {patient.medications && (
-                        <div className="flex items-start gap-3">
-                          <Pill className="h-4 w-4 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Medicamentos</p>
-                            <p className="text-sm">{patient.medications}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm text-muted-foreground">Origem do Paciente</h4>
+                    <p className="text-sm">{patient.patient_origin}</p>
                   </div>
                 </>
               )}
 
-              {/* Emergency Contact */}
-              {(patient.emergency_contact_name || patient.emergency_contact_phone) && (
-                <>
-                  <Separator className="my-4" />
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-sm text-muted-foreground">Contato de Emergência</h4>
-                    <div className="flex items-start gap-3">
-                      <User className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div className="text-sm space-y-1">
-                        {patient.emergency_contact_name && <p>{patient.emergency_contact_name}</p>}
-                        {patient.emergency_contact_phone && <p>{patient.emergency_contact_phone}</p>}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
 
               {/* Metadata */}
               <Separator className="my-4" />
@@ -816,20 +828,52 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                 <FileText className="h-4 w-4" />
                 Observações
               </h4>
-              <Textarea
-                rows={6}
-                placeholder="Anote informações importantes sobre o paciente..."
-                value={notesDraft}
-                onChange={(event) => setNotesDraft(event.target.value)}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {notesDraft.length} caracteres
-                </span>
-                <Button size="sm" onClick={handleSaveNotes} disabled={updatePatient.isPending}>
-                  Salvar notas
-                </Button>
+              <div className="space-y-2">
+                <Textarea
+                  rows={4}
+                  placeholder="Adicionar nova observação..."
+                  value={newNote}
+                  onChange={(event) => setNewNote(event.target.value)}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => createNote.mutate(newNote.trim())}
+                    disabled={!newNote.trim() || createNote.isPending}
+                  >
+                    {createNote.isPending ? "Salvando..." : "Adicionar nota"}
+                  </Button>
+                </div>
               </div>
+
+              {patientNotesLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando notas...</p>
+              ) : patientNotes && patientNotes.length > 0 ? (
+                <div className="space-y-3">
+                  {patientNotes.map((note) => (
+                    <div key={note.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {note.profiles?.full_name || "Usuário"} •{" "}
+                          {format(new Date(note.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => deleteNote.mutate(note.id)}
+                          disabled={deleteNote.isPending}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{note.note}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma nota registrada.</p>
+              )}
             </TabsContent>
           </Tabs>
         </SheetContent>
