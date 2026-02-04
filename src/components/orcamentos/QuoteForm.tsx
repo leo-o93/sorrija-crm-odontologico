@@ -13,6 +13,7 @@ import { useCreateQuote, QuoteItem, QuotePayment } from "@/hooks/useQuotes";
 import { useProcedures } from "@/hooks/useProcedures";
 import { SearchEntityInput } from "@/components/common/SearchEntityInput";
 import { useProfessionals } from "@/hooks/useProfessionals";
+import { TeethMultiSelect } from "@/components/orcamentos/TeethMultiSelect";
 
 const phoneRegex = /^(\+?55\s?)?(\(?\d{2}\)?\s?)?\d{4,5}-?\d{4}$/;
 
@@ -131,6 +132,11 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
 
     setItems(newItems);
   };
+
+  const parseTeethValue = (value?: string | null) =>
+    value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+
+  const formatTeethValue = (values: string[]) => values.join(", ");
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -448,10 +454,9 @@ export function QuoteForm({ onSuccess, initialContact }: QuoteFormProps) {
                   </div>
                   <div>
                     <label className="text-sm font-medium">Dentes</label>
-                    <Input
-                      value={item.tooth || ""}
-                      onChange={(e) => updateItem(index, "tooth", e.target.value)}
-                      placeholder="Ex.: 11, 21"
+                    <TeethMultiSelect
+                      value={parseTeethValue(item.tooth)}
+                      onChange={(values) => updateItem(index, "tooth", formatTeethValue(values))}
                     />
                   </div>
                   <div>
