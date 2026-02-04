@@ -48,11 +48,7 @@ const patientFormSchema = z.object({
     .string()
     .optional()
     .refine((value) => !value || /^\d{5}-?\d{3}$/.test(value), { message: "CEP inválido" }),
-  medical_history: z.string().optional(),
-  allergies: z.string().optional(),
-  medications: z.string().optional(),
-  emergency_contact_name: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
+  patient_origin: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -82,11 +78,7 @@ export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) 
       city: patient?.city || "",
       state: patient?.state || "",
       zip_code: patient?.zip_code || "",
-      medical_history: patient?.medical_history || "",
-      allergies: patient?.allergies || "",
-      medications: patient?.medications || "",
-      emergency_contact_name: patient?.emergency_contact_name || "",
-      emergency_contact_phone: patient?.emergency_contact_phone || "",
+      patient_origin: patient?.patient_origin || "",
       notes: patient?.notes || "",
     },
   });
@@ -287,68 +279,12 @@ export function PatientForm({ patient, onSuccess, onCancel }: PatientFormProps) 
 
           <FormField
             control={form.control}
-            name="emergency_contact_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contato de Emergência</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="emergency_contact_phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telefone de Emergência</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="medical_history"
+            name="patient_origin"
             render={({ field }) => (
               <FormItem className="col-span-2">
-                <FormLabel>Histórico Médico</FormLabel>
+                <FormLabel>Origem do Paciente</FormLabel>
                 <FormControl>
-                  <Textarea {...field} rows={3} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="allergies"
-            render={({ field }) => (
-              <FormItem className="col-span-2">
-                <FormLabel>Alergias</FormLabel>
-                <FormControl>
-                  <Textarea {...field} rows={2} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="medications"
-            render={({ field }) => (
-              <FormItem className="col-span-2">
-                <FormLabel>Medicamentos em Uso</FormLabel>
-                <FormControl>
-                  <Textarea {...field} rows={2} />
+                  <Input {...field} placeholder="Ex.: Indicação, Anúncios, Veio da Rua" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
