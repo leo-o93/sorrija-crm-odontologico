@@ -506,8 +506,12 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
+          fee_percent: number | null
+          fee_value: number | null
           id: string
+          discount_value: number | null
           notes: string | null
+          net_value: number | null
           organization_id: string | null
           patient_id: string | null
           payment_date: string | null
@@ -527,8 +531,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          fee_percent?: number | null
+          fee_value?: number | null
           id?: string
+          discount_value?: number | null
           notes?: string | null
+          net_value?: number | null
           organization_id?: string | null
           patient_id?: string | null
           payment_date?: string | null
@@ -548,8 +556,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          fee_percent?: number | null
+          fee_value?: number | null
           id?: string
+          discount_value?: number | null
           notes?: string | null
+          net_value?: number | null
           organization_id?: string | null
           patient_id?: string | null
           payment_date?: string | null
