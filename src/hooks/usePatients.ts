@@ -29,8 +29,10 @@ export interface Patient {
   medications?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
+  patient_origin?: string;
   notes?: string;
   active: boolean;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   // Financial metrics
@@ -74,6 +76,7 @@ export interface CreatePatientInput {
   medications?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
+  patient_origin?: string;
   notes?: string;
 }
 
@@ -96,7 +99,11 @@ export function usePatients(filters?: { search?: string; active?: boolean }) {
         .order("created_at", { ascending: false });
 
       if (filters?.active !== undefined) {
-        query = query.eq("active", filters.active);
+        if (filters.active) {
+          query = query.is("archived_at", null);
+        } else {
+          query = query.not("archived_at", "is", null);
+        }
       }
 
       if (filters?.search) {
@@ -274,7 +281,11 @@ export function usePatientsPaginated(options: PatientPaginationOptions) {
         .eq("organization_id", currentOrganization.id);
 
       if (options.active !== undefined) {
-        query = query.eq("active", options.active);
+        if (options.active) {
+          query = query.is("archived_at", null);
+        } else {
+          query = query.not("archived_at", "is", null);
+        }
       }
 
       if (options.search && options.search.trim()) {
@@ -313,9 +324,10 @@ export function useTogglePatientActive() {
 
   return useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const archivedAt = active ? null : new Date().toISOString();
       const { data, error } = await supabase
         .from("patients")
-        .update({ active })
+        .update({ active, archived_at: archivedAt })
         .eq("id", id)
         .select()
         .single();
@@ -325,7 +337,7 @@ export function useTogglePatientActive() {
     },
     onSuccess: (_, { active }) => {
       queryClient.invalidateQueries({ queryKey: ["patients"] });
-      toast.success(active ? "Paciente ativado!" : "Paciente inativado!");
+      toast.success(active ? "Paciente desarquivado!" : "Paciente arquivado!");
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao alterar status do paciente");

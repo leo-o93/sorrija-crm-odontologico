@@ -18,6 +18,8 @@ import { TemperatureBadge } from '@/components/crm/TemperatureBadge';
 import { HotSubstatusBadge } from '@/components/crm/HotSubstatusBadge';
 import { TemperatureActions } from '@/components/crm/TemperatureActions';
 import { ConfirmDeleteLeadDialog } from '@/components/crm/ConfirmDeleteLeadDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { Repeat, XCircle, Trash2 } from 'lucide-react';
 import {
   ExternalLink,
@@ -35,6 +37,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ContactSidebarProps {
   conversation: Conversation;
@@ -57,6 +60,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const updateLeadStatus = useUpdateLeadStatus();
   const deleteLeadComplete = useDeleteLeadComplete();
   const { data: leadStatuses } = useLeadStatuses();
+  const { hasRole } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
   const contact = conversation.contact_type === 'lead' ? conversation.leads : conversation.patients;
 
   // Fetch appointments for this contact
@@ -106,6 +111,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
     await handleLeadStatusChange(lostStatus);
     toast.success('Lead marcado como perdido.');
   };
+
+  const canDeleteLead = hasRole('admin') || isSuperAdmin;
 
   const toggleSection = (section: keyof typeof sectionsOpen) => {
     setSectionsOpen((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -324,9 +331,10 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                       size="sm"
                       onClick={() => setShowDeleteDialog(true)}
                       className="w-full text-destructive hover:text-destructive"
+                      disabled={!canDeleteLead}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Excluir Lead
+                      {canDeleteLead ? 'Excluir Lead' : 'Excluir Lead (Admin)'}
                     </Button>
                   </>
                 )}
@@ -460,18 +468,34 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                           <span className="font-medium">
                             {format(new Date(apt.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
-                          <Badge variant={apt.status === 'scheduled' ? 'default' : 'secondary'} className="text-xs">
-                            {apt.status === 'scheduled'
-                              ? 'Agendado'
-                              : apt.status === 'confirmed'
-                              ? 'Confirmado'
-                              : apt.status === 'attended'
-                              ? 'Atendido'
-                              : apt.status === 'rescheduled'
-                              ? 'Reagendado'
-                              : apt.status === 'no_show'
-                              ? 'Faltou'
-                              : 'Cancelado'}
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-xs",
+                              apt.status === "scheduled"
+                                ? "bg-blue-100 text-blue-800"
+                                : apt.status === "confirmed"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : apt.status === "attended"
+                                ? "bg-black text-white"
+                                : apt.status === "rescheduled"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : apt.status === "no_show"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-purple-100 text-purple-800"
+                            )}
+                          >
+                            {apt.status === "scheduled"
+                              ? "Agendado"
+                              : apt.status === "confirmed"
+                              ? "Confirmado"
+                              : apt.status === "attended"
+                              ? "Atendido"
+                              : apt.status === "rescheduled"
+                              ? "Atenção"
+                              : apt.status === "no_show"
+                              ? "Faltou"
+                              : "Cancelado"}
                           </Badge>
                         </div>
                         {apt.procedure && <p className="text-xs text-muted-foreground">{apt.procedure.name}</p>}
@@ -520,6 +544,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             leadId={conversation.lead_id}
             leadName={conversation.leads?.name || 'Lead'}
             isDeleting={deleteLeadComplete.isPending}
+            canDelete={canDeleteLead}
           />
         </>
       )}
