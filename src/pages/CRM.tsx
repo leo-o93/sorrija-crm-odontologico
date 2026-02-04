@@ -10,6 +10,7 @@ import { useLeads, useUpdateLeadStatus, Lead } from "@/hooks/useLeads";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
 import { useSources } from "@/hooks/useSources";
 import { useProcedures } from "@/hooks/useProcedures";
+import { usePatients, type Patient } from "@/hooks/usePatients";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -17,6 +18,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeadForm } from "@/components/crm/LeadForm";
 import { LeadDetailPanel } from "@/components/crm/LeadDetailPanel";
 import { LeadImport } from "@/components/crm/LeadImport";
@@ -62,6 +64,67 @@ interface SortableLeadCardProps {
   onViewDetails: () => void;
   onOpenConversation: () => void;
 }
+
+interface PatientCardProps {
+  patient: Patient;
+  onViewDetails: () => void;
+  onMakeCall: () => void;
+}
+
+function PatientCard({ patient, onViewDetails, onMakeCall }: PatientCardProps) {
+  return (
+    <Card className="hover:shadow-md transition-all">
+      <CardHeader className="pb-2 pt-3 px-3">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="text-sm font-medium truncate">{patient.name}</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground">{patient.phone}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-3 pb-3 pt-0 space-y-2">
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" className="h-7 px-2" onClick={onMakeCall} title="Ligar">
+            <Phone className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 px-2 flex-1" onClick={onViewDetails} title="Ver detalhes">
+            <Eye className="h-3 w-3 mr-1" />
+            Detalhes
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const patientFunnelColumns = [
+  { id: "closed_all", name: "fechou_tudo", title: "Fechou tudo", color: "bg-emerald-500" },
+  { id: "closed_partial", name: "fechou_parte", title: "Fechou parte", color: "bg-yellow-500" },
+  { id: "not_closed", name: "nao_fechou", title: "Não fechou", color: "bg-red-500" },
+  { id: "post_sale", name: "pos_venda", title: "Pós-venda", color: "bg-blue-500" },
+];
+
+const resolvePatientFunnelStatus = (patient: Patient) => {
+  const contractedValue = Number(patient.contracted_value || 0);
+  const nonContractedValue = Number(patient.non_contracted_value || 0);
+  const totalSales = Number(patient.total_sales || 0);
+
+  if (totalSales > 0) {
+    return "pos_venda";
+  }
+
+  if (contractedValue > 0 && nonContractedValue > 0) {
+    return "fechou_parte";
+  }
+
+  if (contractedValue > 0) {
+    return "fechou_tudo";
+  }
+
+  return "nao_fechou";
+};
 function SortableLeadCard({
   lead,
   onViewDetails,
@@ -206,7 +269,14 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
         .select("user_id, profiles(full_name)")
         .eq("organization_id", currentOrganization.id);
       if (error) throw error;
-      return data as OrganizationMember[];
+      return (data ?? []).map((member) => ({
+        user_id: member.user_id,
+        profiles: member.profiles
+          ? {
+              full_name: member.profiles.full_name ?? null,
+            }
+          : null,
+      })) as OrganizationMember[];
     },
     enabled: !!currentOrganization?.id,
   });
@@ -466,6 +536,7 @@ export default function CRM() {
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeCard, setActiveCard] = useState<LeadCardKind | null>(null);
+  const [activeFunnel, setActiveFunnel] = useState<"leads" | "patients">("leads");
   
   const {
     data: statuses,
@@ -477,42 +548,50 @@ export default function CRM() {
     queryKey: ["leads-paginated", currentOrganization?.id, page, debouncedSearch],
     queryFn: async () => {
       if (!currentOrganization?.id) return { data: [], totalCount: 0 };
-      
+
       let query = supabase
         .from("leads")
-        .select(`
+        .select(
+          `
           *,
           sources:source_id(id, name, channel),
           procedures:interest_id(id, name, category)
-        `, { count: "exact" })
+        `,
+          { count: "exact" }
+        )
         .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
-      
+
       if (debouncedSearch.trim()) {
         const phoneQuery = debouncedSearch.replace(/\D/g, '');
-        const searchFilter = phoneQuery.length > 0 
+        const searchFilter = phoneQuery.length > 0
           ? `name.ilike.%${debouncedSearch}%,phone.ilike.%${phoneQuery}%`
           : `name.ilike.%${debouncedSearch}%`;
         query = query.or(searchFilter);
       }
-      
+
       const start = (page - 1) * LEADS_PER_PAGE;
       const end = start + LEADS_PER_PAGE - 1;
-      
+
       const { data, count, error } = await query.range(start, end);
-      
+
       if (error) throw error;
-      
+
       return {
         data: data as Lead[],
         totalCount: count || 0,
         totalPages: Math.ceil((count || 0) / LEADS_PER_PAGE),
         currentPage: page,
         hasNextPage: page < Math.ceil((count || 0) / LEADS_PER_PAGE),
-        hasPreviousPage: page > 1
+        hasPreviousPage: page > 1,
       };
     },
     enabled: !!currentOrganization?.id,
+  });
+
+  const { data: patients, isLoading: isLoadingPatients } = usePatients({
+    search: debouncedSearch,
+    active: true,
   });
   
   const leads = paginatedLeads?.data;
@@ -737,7 +816,9 @@ export default function CRM() {
     return result;
   }, [leads, searchQuery, temperatureFilter]);
   const activeLead = activeId ? leads?.find(lead => lead.id === activeId) : null;
-  const isLoading = isLoadingLeads || isLoadingStatuses;
+  const isLoading = activeFunnel === "patients"
+    ? isLoadingPatients
+    : isLoadingLeads || isLoadingStatuses;
   if (isLoading) {
     return <div className="p-6">
         <div className="mb-6">
@@ -760,30 +841,51 @@ export default function CRM() {
     ? (filteredLeads?.filter((lead) => (lead.status || "").toLowerCase().includes("perdido")).length || 0)
     : (lostCount || 0);
   const scheduledRate = totalLeads > 0 ? (scheduledLeads / totalLeads) * 100 : 0;
+
+  const patientsByStatus = useMemo(() => {
+    const buckets = new Map<string, Patient[]>();
+    patientFunnelColumns.forEach((column) => buckets.set(column.name, []));
+    (patients || []).forEach((patient) => {
+      const status = resolvePatientFunnelStatus(patient);
+      const bucket = buckets.get(status) ?? [];
+      bucket.push(patient);
+      buckets.set(status, bucket);
+    });
+    return buckets;
+  }, [patients]);
+
+  const totalPatients = patients?.length || 0;
+  const closedAllPatients = patientsByStatus.get("fechou_tudo")?.length || 0;
+  const closedPartialPatients = patientsByStatus.get("fechou_parte")?.length || 0;
+  const notClosedPatients = patientsByStatus.get("nao_fechou")?.length || 0;
+  const postSalePatients = patientsByStatus.get("pos_venda")?.length || 0;
+
   return <div className="p-6 space-y-6">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">CRM - Trimestre</h1>
-            <p className="text-muted-foreground">Gerencie seus leads e acompanhe o funil</p>
+            <h1 className="text-3xl font-bold">CRM</h1>
+            <p className="text-muted-foreground">Gerencie seus leads e pacientes e acompanhe os funis</p>
           </div>
-          <div className="flex gap-2">
-            <LeadImport />
-            <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Lead
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Novo Lead</DialogTitle>
-                </DialogHeader>
-                <LeadForm onSuccess={() => setIsNewLeadDialogOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </div>
+          {activeFunnel === "leads" && (
+            <div className="flex gap-2">
+              <LeadImport />
+              <Dialog open={isNewLeadDialogOpen} onOpenChange={setIsNewLeadDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Lead
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Novo Lead</DialogTitle>
+                  </DialogHeader>
+                  <LeadForm onSuccess={() => setIsNewLeadDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
 
         <div className="relative flex-1">
@@ -791,132 +893,222 @@ export default function CRM() {
           <Input type="text" placeholder="Buscar por nome ou telefone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
         </div>
         
-        <TemperatureFilter value={temperatureFilter} onChange={setTemperatureFilter} />
+        {activeFunnel === "leads" && (
+          <TemperatureFilter value={temperatureFilter} onChange={setTemperatureFilter} />
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card onClick={() => setActiveCard("total")} className="cursor-pointer hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Leads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalLeads}</div>
-          </CardContent>
-        </Card>
-        <Card onClick={() => setActiveCard("unscheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Não Agendado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{unscheduledLeads}</div>
-          </CardContent>
-        </Card>
-        <Card onClick={() => setActiveCard("scheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Agendados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{scheduledLeads}</div>
-            <div className="text-xs text-muted-foreground">
-              {scheduledRate.toFixed(1)}% do total
+      <Tabs value={activeFunnel} onValueChange={(value) => setActiveFunnel(value as "leads" | "patients")}>
+        <TabsList>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="patients">Pacientes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="leads" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card onClick={() => setActiveCard("total")} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Leads</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalLeads}</div>
+              </CardContent>
+            </Card>
+            <Card onClick={() => setActiveCard("unscheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Não Agendado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{unscheduledLeads}</div>
+              </CardContent>
+            </Card>
+            <Card onClick={() => setActiveCard("scheduled")} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Agendados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{scheduledLeads}</div>
+                <div className="text-xs text-muted-foreground">
+                  {scheduledRate.toFixed(1)}% do total
+                </div>
+              </CardContent>
+            </Card>
+            <Card onClick={() => setActiveCard("lost")} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Perdidos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{lostLeads}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {activeCard && (
+            <LeadCardModal
+              title={
+                activeCard === "total"
+                  ? "Total de Leads"
+                  : activeCard === "unscheduled"
+                  ? "Leads Não Agendados"
+                  : activeCard === "scheduled"
+                  ? "Leads Agendados"
+                  : "Leads Perdidos"
+              }
+              kind={activeCard}
+              isOpen={!!activeCard}
+              onOpenChange={(open) => {
+                if (!open) setActiveCard(null);
+              }}
+            />
+          )}
+
+          {columns.length > 0 ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {columns.map(column => {
+                  const columnLeads = filteredLeads?.filter(lead => lead.status === column.name) || [];
+                  return <DroppableColumn key={column.id} column={column} leads={columnLeads} onLeadClick={handleLeadClick} onOpenConversation={handleOpenConversation} />;
+                })}
+              </div>
+
+              <DragOverlay>
+                {activeLead ? (
+                  <Card className="cursor-grabbing opacity-80">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">{activeLead.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{activeLead.phone}</p>
+                    </CardHeader>
+                  </Card>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          ) : (
+            <Card className="p-8">
+              <div className="text-center text-muted-foreground">
+                <p>Nenhum status configurado.</p>
+                <p className="text-sm mt-2">
+                  Vá em <strong>Cadastros → Status de Leads</strong> para configurar as colunas do Kanban.
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Pagination */}
+          {paginatedLeads && paginatedLeads.totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {((page - 1) * LEADS_PER_PAGE) + 1} a {Math.min(page * LEADS_PER_PAGE, paginatedLeads.totalCount)} de {paginatedLeads.totalCount} leads
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={!paginatedLeads.hasPreviousPage}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                  </PaginationItem>
+
+                  <PaginationItem>
+                    <span className="px-4 text-sm">
+                      Página {page} de {paginatedLeads.totalPages}
+                    </span>
+                  </PaginationItem>
+
+                  <PaginationItem>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!paginatedLeads.hasNextPage}
+                    >
+                      Próximo
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-          </CardContent>
-        </Card>
-        <Card onClick={() => setActiveCard("lost")} className="cursor-pointer hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Perdidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{lostLeads}</div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </TabsContent>
 
-      {activeCard && (
-        <LeadCardModal
-          title={
-            activeCard === "total"
-              ? "Total de Leads"
-              : activeCard === "unscheduled"
-              ? "Leads Não Agendados"
-              : activeCard === "scheduled"
-              ? "Leads Agendados"
-              : "Leads Perdidos"
-          }
-          kind={activeCard}
-          isOpen={!!activeCard}
-          onOpenChange={(open) => {
-            if (!open) setActiveCard(null);
-          }}
-        />
-      )}
-
-      {columns.length > 0 ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {columns.map(column => {
-          const columnLeads = filteredLeads?.filter(lead => lead.status === column.name) || [];
-          return <DroppableColumn key={column.id} column={column} leads={columnLeads} onLeadClick={handleLeadClick} onOpenConversation={handleOpenConversation} />;
-        })}
+        <TabsContent value="patients" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Pacientes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalPatients}</div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Fechou Tudo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{closedAllPatients}</div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Fechou Parte</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{closedPartialPatients}</div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Pós-venda</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{postSalePatients}</div>
+              </CardContent>
+            </Card>
           </div>
 
-          <DragOverlay>
-            {activeLead ? <Card className="cursor-grabbing opacity-80">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{activeLead.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{activeLead.phone}</p>
-                </CardHeader>
-              </Card> : null}
-          </DragOverlay>
-        </DndContext> : <Card className="p-8">
-          <div className="text-center text-muted-foreground">
-            <p>Nenhum status configurado.</p>
-            <p className="text-sm mt-2">
-              Vá em <strong>Cadastros → Status de Leads</strong> para configurar as colunas do Kanban.
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {patientFunnelColumns.map((column) => {
+              const columnPatients = patientsByStatus.get(column.name) ?? [];
+              return (
+                <div key={column.id} className="space-y-3 p-2 rounded-lg min-h-[200px] bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${column.color}`} />
+                    <h2 className="font-semibold text-sm">{column.title}</h2>
+                    <Badge variant="secondary" className="text-xs">{columnPatients.length}</Badge>
+                  </div>
+                  <div className="space-y-2 min-h-[100px]">
+                    {columnPatients.map((patient) => (
+                      <PatientCard
+                        key={patient.id}
+                        patient={patient}
+                        onMakeCall={() => {
+                          window.location.href = `tel:${patient.phone}`;
+                        }}
+                        onViewDetails={() => navigate(`/pacientes?id=${patient.id}`)}
+                      />
+                    ))}
+                    {columnPatients.length === 0 && (
+                      <div className="text-xs text-muted-foreground">Sem pacientes</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </Card>}
 
-      {/* Pagination */}
-      {paginatedLeads && paginatedLeads.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {((page - 1) * LEADS_PER_PAGE) + 1} a {Math.min(page * LEADS_PER_PAGE, paginatedLeads.totalCount)} de {paginatedLeads.totalCount} leads
-          </p>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={!paginatedLeads.hasPreviousPage}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Anterior
-                </Button>
-              </PaginationItem>
-              
-              <PaginationItem>
-                <span className="px-4 text-sm">
-                  Página {page} de {paginatedLeads.totalPages}
-                </span>
-              </PaginationItem>
-              
-              <PaginationItem>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={!paginatedLeads.hasNextPage}
-                >
-                  Próximo
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+          {notClosedPatients > 0 && (
+            <div className="text-sm text-muted-foreground">
+              Não fechou: {notClosedPatients} paciente{notClosedPatients !== 1 ? "s" : ""}.
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <LeadDetailPanel lead={selectedLead} open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen} />
 

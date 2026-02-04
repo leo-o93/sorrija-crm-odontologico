@@ -17,7 +17,7 @@ const appointmentStatusLabel: Record<string, string> = {
   scheduled: "Agendado",
   confirmed: "Confirmado",
   attended: "Atendido",
-  rescheduled: "Reagendado",
+  rescheduled: "Atenção",
   no_show: "Faltou",
   cancelled: "Cancelado",
 };
@@ -25,10 +25,10 @@ const appointmentStatusLabel: Record<string, string> = {
 const appointmentStatusBadge: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",
   confirmed: "bg-emerald-100 text-emerald-800",
-  attended: "bg-green-100 text-green-800",
-  rescheduled: "bg-purple-100 text-purple-800",
-  no_show: "bg-orange-100 text-orange-800",
-  cancelled: "bg-gray-200 text-gray-700",
+  attended: "bg-black text-white",
+  rescheduled: "bg-yellow-100 text-yellow-800",
+  no_show: "bg-red-100 text-red-800",
+  cancelled: "bg-purple-100 text-purple-800",
 };
 
 const getQueueContact = (entry: AttendanceQueueEntry) =>

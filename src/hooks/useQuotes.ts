@@ -304,6 +304,82 @@ export function useUpdateQuote() {
   });
 }
 
+interface AddQuoteItemsInput {
+  quoteId: string;
+  items: QuoteItem[];
+}
+
+export function useAddQuoteItems() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ quoteId, items }: AddQuoteItemsInput) => {
+      const { data: quote, error: quoteError } = await supabase
+        .from("quotes")
+        .select("total_amount, discount_percentage, discount_amount")
+        .eq("id", quoteId)
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      const itemsToInsert = items.map((item) => ({
+        quote_id: quoteId,
+        procedure_id: item.procedure_id,
+        procedure_name: item.procedure_name,
+        description: item.description,
+        tooth: item.tooth,
+        specialty: item.specialty,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+        total_price: item.total_price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("quote_items")
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      const additionalTotal = items.reduce((sum, item) => sum + item.total_price, 0);
+      const newTotal = Number(quote.total_amount || 0) + additionalTotal;
+      const discountPercentage = Number(quote.discount_percentage || 0);
+      const discountAmount = discountPercentage > 0
+        ? (newTotal * discountPercentage) / 100
+        : Number(quote.discount_amount || 0);
+      const finalAmount = newTotal - discountAmount;
+
+      const { error: updateError } = await supabase
+        .from("quotes")
+        .update({
+          total_amount: newTotal,
+          discount_amount: discountAmount,
+          final_amount: finalAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", quoteId);
+
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quote"] });
+      toast({
+        title: "Sucesso",
+        description: "Procedimentos adicionados ao orçamento",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar procedimentos",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useDeleteQuote() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
