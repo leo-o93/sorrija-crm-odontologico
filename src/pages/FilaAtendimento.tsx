@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { endOfDay, format, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ const getQueueContact = (entry: AttendanceQueueEntry) =>
 
 export default function FilaAtendimento() {
   const [search, setSearch] = useState("");
+  const [now, setNow] = useState(() => new Date());
   const createQueue = useCreateAttendanceQueue();
   const updateQueue = useUpdateAttendanceQueue();
 
@@ -56,6 +57,25 @@ export default function FilaAtendimento() {
   });
 
   const normalizedSearch = search.trim().toLowerCase();
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDuration = (from?: string | null, to?: string | null) => {
+    if (!from) return "-";
+    const start = new Date(from).getTime();
+    const end = to ? new Date(to).getTime() : now.getTime();
+    const diffMs = Math.max(end - start, 0);
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
 
   const appointmentQueueIds = useMemo(() => {
     return new Set(
@@ -169,6 +189,7 @@ export default function FilaAtendimento() {
           <div className="grid gap-3 lg:grid-cols-2">
             {pendingCheckInAppointments.map((appointment) => {
               const contact = appointment.patient || appointment.lead;
+              const professionalName = appointment.professional?.name;
               const badgeClass =
                 appointmentStatusBadge[appointment.status] || "bg-gray-100 text-gray-700";
 
@@ -186,6 +207,11 @@ export default function FilaAtendimento() {
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm")}
                       </p>
+                      {professionalName && (
+                        <p className="text-sm font-medium text-primary">
+                          Profissional: {professionalName}
+                        </p>
+                      )}
                       {appointment.procedure?.name && (
                         <p className="text-sm text-muted-foreground">
                           Procedimento: {appointment.procedure.name}
@@ -222,6 +248,7 @@ export default function FilaAtendimento() {
           ) : (
             waitingEntries.map((entry) => {
               const contact = getQueueContact(entry);
+              const professionalName = entry.appointment?.professional?.name;
               return (
                 <Card key={entry.id} className="p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -231,6 +258,14 @@ export default function FilaAtendimento() {
                       <p className="text-sm text-muted-foreground">
                         Check-in às {format(new Date(entry.checked_in_at), "HH:mm")}
                       </p>
+                      <p className="text-sm text-muted-foreground">
+                        Tempo em espera: {formatDuration(entry.checked_in_at)}
+                      </p>
+                      {professionalName && (
+                        <p className="text-sm font-medium text-primary">
+                          Profissional: {professionalName}
+                        </p>
+                      )}
                       {entry.appointment?.procedure?.name && (
                         <p className="text-sm text-muted-foreground">
                           Procedimento: {entry.appointment.procedure.name}
@@ -263,6 +298,7 @@ export default function FilaAtendimento() {
           ) : (
             inProgressEntries.map((entry) => {
               const contact = getQueueContact(entry);
+              const professionalName = entry.appointment?.professional?.name;
               return (
                 <Card key={entry.id} className="p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -272,6 +308,14 @@ export default function FilaAtendimento() {
                       {entry.started_at && (
                         <p className="text-sm text-muted-foreground">
                           Iniciado às {format(new Date(entry.started_at), "HH:mm")}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Tempo em atendimento: {formatDuration(entry.started_at)}
+                      </p>
+                      {professionalName && (
+                        <p className="text-sm font-medium text-primary">
+                          Profissional: {professionalName}
                         </p>
                       )}
                       {entry.appointment?.procedure?.name && (
