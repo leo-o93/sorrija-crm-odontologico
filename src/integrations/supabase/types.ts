@@ -688,6 +688,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_read_at: string | null
           role: string
           room_id: string
           user_id: string
@@ -695,6 +696,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_read_at?: string | null
           role?: string
           room_id: string
           user_id: string
@@ -702,6 +704,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_read_at?: string | null
           role?: string
           room_id?: string
           user_id?: string
@@ -722,6 +725,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_private: boolean
           name: string
           organization_id: string
           updated_at: string
@@ -731,6 +735,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           name: string
           organization_id: string
           updated_at?: string
@@ -740,6 +745,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           name?: string
           organization_id?: string
           updated_at?: string
