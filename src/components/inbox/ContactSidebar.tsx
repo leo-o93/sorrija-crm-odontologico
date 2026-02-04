@@ -18,6 +18,8 @@ import { TemperatureBadge } from '@/components/crm/TemperatureBadge';
 import { HotSubstatusBadge } from '@/components/crm/HotSubstatusBadge';
 import { TemperatureActions } from '@/components/crm/TemperatureActions';
 import { ConfirmDeleteLeadDialog } from '@/components/crm/ConfirmDeleteLeadDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { Repeat, XCircle, Trash2 } from 'lucide-react';
 import {
   ExternalLink,
@@ -58,6 +60,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const updateLeadStatus = useUpdateLeadStatus();
   const deleteLeadComplete = useDeleteLeadComplete();
   const { data: leadStatuses } = useLeadStatuses();
+  const { hasRole } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
   const contact = conversation.contact_type === 'lead' ? conversation.leads : conversation.patients;
 
   // Fetch appointments for this contact
@@ -107,6 +111,8 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
     await handleLeadStatusChange(lostStatus);
     toast.success('Lead marcado como perdido.');
   };
+
+  const canDeleteLead = hasRole('admin') || isSuperAdmin;
 
   const toggleSection = (section: keyof typeof sectionsOpen) => {
     setSectionsOpen((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -325,9 +331,10 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                       size="sm"
                       onClick={() => setShowDeleteDialog(true)}
                       className="w-full text-destructive hover:text-destructive"
+                      disabled={!canDeleteLead}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Excluir Lead
+                      {canDeleteLead ? 'Excluir Lead' : 'Excluir Lead (Admin)'}
                     </Button>
                   </>
                 )}
@@ -537,6 +544,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             leadId={conversation.lead_id}
             leadName={conversation.leads?.name || 'Lead'}
             isDeleting={deleteLeadComplete.isPending}
+            canDelete={canDeleteLead}
           />
         </>
       )}
