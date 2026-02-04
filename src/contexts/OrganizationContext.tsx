@@ -39,7 +39,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .select('last_organization_id')
         .eq('user_id', user.id)
         .maybeSingle();
-      const preferredOrgId = preferenceData?.last_organization_id ?? null;
+      const preferredOrgId =
+        (preferenceData as { last_organization_id?: string | null } | null)?.last_organization_id ?? null;
 
       // Verificar se é Super Admin
       const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');

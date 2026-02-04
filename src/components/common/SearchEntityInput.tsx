@@ -45,6 +45,13 @@ const highlightText = (text: string, query: string) => {
   );
 };
 
+const coerceEntityType = (value: string | null): SearchEntityResult["type"] | null => {
+  if (value === "lead" || value === "patient") {
+    return value;
+  }
+  return null;
+};
+
 const formatEntityLabel = (entity: SearchEntityResult | null) => {
   if (!entity) return "";
   const phoneLabel = entity.phone ? ` • ${entity.phone}` : "";
@@ -112,14 +119,15 @@ export function SearchEntityInput({
           ? await query.maybeSingle()
           : await query.eq("type", entityType).maybeSingle();
 
-      const entity = data
+      const entityType = data ? coerceEntityType(data.type) : null;
+      const entity = data && entityType
         ? ({
             id: data.id,
             name: data.name,
             phone: data.phone,
             cpf: data.cpf,
             email: data.email,
-            type: data.type,
+            type: entityType,
           } as SearchEntityResult)
         : null;
 
@@ -179,14 +187,18 @@ export function SearchEntityInput({
     const { data } = await query;
 
     const nextResults =
-      data?.map((entity) => ({
-        id: entity.id,
-        name: entity.name,
-        phone: entity.phone,
-        cpf: entity.cpf,
-        email: entity.email,
-        type: entity.type,
-      })) ?? [];
+      data?.flatMap((entity) => {
+        const entityType = coerceEntityType(entity.type);
+        if (!entityType) return [];
+        return [{
+          id: entity.id,
+          name: entity.name,
+          phone: entity.phone,
+          cpf: entity.cpf,
+          email: entity.email,
+          type: entityType,
+        }];
+      }) ?? [];
 
     const hasMoreResults = nextResults.length === PAGE_SIZE;
 

@@ -340,7 +340,7 @@ export function AppointmentForm({ appointment, defaultDate, onSubmit, onCancel }
                   <SelectItem value="scheduled">Agendado</SelectItem>
                   <SelectItem value="confirmed">Confirmado</SelectItem>
                   <SelectItem value="attended">Atendido</SelectItem>
-                  <SelectItem value="rescheduled">Reagendado</SelectItem>
+                  <SelectItem value="rescheduled">Atenção</SelectItem>
                   <SelectItem value="no_show">Faltou</SelectItem>
                   <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>

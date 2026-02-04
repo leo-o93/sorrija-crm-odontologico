@@ -54,10 +54,10 @@ const statusLabels: Record<string, string> = {
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
   confirmed: { label: "Confirmado", color: "bg-emerald-100 text-emerald-800" },
-  attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
-  rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
-  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
-  no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
+  attended: { label: "Atendido", color: "bg-black text-white" },
+  rescheduled: { label: "Atenção", color: "bg-yellow-100 text-yellow-800" },
+  cancelled: { label: "Cancelado", color: "bg-purple-100 text-purple-800" },
+  no_show: { label: "Não Compareceu", color: "bg-red-100 text-red-800" },
 };
 
 export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelProps) {
