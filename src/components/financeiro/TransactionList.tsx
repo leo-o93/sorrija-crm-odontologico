@@ -113,6 +113,7 @@ export function TransactionList() {
             <TableHead>Descrição</TableHead>
             <TableHead>Forma Pagamento</TableHead>
             <TableHead>Valor</TableHead>
+            <TableHead>Líquido</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Ações</TableHead>
           </TableRow>
@@ -135,6 +136,9 @@ export function TransactionList() {
               <TableCell>{transaction.payment_methods?.name || "-"}</TableCell>
               <TableCell className={transaction.type === "receita" ? "text-green-600" : "text-red-600"}>
                 R$ {Number(transaction.amount).toFixed(2)}
+              </TableCell>
+              <TableCell>
+                R$ {(transaction.net_value ?? transaction.amount).toFixed(2)}
               </TableCell>
               <TableCell>
                 <Badge className={statusColors[transaction.status]}>

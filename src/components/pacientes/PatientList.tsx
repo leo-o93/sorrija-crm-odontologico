@@ -66,8 +66,8 @@ export function PatientList({ patients, onPatientClick }: PatientListProps) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={patient.active ? "default" : "secondary"}>
-                  {patient.active ? "Ativo" : "Inativo"}
+                <Badge variant={patient.archived_at ? "secondary" : "default"}>
+                  {patient.archived_at ? "Arquivado" : "Ativo"}
                 </Badge>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -113,11 +113,6 @@ export function PatientList({ patients, onPatientClick }: PatientListProps) {
               )}
             </div>
 
-            {patient.medical_history && (
-              <p className="text-sm text-muted-foreground line-clamp-2 cursor-pointer" onClick={() => onPatientClick(patient)}>
-                {patient.medical_history}
-              </p>
-            )}
           </div>
         </Card>
       ))}

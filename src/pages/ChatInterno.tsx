@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
+import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -16,6 +18,7 @@ import {
   useInternalChatMessages,
   useInternalChatRooms,
   useJoinInternalChatRoom,
+  useMarkInternalChatRead,
   useSendInternalChatMessage,
 } from "@/hooks/useInternalChat";
 
@@ -26,11 +29,14 @@ export default function ChatInterno() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
+  const [roomIsPrivate, setRoomIsPrivate] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
+  const lastMarkedRef = useRef<Record<string, string>>({});
 
   const createRoom = useCreateInternalChatRoom();
   const joinRoom = useJoinInternalChatRoom();
   const sendMessage = useSendInternalChatMessage();
+  const markRead = useMarkInternalChatRead();
 
   const { data: members } = useInternalChatMembers(selectedRoomId || undefined);
   const { data: messages, isLoading: messagesLoading } = useInternalChatMessages(selectedRoomId || undefined);
@@ -41,16 +47,23 @@ export default function ChatInterno() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("internal_chat_room_members")
-        .select("room_id")
+        .select("room_id, last_read_at")
         .eq("user_id", user.id);
 
       if (error) throw error;
-      return data?.map((item) => item.room_id) ?? [];
+      return data ?? [];
     },
     enabled: !!user?.id,
   });
 
-  const membershipSet = useMemo(() => new Set(myMemberships || []), [myMemberships]);
+  const membershipSet = useMemo(() => new Set(myMemberships?.map((item) => item.room_id) || []), [myMemberships]);
+  const membershipReadMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    myMemberships?.forEach((membership) => {
+      map.set(membership.room_id, membership.last_read_at);
+    });
+    return map;
+  }, [myMemberships]);
   const isMember = selectedRoomId ? membershipSet.has(selectedRoomId) : false;
 
   const selectedRoom = useMemo(
@@ -60,11 +73,64 @@ export default function ChatInterno() {
 
   const canManageRooms = hasRole("admin") || hasRole("gerente");
 
+  const membershipKey = useMemo(
+    () =>
+      myMemberships
+        ?.map((membership) => `${membership.room_id}:${membership.last_read_at ?? "none"}`)
+        .join("|") || "",
+    [myMemberships]
+  );
+
+  const { data: unreadCounts } = useQuery({
+    queryKey: ["internal-chat-unread", rooms?.map((room) => room.id).join(","), membershipKey],
+    queryFn: async () => {
+      if (!rooms?.length) return {};
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        rooms.map(async (room) => {
+          if (!membershipReadMap.has(room.id)) {
+            counts[room.id] = 0;
+            return;
+          }
+          const lastReadAt = membershipReadMap.get(room.id);
+          let query = supabase
+            .from("internal_chat_messages")
+            .select("id", { count: "exact", head: true })
+            .eq("room_id", room.id);
+
+          if (lastReadAt) {
+            query = query.gt("created_at", lastReadAt);
+          }
+
+          const { count, error } = await query;
+          if (error) throw error;
+          counts[room.id] = count ?? 0;
+        })
+      );
+      return counts;
+    },
+    enabled: !!rooms?.length,
+  });
+
+  useEffect(() => {
+    if (!selectedRoomId || !isMember || !messages?.length) return;
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage?.created_at) return;
+    if (lastMarkedRef.current[selectedRoomId] === latestMessage.created_at) return;
+    lastMarkedRef.current[selectedRoomId] = latestMessage.created_at;
+    markRead.mutate({ roomId: selectedRoomId, lastReadAt: latestMessage.created_at });
+  }, [isMember, markRead, messages, selectedRoomId]);
+
   const handleCreateRoom = async () => {
     if (!roomName.trim()) return;
-    await createRoom.mutateAsync({ name: roomName.trim(), description: roomDescription.trim() || undefined });
+    await createRoom.mutateAsync({
+      name: roomName.trim(),
+      description: roomDescription.trim() || undefined,
+      isPrivate: roomIsPrivate,
+    });
     setRoomName("");
     setRoomDescription("");
+    setRoomIsPrivate(false);
     setIsCreateOpen(false);
   };
 
@@ -93,6 +159,7 @@ export default function ChatInterno() {
             {rooms.map((room) => {
               const active = room.id === selectedRoomId;
               const isRoomMember = membershipSet.has(room.id);
+              const unreadCount = unreadCounts?.[room.id] ?? 0;
               return (
                 <button
                   key={room.id}
@@ -102,10 +169,25 @@ export default function ChatInterno() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{room.name}</span>
-                    <Badge variant={isRoomMember ? "default" : "secondary"}>
-                      {isRoomMember ? "Membro" : "Visitante"}
-                    </Badge>
+                    <span className="flex items-center gap-2 font-medium">
+                      {room.is_private && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                      {room.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <Badge variant="destructive" className="px-2 py-0.5 text-[11px]">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                      {room.is_private && (
+                        <Badge variant="outline" className="text-[11px]">
+                          Privada
+                        </Badge>
+                      )}
+                      <Badge variant={isRoomMember ? "default" : "secondary"} className="text-[11px]">
+                        {isRoomMember ? "Membro" : "Visitante"}
+                      </Badge>
+                    </div>
                   </div>
                   {room.description && (
                     <p className="text-xs text-muted-foreground mt-1">{room.description}</p>
@@ -128,7 +210,15 @@ export default function ChatInterno() {
           <>
             <div className="flex items-center justify-between border-b pb-3">
               <div>
-                <h2 className="text-lg font-semibold">{selectedRoom.name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{selectedRoom.name}</h2>
+                  {selectedRoom.is_private && (
+                    <Badge variant="outline" className="flex items-center gap-1 text-[11px]">
+                      <Lock className="h-3 w-3" />
+                      Privada
+                    </Badge>
+                  )}
+                </div>
                 {selectedRoom.description && (
                   <p className="text-sm text-muted-foreground">{selectedRoom.description}</p>
                 )}
@@ -204,6 +294,15 @@ export default function ChatInterno() {
               value={roomDescription}
               onChange={(event) => setRoomDescription(event.target.value)}
             />
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium">Sala privada</p>
+                <p className="text-xs text-muted-foreground">
+                  Apenas membros podem visualizar e participar da conversa.
+                </p>
+              </div>
+              <Switch checked={roomIsPrivate} onCheckedChange={setRoomIsPrivate} />
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancelar
