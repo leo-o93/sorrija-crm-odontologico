@@ -37,18 +37,18 @@ const statusLabels = {
   scheduled: "Agendado",
   confirmed: "Confirmado",
   attended: "Atendido",
-  rescheduled: "Reagendado",
+  rescheduled: "Atenção",
   no_show: "Faltou",
   cancelled: "Cancelado",
 };
 
-const statusVariants = {
-  scheduled: "default",
-  confirmed: "secondary",
-  attended: "outline",
-  rescheduled: "secondary",
-  no_show: "destructive",
-  cancelled: "outline",
+const statusClasses = {
+  scheduled: "bg-blue-100 text-blue-800",
+  confirmed: "bg-emerald-100 text-emerald-800",
+  attended: "bg-black text-white",
+  rescheduled: "bg-yellow-100 text-yellow-800",
+  no_show: "bg-red-100 text-red-800",
+  cancelled: "bg-purple-100 text-purple-800",
 } as const;
 
 export function AppointmentDialog({
@@ -111,8 +111,14 @@ export function AppointmentDialog({
                       </span>
                     </div>
                   </div>
-                  <Badge variant={statusVariants[appointment.status as keyof typeof statusVariants]}>
-                    {statusLabels[appointment.status as keyof typeof statusLabels]}
+                  <Badge
+                    variant="secondary"
+                    className={
+                      statusClasses[appointment.status as keyof typeof statusClasses] ??
+                      "bg-muted text-foreground"
+                    }
+                  >
+                    {statusLabels[appointment.status as keyof typeof statusLabels] ?? appointment.status}
                   </Badge>
                 </div>
 

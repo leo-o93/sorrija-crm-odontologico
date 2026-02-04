@@ -10,11 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useQuote, useUpdateQuote } from "@/hooks/useQuotes";
-import { Loader2, Send, CheckCircle, XCircle, FileText, Download } from "lucide-react";
+import { useQuote, useUpdateQuote, type QuoteItem, useAddQuoteItems } from "@/hooks/useQuotes";
+import { Loader2, Send, CheckCircle, XCircle, FileText, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useProcedures } from "@/hooks/useProcedures";
+import { Input } from "@/components/ui/input";
+import { TeethMultiSelect } from "@/components/orcamentos/TeethMultiSelect";
 
 interface QuoteDetailDialogProps {
   quoteId: string | null;
@@ -58,7 +62,66 @@ const paymentMethodLabels: Record<string, string> = {
 export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }: QuoteDetailDialogProps) {
   const { data: quote, isLoading } = useQuote(quoteId || "");
   const updateQuote = useUpdateQuote();
+  const addQuoteItems = useAddQuoteItems();
+  const { data: procedures } = useProcedures();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isAddingItems, setIsAddingItems] = useState(false);
+  const [items, setItems] = useState<QuoteItem[]>([
+    { procedure_name: "", quantity: 1, unit_price: 0, subtotal: 0, total_price: 0, tooth: "", specialty: "" },
+  ]);
+
+  const parseTeethValue = (value?: string | null) =>
+    value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+
+  const formatTeethValue = (values: string[]) => values.join(", ");
+
+  const addItemRow = () => {
+    setItems([
+      ...items,
+      { procedure_name: "", quantity: 1, unit_price: 0, subtotal: 0, total_price: 0, tooth: "", specialty: "" },
+    ]);
+  };
+
+  const removeItemRow = (index: number) => {
+    setItems(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    if (field === "quantity" || field === "unit_price") {
+      const subtotal = newItems[index].quantity * newItems[index].unit_price;
+      newItems[index].subtotal = subtotal;
+      newItems[index].total_price = subtotal;
+    }
+
+    if (field === "procedure_id" && value) {
+      const procedure = procedures?.find((proc) => proc.id === value);
+      if (procedure) {
+        newItems[index].procedure_name = procedure.name;
+        newItems[index].unit_price = procedure.default_price || 0;
+        newItems[index].specialty = procedure.category;
+        const subtotal = newItems[index].quantity * (procedure.default_price || 0);
+        newItems[index].subtotal = subtotal;
+        newItems[index].total_price = subtotal;
+      }
+    }
+
+    setItems(newItems);
+  };
+
+  const handleAddItems = async () => {
+    if (!quoteId) return;
+    const validItems = items.filter((item) => item.procedure_name);
+    if (validItems.length === 0) {
+      toast.error("Adicione ao menos um procedimento.");
+      return;
+    }
+    await addQuoteItems.mutateAsync({ quoteId, items: validItems });
+    setItems([{ procedure_name: "", quantity: 1, unit_price: 0, subtotal: 0, total_price: 0, tooth: "", specialty: "" }]);
+    setIsAddingItems(false);
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     if (!quoteId) return;
@@ -119,6 +182,13 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                     PDF
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddingItems((prev) => !prev)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar procedimentos
+                </Button>
               </div>
             </div>
 
@@ -231,6 +301,115 @@ export function QuoteDetailDialog({ quoteId, open, onOpenChange, onGeneratePDF }
                 </div>
               </CardContent>
             </Card>
+
+            {isAddingItems && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Adicionar procedimentos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {items.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-start p-4 border rounded-lg">
+                      <div className="flex-1 grid grid-cols-6 gap-2">
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium">Procedimento</label>
+                          <Select
+                            value={item.procedure_id || ""}
+                            onValueChange={(value) => updateItem(index, "procedure_id", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {procedures?.filter((proc) => proc.active).map((proc) => (
+                                <SelectItem key={proc.id} value={proc.id}>
+                                  {proc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium">Especialidade</label>
+                          <Input
+                            value={item.specialty || ""}
+                            onChange={(event) => updateItem(index, "specialty", event.target.value)}
+                            placeholder="Ex.: Ortodontia"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Dentes</label>
+                          <TeethMultiSelect
+                            value={parseTeethValue(item.tooth)}
+                            onChange={(values) => updateItem(index, "tooth", formatTeethValue(values))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Qtd</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(event) => updateItem(index, "quantity", parseInt(event.target.value, 10) || 1)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Valor Unit.</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(event) => updateItem(index, "unit_price", parseFloat(event.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-6">
+                          <label className="text-sm font-medium">
+                            Subtotal: R$ {item.subtotal.toFixed(2)}
+                          </label>
+                        </div>
+                      </div>
+                      {items.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItemRow(index)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button type="button" variant="outline" onClick={addItemRow}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Item
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAddingItems(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleAddItems}
+                        disabled={addQuoteItems.isPending}
+                      >
+                        {addQuoteItems.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        Salvar procedimentos
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Payments */}
             {quote.quote_payments && quote.quote_payments.length > 0 && (

@@ -112,8 +112,7 @@ export function ConversationList({
             <TabsTrigger value="no_show">Faltou/Cancelou</TabsTrigger>
             <TabsTrigger value="alert">Alerta</TabsTrigger>
           </TabsList>
-          <TabsList className="grid w-full grid-cols-2 mt-2">
-            <TabsTrigger value="resolved">Resolvidas</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 mt-2">
             <TabsTrigger value="all">Todas</TabsTrigger>
           </TabsList>
         </Tabs>
