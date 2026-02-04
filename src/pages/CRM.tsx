@@ -206,7 +206,14 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
         .select("user_id, profiles(full_name)")
         .eq("organization_id", currentOrganization.id);
       if (error) throw error;
-      return data as OrganizationMember[];
+      return (data ?? []).map((member) => ({
+        user_id: member.user_id,
+        profiles: member.profiles
+          ? {
+              full_name: member.profiles.full_name ?? null,
+            }
+          : null,
+      })) as OrganizationMember[];
     },
     enabled: !!currentOrganization?.id,
   });
