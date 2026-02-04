@@ -21,6 +21,7 @@ interface ConfirmDeleteLeadDialogProps {
   onConfirm: () => void;
   leadId: string;
   leadName: string;
+  canDelete?: boolean;
   isDeleting?: boolean;
 }
 
@@ -37,6 +38,7 @@ export function ConfirmDeleteLeadDialog({
   onConfirm,
   leadId,
   leadName,
+  canDelete = true,
   isDeleting = false,
 }: ConfirmDeleteLeadDialogProps) {
   const [step, setStep] = useState<"warning" | "confirm">("warning");
@@ -107,6 +109,7 @@ export function ConfirmDeleteLeadDialog({
   };
 
   const handleContinue = () => {
+    if (!canDelete) return;
     setStep("confirm");
   };
 
@@ -116,6 +119,7 @@ export function ConfirmDeleteLeadDialog({
   };
 
   const handleConfirm = () => {
+    if (!canDelete) return;
     if (confirmText === "EXCLUIR") {
       onConfirm();
     }
@@ -175,6 +179,11 @@ export function ConfirmDeleteLeadDialog({
                   <p className="text-destructive font-medium">
                     Esta ação não pode ser desfeita!
                   </p>
+                  {!canDelete && (
+                    <p className="text-sm text-destructive">
+                      Apenas administradores ou super administradores podem excluir leads permanentemente.
+                    </p>
+                  )}
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -183,7 +192,7 @@ export function ConfirmDeleteLeadDialog({
               <Button
                 variant="destructive"
                 onClick={handleContinue}
-                disabled={isLoadingData}
+                disabled={isLoadingData || !canDelete}
               >
                 Continuar para confirmar
               </Button>

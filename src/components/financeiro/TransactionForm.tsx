@@ -32,6 +32,8 @@ const transactionSchema = z.object({
     .string()
     .min(1, "Valor é obrigatório")
     .refine((value) => Number(value) > 0, "O valor deve ser positivo"),
+  fee_percent: z.string().optional(),
+  discount_value: z.string().optional(),
   description: z.string().optional(),
   transaction_date: z
     .string()
@@ -63,13 +65,32 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
   });
 
   const onSubmit = async (data: TransactionFormValues) => {
+    const amount = parseFloat(data.amount);
+    const feePercent = data.fee_percent ? parseFloat(data.fee_percent) : 0;
+    const discountValue = data.discount_value ? parseFloat(data.discount_value) : 0;
+    const feeValue = amount * (feePercent / 100);
+    const netValue = amount - feeValue - discountValue;
+
     await createTransaction.mutateAsync({
       ...data,
-      amount: parseFloat(data.amount),
+      amount,
+      fee_percent: feePercent || null,
+      fee_value: feeValue || null,
+      discount_value: discountValue || null,
+      net_value: Number.isFinite(netValue) ? netValue : amount,
     });
     form.reset();
     onSuccess?.();
   };
+
+  const watchedAmount = form.watch("amount");
+  const watchedFeePercent = form.watch("fee_percent");
+  const watchedDiscount = form.watch("discount_value");
+  const parsedAmount = watchedAmount ? parseFloat(watchedAmount) : 0;
+  const parsedFeePercent = watchedFeePercent ? parseFloat(watchedFeePercent) : 0;
+  const parsedDiscount = watchedDiscount ? parseFloat(watchedDiscount) : 0;
+  const calculatedFee = parsedAmount * (parsedFeePercent / 100);
+  const calculatedNet = parsedAmount - calculatedFee - parsedDiscount;
 
   return (
     <Form {...form}>
@@ -145,6 +166,59 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
             </FormItem>
           )}
         />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="fee_percent"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Taxa da máquina (%)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="discount_value"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Desconto (R$)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+          <div className="flex items-center justify-between">
+            <span>Taxa calculada</span>
+            <span>R$ {Number.isFinite(calculatedFee) ? calculatedFee.toFixed(2) : "0.00"}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Valor líquido</span>
+            <span className="font-medium text-foreground">
+              R$ {Number.isFinite(calculatedNet) ? calculatedNet.toFixed(2) : "0.00"}
+            </span>
+          </div>
+        </div>
 
         <FormField
           control={form.control}

@@ -18,6 +18,8 @@ import { HistoryType, AppointmentHistoryItem, AttendanceHistoryItem, QuoteHistor
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLeadStatuses } from "@/hooks/useLeadStatuses";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSuperAdmin } from "@/contexts/SuperAdminContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -54,10 +56,10 @@ const statusLabels: Record<string, string> = {
 const appointmentStatusLabels: Record<string, { label: string; color: string }> = {
   scheduled: { label: "Agendado", color: "bg-blue-100 text-blue-800" },
   confirmed: { label: "Confirmado", color: "bg-emerald-100 text-emerald-800" },
-  attended: { label: "Atendido", color: "bg-emerald-100 text-emerald-800" },
-  rescheduled: { label: "Reagendado", color: "bg-purple-100 text-purple-800" },
-  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-800" },
-  no_show: { label: "Não Compareceu", color: "bg-orange-100 text-orange-800" },
+  attended: { label: "Atendido", color: "bg-black text-white" },
+  rescheduled: { label: "Atenção", color: "bg-yellow-100 text-yellow-800" },
+  cancelled: { label: "Cancelado", color: "bg-purple-100 text-purple-800" },
+  no_show: { label: "Não Compareceu", color: "bg-red-100 text-red-800" },
 };
 
 export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelProps) {
@@ -69,6 +71,8 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
   const [historyDialogTitle, setHistoryDialogTitle] = useState("");
   const deleteLeadComplete = useDeleteLeadComplete();
   const { data: leadStatuses } = useLeadStatuses();
+  const { hasRole } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
 
   // Helper to safely extract arrays from JSON
   const getHistoryArray = <T,>(data: unknown): T[] => {
@@ -88,6 +92,8 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
     setHistoryDialogTitle(title);
     setHistoryDialogOpen(true);
   };
+
+  const canDeleteLead = hasRole("admin") || isSuperAdmin;
 
   // Real-time calculated metrics
   const { data: calculatedMetrics, isLoading: metricsLoading } = useQuery({
@@ -514,9 +520,10 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
                   size="sm" 
                   onClick={() => setIsDeleteDialogOpen(true)}
                   className="text-destructive hover:text-destructive"
+                  disabled={!canDeleteLead}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
+                  {canDeleteLead ? "Excluir" : "Excluir (Admin)"}
                 </Button>
               </div>
 
@@ -685,6 +692,7 @@ export function LeadDetailPanel({ lead, open, onOpenChange }: LeadDetailPanelPro
         leadId={lead.id}
         leadName={lead.name}
         isDeleting={deleteLeadComplete.isPending}
+        canDelete={canDeleteLead}
       />
 
       <HistoryDetailDialog

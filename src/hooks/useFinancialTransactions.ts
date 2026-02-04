@@ -9,6 +9,10 @@ export interface FinancialTransaction {
   category_id: string | null;
   payment_method_id: string | null;
   amount: number;
+  fee_percent?: number | null;
+  fee_value?: number | null;
+  discount_value?: number | null;
+  net_value?: number | null;
   description: string | null;
   transaction_date: string;
   due_date: string | null;

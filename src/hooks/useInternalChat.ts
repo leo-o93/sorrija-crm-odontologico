@@ -10,6 +10,7 @@ export interface InternalChatRoom {
   name: string;
   description: string | null;
   organization_id: string;
+  is_private: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface InternalChatMember {
   user_id: string;
   role: string;
   created_at: string;
+  last_read_at: string | null;
 }
 
 export interface InternalChatMessage {
@@ -174,7 +176,7 @@ export function useCreateInternalChatRoom() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { name: string; description?: string }) => {
+    mutationFn: async (input: { name: string; description?: string; isPrivate?: boolean }) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
       if (!user?.id) throw new Error("No user session");
 
@@ -184,6 +186,7 @@ export function useCreateInternalChatRoom() {
           organization_id: currentOrganization.id,
           name: input.name,
           description: input.description || null,
+          is_private: input.isPrivate ?? false,
           created_by: user.id,
         })
         .select()
@@ -257,6 +260,29 @@ export function useSendInternalChatMessage() {
     },
     onError: (error: Error) => {
       toast.error("Erro ao enviar mensagem: " + error.message);
+    },
+  });
+}
+
+export function useMarkInternalChatRead() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { roomId: string; lastReadAt: string }) => {
+      if (!user?.id) throw new Error("No user session");
+      const { error } = await supabase
+        .from("internal_chat_room_members")
+        .update({ last_read_at: input.lastReadAt })
+        .eq("room_id", input.roomId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({ queryKey: ["internal-chat-members", input.roomId] });
+      queryClient.invalidateQueries({ queryKey: ["internal-chat-my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["internal-chat-unread"] });
     },
   });
 }
