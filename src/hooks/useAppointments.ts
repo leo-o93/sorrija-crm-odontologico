@@ -67,8 +67,7 @@ export function useAppointments(filters?: {
           *,
           patient:patients(id, name, phone),
           lead:leads(id, name, phone),
-          procedure:procedures(id, name, category),
-          professional:professionals(id, name)
+          procedure:procedures(id, name, category)
         `)
         .eq("organization_id", currentOrganization.id)
         .order("appointment_date", { ascending: true });
@@ -86,7 +85,13 @@ export function useAppointments(filters?: {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Appointment[];
+      
+      // Map data and add professional_id as null since relation may not exist
+      return (data || []).map((item: any) => ({
+        ...item,
+        professional_id: item.professional_id || null,
+        professional: null, // Relation may not exist in schema
+      })) as Appointment[];
     },
   });
 }

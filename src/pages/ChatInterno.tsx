@@ -46,12 +46,12 @@ export default function ChatInterno() {
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
-        .from("internal_chat_room_members")
+        .from("internal_chat_room_members" as any)
         .select("room_id, last_read_at")
         .eq("user_id", user.id);
 
       if (error) throw error;
-      return data ?? [];
+      return (data as any[] ?? []) as { room_id: string; last_read_at: string | null }[];
     },
     enabled: !!user?.id,
   });
@@ -94,7 +94,7 @@ export default function ChatInterno() {
           }
           const lastReadAt = membershipReadMap.get(room.id);
           let query = supabase
-            .from("internal_chat_messages")
+            .from("internal_chat_messages" as any)
             .select("id", { count: "exact", head: true })
             .eq("room_id", room.id);
 

@@ -235,7 +235,7 @@ function AvailabilityRow({
           onClick={() =>
             deleteAvailability.mutate({
               id: availability.id,
-              professionalId: availability.professional_id,
+              professional_id: availability.professional_id,
             })
           }
         >

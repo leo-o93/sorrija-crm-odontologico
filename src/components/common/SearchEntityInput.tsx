@@ -108,26 +108,27 @@ export function SearchEntityInput({
 
       if (selected?.id === value) return;
 
-      const query = supabase
-        .from("contacts_search")
+      // Use rpc or raw query since contacts_search may be a view not in generated types
+      const baseQuery = supabase
+        .from("contacts_search" as any)
         .select("id, name, phone, cpf, email, type")
         .eq("id", value)
         .eq("organization_id", organizationId);
 
       const { data } =
         entityType === "all"
-          ? await query.maybeSingle()
-          : await query.eq("type", entityType).maybeSingle();
+          ? await baseQuery.maybeSingle()
+          : await baseQuery.eq("type", entityType).maybeSingle();
 
-      const entityType = data ? coerceEntityType(data.type) : null;
-      const entity = data && entityType
+      const parsedType = data ? coerceEntityType((data as any).type) : null;
+      const entity = data && parsedType
         ? ({
-            id: data.id,
-            name: data.name,
-            phone: data.phone,
-            cpf: data.cpf,
-            email: data.email,
-            type: entityType,
+            id: (data as any).id,
+            name: (data as any).name,
+            phone: (data as any).phone,
+            cpf: (data as any).cpf,
+            email: (data as any).email,
+            type: parsedType,
           } as SearchEntityResult)
         : null;
 
@@ -173,7 +174,7 @@ export function SearchEntityInput({
     const rangeEnd = offset + PAGE_SIZE - 1;
 
     let query = supabase
-      .from("contacts_search")
+      .from("contacts_search" as any)
       .select("id, name, phone, cpf, email, type")
       .eq("organization_id", organizationId)
       .or(buildFilter(true))
@@ -187,16 +188,16 @@ export function SearchEntityInput({
     const { data } = await query;
 
     const nextResults =
-      data?.flatMap((entity) => {
-        const entityType = coerceEntityType(entity.type);
-        if (!entityType) return [];
+      (data as any[] | null)?.flatMap((entity: any) => {
+        const parsedType = coerceEntityType(entity.type);
+        if (!parsedType) return [];
         return [{
           id: entity.id,
           name: entity.name,
           phone: entity.phone,
           cpf: entity.cpf,
           email: entity.email,
-          type: entityType,
+          type: parsedType,
         }];
       }) ?? [];
 

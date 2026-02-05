@@ -2,11 +2,41 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
-export type Professional = Database["public"]["Tables"]["professionals"]["Row"];
-export type ProfessionalInsert = Database["public"]["Tables"]["professionals"]["Insert"];
-export type ProfessionalUpdate = Database["public"]["Tables"]["professionals"]["Update"];
+export interface Professional {
+  id: string;
+  organization_id: string;
+  name: string;
+  specialty: string | null;
+  role: string | null;
+  phone: string | null;
+  email: string | null;
+  active: boolean;
+  color_tag: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfessionalInsert {
+  organization_id?: string;
+  name: string;
+  specialty?: string | null;
+  role?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  active?: boolean;
+  color_tag?: string | null;
+}
+
+export interface ProfessionalUpdate {
+  name?: string;
+  specialty?: string | null;
+  role?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  active?: boolean;
+  color_tag?: string | null;
+}
 
 export function useProfessionals(includeInactive = false) {
   const { currentOrganization } = useOrganization();
@@ -16,7 +46,7 @@ export function useProfessionals(includeInactive = false) {
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
       let query = supabase
-        .from("professionals")
+        .from("professionals" as any)
         .select("*")
         .eq("organization_id", currentOrganization.id)
         .order("name", { ascending: true });
@@ -27,7 +57,7 @@ export function useProfessionals(includeInactive = false) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Professional[];
+      return (data as any[]) as Professional[];
     },
     enabled: !!currentOrganization?.id,
   });
@@ -44,7 +74,7 @@ export function useCreateProfessional() {
       }
 
       const { data, error } = await supabase
-        .from("professionals")
+        .from("professionals" as any)
         .insert({
           organization_id: currentOrganization.id,
           ...input,
@@ -53,7 +83,7 @@ export function useCreateProfessional() {
         .single();
 
       if (error) throw error;
-      return data as Professional;
+      return data as unknown as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });
@@ -73,14 +103,14 @@ export function useUpdateProfessional() {
     mutationFn: async (input: ProfessionalUpdate & { id: string }) => {
       const { id, ...updates } = input;
       const { data, error } = await supabase
-        .from("professionals")
+        .from("professionals" as any)
         .update(updates)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as Professional;
+      return data as unknown as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });
@@ -99,14 +129,14 @@ export function useDeactivateProfessional() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("professionals")
+        .from("professionals" as any)
         .update({ active: false })
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as Professional;
+      return data as unknown as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });

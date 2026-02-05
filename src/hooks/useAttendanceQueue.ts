@@ -80,7 +80,7 @@ export function useAttendanceQueue(filters?: AttendanceQueueFilters) {
       if (!currentOrganization?.id) return [];
 
       let queueQuery = supabase
-        .from("attendance_queue")
+        .from("attendance_queue" as any)
         .select(
           `
           *,
@@ -90,8 +90,7 @@ export function useAttendanceQueue(filters?: AttendanceQueueFilters) {
             status,
             patient:patients(id, name, phone),
             lead:leads(id, name, phone),
-            procedure:procedures(id, name, category),
-            professional:professionals(id, name)
+            procedure:procedures(id, name, category)
           ),
           patient:patients(id, name, phone),
           lead:leads(id, name, phone)
@@ -109,7 +108,7 @@ export function useAttendanceQueue(filters?: AttendanceQueueFilters) {
 
       const { data, error } = await queueQuery;
       if (error) throw error;
-      return data as AttendanceQueueEntry[];
+      return (data as any[]) as AttendanceQueueEntry[];
     },
   });
 
@@ -149,7 +148,7 @@ export function useCreateAttendanceQueue() {
       if (!currentOrganization?.id) throw new Error("No organization selected");
 
       const { data, error } = await supabase
-        .from("attendance_queue")
+        .from("attendance_queue" as any)
         .insert({
           organization_id: currentOrganization.id,
           appointment_id: input.appointment_id ?? null,
@@ -179,7 +178,7 @@ export function useUpdateAttendanceQueue() {
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateAttendanceQueueInput) => {
       const { data, error } = await supabase
-        .from("attendance_queue")
+        .from("attendance_queue" as any)
         .update(input)
         .eq("id", id)
         .select()

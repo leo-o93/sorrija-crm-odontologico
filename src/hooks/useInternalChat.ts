@@ -42,13 +42,13 @@ export function useInternalChatRooms() {
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
       const { data, error } = await supabase
-        .from("internal_chat_rooms")
+        .from("internal_chat_rooms" as any)
         .select("*")
         .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as InternalChatRoom[];
+      return (data as any[]) as InternalChatRoom[];
     },
   });
 
@@ -87,12 +87,12 @@ export function useInternalChatMembers(roomId?: string) {
     queryFn: async () => {
       if (!roomId) return [];
       const { data, error } = await supabase
-        .from("internal_chat_room_members")
+        .from("internal_chat_room_members" as any)
         .select("*")
         .eq("room_id", roomId);
 
       if (error) throw error;
-      return data as InternalChatMember[];
+      return (data as any[]) as InternalChatMember[];
     },
     enabled: !!roomId,
   });
@@ -132,13 +132,13 @@ export function useInternalChatMessages(roomId?: string) {
     queryFn: async () => {
       if (!roomId) return [];
       const { data, error } = await supabase
-        .from("internal_chat_messages")
+        .from("internal_chat_messages" as any)
         .select("*")
         .eq("room_id", roomId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as InternalChatMessage[];
+      return (data as any[]) as InternalChatMessage[];
     },
     enabled: !!roomId,
   });
@@ -181,7 +181,7 @@ export function useCreateInternalChatRoom() {
       if (!user?.id) throw new Error("No user session");
 
       const { data: room, error } = await supabase
-        .from("internal_chat_rooms")
+        .from("internal_chat_rooms" as any)
         .insert({
           organization_id: currentOrganization.id,
           name: input.name,
@@ -194,16 +194,17 @@ export function useCreateInternalChatRoom() {
 
       if (error) throw error;
 
+      const roomData = room as any;
       const { error: memberError } = await supabase
-        .from("internal_chat_room_members")
+        .from("internal_chat_room_members" as any)
         .insert({
-          room_id: room.id,
+          room_id: roomData.id,
           user_id: user.id,
           role: "owner",
         });
 
       if (memberError) throw memberError;
-      return room;
+      return roomData as InternalChatRoom;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["internal-chat-rooms"] });
@@ -223,7 +224,7 @@ export function useJoinInternalChatRoom() {
     mutationFn: async (roomId: string) => {
       if (!user?.id) throw new Error("No user session");
       const { error } = await supabase
-        .from("internal_chat_room_members")
+        .from("internal_chat_room_members" as any)
         .insert({ room_id: roomId, user_id: user.id, role: "member" });
 
       if (error) throw error;
@@ -246,7 +247,7 @@ export function useSendInternalChatMessage() {
     mutationFn: async (input: { roomId: string; content: string }) => {
       if (!user?.id) throw new Error("No user session");
       const { error } = await supabase
-        .from("internal_chat_messages")
+        .from("internal_chat_messages" as any)
         .insert({
           room_id: input.roomId,
           sender_id: user.id,
@@ -272,7 +273,7 @@ export function useMarkInternalChatRead() {
     mutationFn: async (input: { roomId: string; lastReadAt: string }) => {
       if (!user?.id) throw new Error("No user session");
       const { error } = await supabase
-        .from("internal_chat_room_members")
+        .from("internal_chat_room_members" as any)
         .update({ last_read_at: input.lastReadAt })
         .eq("room_id", input.roomId)
         .eq("user_id", user.id);
