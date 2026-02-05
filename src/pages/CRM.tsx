@@ -264,18 +264,30 @@ function LeadCardModal({ title, kind, isOpen, onOpenChange }: LeadCardModalProps
     queryKey: ["organization-members", currentOrganization?.id],
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
-      const { data, error } = await supabase
+      // First get org members
+      const { data: memberData, error: memberError } = await supabase
         .from("organization_members")
-        .select("user_id, profiles(full_name)")
+        .select("user_id")
         .eq("organization_id", currentOrganization.id);
-      if (error) throw error;
-      return (data ?? []).map((member) => ({
+      if (memberError) throw memberError;
+      
+      if (!memberData?.length) return [];
+      
+      // Then get profiles for those users
+      const userIds = memberData.map(m => m.user_id);
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      if (profileError) throw profileError;
+      
+      // Map them together
+      const profileMap = new Map((profileData || []).map(p => [p.id, p.full_name]));
+      return memberData.map((member) => ({
         user_id: member.user_id,
-        profiles: member.profiles
-          ? {
-              full_name: member.profiles.full_name ?? null,
-            }
-          : null,
+        profiles: {
+          full_name: profileMap.get(member.user_id) ?? null,
+        },
       })) as OrganizationMember[];
     },
     enabled: !!currentOrganization?.id,

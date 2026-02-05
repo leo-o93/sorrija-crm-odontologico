@@ -266,13 +266,13 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
       const { data, error } = await supabase
-        .from("patient_notes")
+        .from("patient_notes" as any)
         .select("id, note, created_at, author_id, profiles(full_name)")
         .eq("organization_id", currentOrganization.id)
         .eq("patient_id", patient.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as PatientNote[];
+      return (data as any[] ?? []) as PatientNote[];
     },
     enabled: open && !!patient?.id,
   });
@@ -283,7 +283,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
         throw new Error("Usuário não identificado");
       }
       const { error } = await supabase
-        .from("patient_notes")
+        .from("patient_notes" as any)
         .insert({
           organization_id: currentOrganization.id,
           patient_id: patient.id,
@@ -301,7 +301,7 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
   const deleteNote = useMutation({
     mutationFn: async (noteId: string) => {
       const { error } = await supabase
-        .from("patient_notes")
+        .from("patient_notes" as any)
         .delete()
         .eq("id", noteId);
       if (error) throw error;
@@ -721,8 +721,8 @@ export function PatientDetailPanel({ patient, open, onOpenChange }: PatientDetai
                               {format(new Date(appointment.appointment_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {appointment.procedures?.name || "Consulta"}
-                              {appointment.professionals?.name ? ` • ${appointment.professionals.name}` : ""}
+                              {(appointment as any).procedures?.name || "Consulta"}
+                              {(appointment as any).professionals?.name ? ` • ${(appointment as any).professionals.name}` : ""}
                             </p>
                           </div>
                         </div>

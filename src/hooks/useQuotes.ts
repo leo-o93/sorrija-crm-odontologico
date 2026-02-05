@@ -76,7 +76,6 @@ export function useQuotes(filters?: { status?: string; search?: string }) {
           *,
           leads(name, phone),
           patients(name, phone),
-          professional:professionals(id, name),
           quote_items(*),
           quote_payments(*)
         `)
@@ -94,7 +93,15 @@ export function useQuotes(filters?: { status?: string; search?: string }) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Quote[];
+      // Map items and add subtotal if missing
+      return (data || []).map((quote: any) => ({
+        ...quote,
+        professional: null,
+        quote_items: (quote.quote_items || []).map((item: any) => ({
+          ...item,
+          subtotal: item.subtotal ?? item.total_price,
+        })),
+      })) as Quote[];
     },
   });
 }
@@ -109,7 +116,6 @@ export function useQuote(id: string) {
           *,
           leads(name, phone),
           patients(name, phone),
-          professional:professionals(id, name),
           quote_items(*),
           quote_payments(*)
         `)
@@ -117,7 +123,16 @@ export function useQuote(id: string) {
         .single();
 
       if (error) throw error;
-      return data as Quote;
+      // Map items and add subtotal if missing
+      const quote = data as any;
+      return {
+        ...quote,
+        professional: null,
+        quote_items: (quote.quote_items || []).map((item: any) => ({
+          ...item,
+          subtotal: item.subtotal ?? item.total_price,
+        })),
+      } as Quote;
     },
     enabled: !!id,
   });
