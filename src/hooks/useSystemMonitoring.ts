@@ -71,13 +71,45 @@ export function useSystemMonitoring() {
       }
 
       const orgId = currentOrganization.id;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        return {
+          whatsappStatus: 'not_configured',
+          whatsappInstance: null,
+          leadsCount: { total: 0, hot: 0, warm: 0, cold: 0, new: 0 },
+          conversationsCount: { total: 0, open: 0, closed: 0 },
+          messagesToday: 0,
+          webhooksLast24h: 0,
+          lastAutoTransition: null,
+          recentWebhooks: [],
+          systemAlerts: [],
+        };
+      }
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: whatsappData } = await supabase.functions.invoke('check-whatsapp-status', {
+      const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('check-whatsapp-status', {
         body: { organizationId: orgId },
       });
+      if (whatsappError) {
+        const message = whatsappError.message?.toLowerCase() || '';
+        if (message.includes('invalid jwt')) {
+          return {
+            whatsappStatus: 'not_configured',
+            whatsappInstance: null,
+            leadsCount: { total: 0, hot: 0, warm: 0, cold: 0, new: 0 },
+            conversationsCount: { total: 0, open: 0, closed: 0 },
+            messagesToday: 0,
+            webhooksLast24h: 0,
+            lastAutoTransition: null,
+            recentWebhooks: [],
+            systemAlerts: [],
+          };
+        }
+        throw whatsappError;
+      }
 
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
