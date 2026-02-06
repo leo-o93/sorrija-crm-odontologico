@@ -133,16 +133,7 @@ export function useEvolutionAPI() {
         body: { phone, limit: 100, organizationId: currentOrganization.id }
       });
       
-      if (error) {
-        const message = error.message?.toLowerCase() || "";
-        if (message.includes("invalid jwt")) {
-          if (!silent) {
-            throw new Error("Sessão expirada");
-          }
-          return { synced: 0, silent, skipped: true };
-        }
-        throw error;
-      }
+      if (error) throw error;
       return { ...data, silent };
     },
     onSuccess: (data) => {
@@ -177,13 +168,7 @@ export function useEvolutionAPI() {
         body: { syncAll: true, limit: 100, organizationId: currentOrganization.id }
       });
       
-      if (error) {
-        const message = error.message?.toLowerCase() || "";
-        if (message.includes("invalid jwt")) {
-          throw new Error("Sessão expirada");
-        }
-        throw error;
-      }
+      if (error) throw error;
       return data;
     },
     onSuccess: (data) => {

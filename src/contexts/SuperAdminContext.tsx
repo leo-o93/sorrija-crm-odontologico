@@ -92,15 +92,9 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    try {
-      const { data } = await supabase.rpc('is_super_admin');
-      setIsSuperAdmin(!!data);
-    } catch (error) {
-      console.error('Error checking super admin:', error);
-      setIsSuperAdmin(false);
-    } finally {
-      setIsLoading(false);
-    }
+    const { data } = await supabase.rpc('is_super_admin');
+    setIsSuperAdmin(!!data);
+    setIsLoading(false);
   };
 
   const callAdminFunction = async (path: string, method: string, body?: Record<string, unknown>) => {
