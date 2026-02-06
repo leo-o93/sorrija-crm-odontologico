@@ -101,6 +101,10 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
 
+    if (!token) {
+      throw new Error("Sessão expirada");
+    }
+
     const response = await fetch(`${getFunctionsBaseUrl()}/admin-manage-organizations${path}`, {
       method,
       headers: {
@@ -113,6 +117,9 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     const payload = await safeJson(response);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Sessão expirada");
+      }
       const errorMessage =
         (payload && typeof payload === 'object' && 'error' in payload && payload.error) ||
         'Erro na operação';
@@ -122,19 +129,35 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     return payload;
   };
 
+  const handleAdminError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : "";
+    if (message.toLowerCase().includes("sessão expirada") || message.toLowerCase().includes("invalid jwt")) {
+      setIsSuperAdmin(false);
+    }
+  };
+
   const loadOrganizations = async () => {
-    const result = await callAdminFunction('', 'GET');
-    setOrganizations(result.organizations || []);
+    try {
+      const result = await callAdminFunction('', 'GET');
+      setOrganizations(result.organizations || []);
+    } catch (error) {
+      console.error('Error loading organizations:', error);
+      handleAdminError(error);
+    }
   };
 
   const loadAuditLogs = async () => {
-    const { data } = await supabase
-      .from('admin_audit_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      const { data } = await supabase
+        .from('admin_audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    setAuditLogs((data || []) as AuditLog[]);
+      setAuditLogs((data || []) as AuditLog[]);
+    } catch (error) {
+      console.error('Error loading audit logs:', error);
+    }
   };
 
   const loadGlobalStats = async () => {
@@ -165,6 +188,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return result as CreateOrgResult;
     } catch (error) {
       console.error('Error creating organization:', error);
+      handleAdminError(error);
       throw error;
     }
   };
@@ -176,6 +200,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return true;
     } catch (error) {
       console.error('Error updating organization:', error);
+      handleAdminError(error);
       throw error;
     }
   };
@@ -187,6 +212,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return true;
     } catch (error) {
       console.error('Error deleting organization:', error);
+      handleAdminError(error);
       throw error;
     }
   };
@@ -197,6 +223,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return result.members || [];
     } catch (error) {
       console.error('Error getting organization members:', error);
+      handleAdminError(error);
       throw error;
     }
   };
@@ -207,6 +234,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return true;
     } catch (error) {
       console.error('Error adding member:', error);
+      handleAdminError(error);
       throw error;
     }
   };
@@ -217,6 +245,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       return true;
     } catch (error) {
       console.error('Error removing member:', error);
+      handleAdminError(error);
       throw error;
     }
   };
