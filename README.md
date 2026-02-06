@@ -267,5 +267,3 @@ Consulte o arquivo [CHECKLIST.md](./CHECKLIST.md) para validação manual comple
 Projeto proprietário - Todos os direitos reservados.
 
 ---
-
-Desenvolvido com ❤️ usando [Lovable](https://lovable.dev)
