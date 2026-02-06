@@ -197,11 +197,11 @@ export function useCreateInternalChatRoom() {
       const roomData = room as any;
       const { error: memberError } = await supabase
         .from("internal_chat_room_members" as any)
-        .insert({
+        .upsert({
           room_id: roomData.id,
           user_id: user.id,
           role: "owner",
-        });
+        }, { onConflict: "room_id,user_id", ignoreDuplicates: true });
 
       if (memberError) throw memberError;
       return roomData as InternalChatRoom;
@@ -225,7 +225,7 @@ export function useJoinInternalChatRoom() {
       if (!user?.id) throw new Error("No user session");
       const { error } = await supabase
         .from("internal_chat_room_members" as any)
-        .insert({ room_id: roomId, user_id: user.id, role: "member" });
+        .upsert({ room_id: roomId, user_id: user.id, role: "member" }, { onConflict: "room_id,user_id", ignoreDuplicates: true });
 
       if (error) throw error;
     },

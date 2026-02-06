@@ -41,6 +41,12 @@ export function useAutoLeadTransitions(options?: {
       return { success: false, error: 'Already running' };
     }
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      return { success: false, error: 'Sessão expirada' };
+    }
+
     const now = Date.now();
     // Global cooldown of 30 seconds between all instances
     if (now - globalLastRun < 30000) {
@@ -59,6 +65,11 @@ export function useAutoLeadTransitions(options?: {
 
       if (error) {
         console.error('Error running auto-lead-transitions:', error);
+        if (error.message?.toLowerCase().includes('invalid jwt')) {
+          const result: TransitionResult = { success: false, error: 'Sessão expirada' };
+          setLastResult(result);
+          return result;
+        }
         const result: TransitionResult = { success: false, error: error.message };
         setLastResult(result);
         return result;

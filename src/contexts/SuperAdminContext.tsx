@@ -123,10 +123,6 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       throw new Error("Sessão expirada");
     }
 
-    if (!token) {
-      throw new Error("Sessão expirada");
-    }
-
     const response = await fetch(`${getFunctionsBaseUrl()}/admin-manage-organizations${path}`, {
       method,
       headers: {
