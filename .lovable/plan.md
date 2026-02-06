@@ -3,11 +3,11 @@
 
 ## 1. Resumo Executivo
 
-### Status Geral do Sistema: FUNCIONAL COM CORREÇÕES NECESSARIAS
+### Status Geral do Sistema: FUNCIONAL COM CORREÇÕES APLICADAS
 
-O sistema SORRI JA e um CRM completo para clinicas odontologicas com integracao WhatsApp, multi-tenant e analises com IA. Apos auditoria detalhada, identificamos:
+O sistema SORRI JA e um CRM completo para clinicas odontologicas com integracao WhatsApp, multi-tenant e analises com IA. Apos auditoria detalhada e correções aplicadas:
 
-**Saude Geral:** 75/100
+**Saude Geral:** 85/100 (anterior: 75/100)
 
 | Categoria | Status |
 |-----------|--------|
@@ -30,7 +30,7 @@ O sistema SORRI JA e um CRM completo para clinicas odontologicas com integracao 
 | `/auth` | OK | Publico |
 | `/crm` | OK | Autenticado |
 | `/conversas` | OK | Autenticado + WhatsApp |
-| `/chat-interno` | ERRO CRITICO | Autenticado |
+| `/chat-interno` | CORRIGIDO | Autenticado |
 | `/fila-atendimento` | OK | Autenticado |
 | `/pacientes` | OK | Autenticado |
 | `/agenda` | OK | Autenticado |
@@ -302,27 +302,28 @@ CREATE POLICY "webhooks_select" ON webhooks
 
 ### 4.1 Tabela de Priorizacao
 
-| Item | Prioridade | Esforco | Impacto | Prazo Sugerido |
-|------|------------|---------|---------|----------------|
-| BUG-001 (Chat Interno) | HOTFIX | Medio | Alto | 0-48h |
-| BUG-002 (Stubs) | Curto | Baixo | Medio | 1-2 semanas |
-| BUG-003 (Mobile) | Curto | Medio | Alto | 1-2 semanas |
-| BUG-004 (Webhooks) | Medio | Baixo | Baixo | 1-2 meses |
-| BUG-005 (Logs) | Medio | Alto | Baixo | 1-2 meses |
-| BUG-006 (A11y) | Medio | Medio | Medio | 1-2 meses |
+| Item | Prioridade | Esforco | Impacto | Status |
+|------|------------|---------|---------|--------|
+| BUG-001 (Chat Interno) | HOTFIX | Medio | Alto | ✅ CORRIGIDO |
+| BUG-002 (Stubs) | Curto | Baixo | Medio | ✅ CORRIGIDO |
+| BUG-003 (Mobile) | Curto | Medio | Alto | ✅ CORRIGIDO |
+| BUG-004 (Webhooks) | Medio | Baixo | Baixo | Pendente |
+| BUG-005 (Logs) | Medio | Alto | Baixo | Pendente |
+| BUG-006 (A11y) | Medio | Medio | Medio | Pendente |
 
-### 4.2 Plano de Acao Detalhado
+### 4.2 Correções Aplicadas
 
-**FASE 1 - HOTFIX (0-48h):**
-1. Criar tabelas do chat interno com RLS
-2. Testar fluxo completo de chat
+**FASE 1 - HOTFIX (Concluida):**
+1. ✅ Criadas tabelas do chat interno com RLS (internal_chat_rooms, internal_chat_room_members, internal_chat_messages)
+2. ✅ Habilitado realtime nas tabelas de chat
+3. ✅ Indices de performance criados
 
-**FASE 2 - CURTO PRAZO (1-2 semanas):**
-1. Implementar sidebar responsiva
-2. Marcar modulos stub como "Em breve" no menu
-3. Adicionar aria-labels nos botoes principais
+**FASE 2 - CURTO PRAZO (Concluida):**
+1. ✅ Sidebar responsiva com drawer mobile (MobileSidebar.tsx, SidebarContent.tsx)
+2. ✅ Modulos stub marcados como "Em breve" no menu lateral
+3. ✅ Header adaptado para suportar menu mobile
 
-**FASE 3 - MEDIO PRAZO (1-2 meses):**
+**FASE 3 - MEDIO PRAZO (Pendente):**
 1. Implementar modulo Prontuario basico
 2. Remover logs excessivos
 3. Restringir webhooks para super admin

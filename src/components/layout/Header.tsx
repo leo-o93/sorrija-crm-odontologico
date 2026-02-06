@@ -40,7 +40,11 @@ interface SearchResult {
   extra?: string;
 }
 
-export function Header() {
+interface HeaderProps {
+  children?: React.ReactNode;
+}
+
+export function Header({ children }: HeaderProps) {
   const navigate = useNavigate();
   const { connectionState } = useEvolutionAPI();
   const { currentOrganization } = useOrganization();
@@ -206,7 +210,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="flex h-16 items-center gap-4 px-6">
+      <div className="flex h-16 items-center gap-4 px-4 md:px-6">
+        {/* Mobile menu trigger */}
+        {children}
+        
         {/* Search */}
         <div className="flex-1 max-w-md relative">
           <div className="relative">
