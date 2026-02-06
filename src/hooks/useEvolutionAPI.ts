@@ -133,7 +133,16 @@ export function useEvolutionAPI() {
         body: { phone, limit: 100, organizationId: currentOrganization.id }
       });
       
-      if (error) throw error;
+      if (error) {
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("invalid jwt")) {
+          if (!silent) {
+            throw new Error("Sessão expirada");
+          }
+          return { synced: 0, silent, skipped: true };
+        }
+        throw error;
+      }
       return { ...data, silent };
     },
     onSuccess: (data) => {
@@ -168,7 +177,13 @@ export function useEvolutionAPI() {
         body: { syncAll: true, limit: 100, organizationId: currentOrganization.id }
       });
       
-      if (error) throw error;
+      if (error) {
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("invalid jwt")) {
+          throw new Error("Sessão expirada");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -189,12 +204,22 @@ export function useEvolutionAPI() {
       if (!currentOrganization?.id) {
         throw new Error('Nenhuma organização selecionada');
       }
+      const token = await getSessionToken();
+      if (!token) {
+        throw new Error('Sessão expirada');
+      }
 
       const { data, error } = await supabase.functions.invoke('check-whatsapp-status', {
         body: { organizationId: currentOrganization.id }
       });
       
-      if (error) throw error;
+      if (error) {
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("invalid jwt")) {
+          throw new Error("Sessão expirada");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
