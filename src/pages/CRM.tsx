@@ -831,6 +831,17 @@ export default function CRM() {
   const isLoading = activeFunnel === "patients"
     ? isLoadingPatients
     : isLoadingLeads || isLoadingStatuses;
+  const patientsByStatus = useMemo(() => {
+    const buckets = new Map<string, Patient[]>();
+    patientFunnelColumns.forEach((column) => buckets.set(column.name, []));
+    (patients || []).forEach((patient) => {
+      const status = resolvePatientFunnelStatus(patient);
+      const bucket = buckets.get(status) ?? [];
+      bucket.push(patient);
+      buckets.set(status, bucket);
+    });
+    return buckets;
+  }, [patients]);
   if (isLoading) {
     return <div className="p-6">
         <div className="mb-6">
@@ -853,18 +864,6 @@ export default function CRM() {
     ? (filteredLeads?.filter((lead) => (lead.status || "").toLowerCase().includes("perdido")).length || 0)
     : (lostCount || 0);
   const scheduledRate = totalLeads > 0 ? (scheduledLeads / totalLeads) * 100 : 0;
-
-  const patientsByStatus = useMemo(() => {
-    const buckets = new Map<string, Patient[]>();
-    patientFunnelColumns.forEach((column) => buckets.set(column.name, []));
-    (patients || []).forEach((patient) => {
-      const status = resolvePatientFunnelStatus(patient);
-      const bucket = buckets.get(status) ?? [];
-      bucket.push(patient);
-      buckets.set(status, bucket);
-    });
-    return buckets;
-  }, [patients]);
 
   const totalPatients = patients?.length || 0;
   const closedAllPatients = patientsByStatus.get("fechou_tudo")?.length || 0;
