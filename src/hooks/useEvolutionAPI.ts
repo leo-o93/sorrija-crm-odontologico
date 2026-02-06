@@ -28,6 +28,10 @@ export function useEvolutionAPI() {
   const { config } = useEvolution();
   const { currentOrganization } = useOrganization();
   const queryClient = useQueryClient();
+  const getSessionToken = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  };
 
   const fetchConnectionState = async (): Promise<ConnectionState> => {
     if (!config) throw new Error('Evolution API not configured');
@@ -117,6 +121,13 @@ export function useEvolutionAPI() {
       if (!currentOrganization?.id) {
         throw new Error('Nenhuma organização selecionada');
       }
+      const token = await getSessionToken();
+      if (!token) {
+        if (!silent) {
+          throw new Error('Sessão expirada');
+        }
+        return { synced: 0, silent, skipped: true };
+      }
 
       const { data, error } = await supabase.functions.invoke('sync-message-history', {
         body: { phone, limit: 100, organizationId: currentOrganization.id }
@@ -147,6 +158,10 @@ export function useEvolutionAPI() {
     mutationFn: async () => {
       if (!currentOrganization?.id) {
         throw new Error('Nenhuma organização selecionada');
+      }
+      const token = await getSessionToken();
+      if (!token) {
+        throw new Error('Sessão expirada');
       }
 
       const { data, error } = await supabase.functions.invoke('sync-message-history', {

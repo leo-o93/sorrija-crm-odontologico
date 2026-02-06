@@ -13,30 +13,15 @@ import {
   Briefcase,
   Target,
   Webhook,
-  Brain,
   Activity,
   Shield,
-  ClipboardList,
-  FileSignature,
-  Package,
-  ClipboardCheck,
-  CreditCard
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/sorri-ja-logo.jpeg";
 import { useSuperAdmin } from "@/contexts/SuperAdminContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppRole } from "@/lib/roles";
-import { Badge } from "@/components/ui/badge";
-
-// Stub routes that are not yet implemented
-const STUB_ROUTES = [
-  "/prontuario",
-  "/tratamentos",
-  "/documentos-clinicos",
-  "/estoque",
-  "/billing",
-];
 
 // All navigation items
 const allNavigation: Array<{
@@ -54,14 +39,8 @@ const allNavigation: Array<{
   { name: "Pacientes", href: "/pacientes", icon: Users, restrictedTo: null },
   { name: "Agenda", href: "/agenda", icon: Calendar, restrictedTo: null },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, restrictedTo: null },
-  { name: "Prontuário", href: "/prontuario", icon: ClipboardList, restrictedTo: null },
-  { name: "Planos de Tratamento", href: "/tratamentos", icon: FileText, restrictedTo: null },
-  { name: "Documentos", href: "/documentos-clinicos", icon: FileSignature, restrictedTo: null },
   { name: "Financeiro", href: "/financeiro", icon: DollarSign, restrictedTo: ['admin'] },
-  { name: "Estoque", href: "/estoque", icon: Package, restrictedTo: ['admin'] },
-  { name: "Billing", href: "/billing", icon: CreditCard, restrictedTo: ['admin'] },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3, restrictedTo: null },
-  { name: "Relatórios IA", href: "/relatorios-ia", icon: Brain, restrictedTo: null },
   { name: "Indicadores", href: "/indicadores", icon: PieChart, restrictedTo: null },
   { name: "Marketing", href: "/marketing", icon: Target, restrictedTo: null },
   { name: "Webhooks", href: "/webhooks", icon: Webhook, restrictedTo: ['admin'] },
@@ -103,8 +82,6 @@ export function SidebarContent({ onNavigate }: SidebarContentProps) {
 
   const visibleNavItems = getVisibleNavItems();
 
-  const isStubRoute = (href: string) => STUB_ROUTES.includes(href);
-
   return (
     <>
       {/* Logo */}
@@ -131,14 +108,6 @@ export function SidebarContent({ onNavigate }: SidebarContentProps) {
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
                 <span className="flex-1">{item.name}</span>
-                {isStubRoute(item.href) && (
-                  <Badge 
-                    variant="outline" 
-                    className="text-[10px] px-1.5 py-0 h-4 bg-warning/20 text-warning border-warning/50"
-                  >
-                    Em breve
-                  </Badge>
-                )}
               </NavLink>
             </li>
           ))}
