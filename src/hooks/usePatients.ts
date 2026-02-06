@@ -127,9 +127,10 @@ export function useCreatePatient() {
   return useMutation({
     mutationFn: async (input: CreatePatientInput) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
-      
+      const { patient_origin: _patientOrigin, ...patientInput } = input;
+
       const { data, error } = await supabase.from("patients").insert([{
-        ...input,
+        ...patientInput,
         organization_id: currentOrganization.id
       }]).select().single();
 
@@ -151,9 +152,10 @@ export function useUpdatePatient() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdatePatientInput) => {
+      const { patient_origin: _patientOrigin, ...patientInput } = input;
       const { data, error } = await supabase
         .from("patients")
-        .update(input)
+        .update(patientInput)
         .eq("id", id)
         .select()
         .single();

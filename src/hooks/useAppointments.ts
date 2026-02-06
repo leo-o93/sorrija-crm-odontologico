@@ -103,12 +103,13 @@ export function useCreateAppointment() {
   return useMutation({
     mutationFn: async (input: CreateAppointmentInput) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
+      const { professional_id: _professionalId, ...appointmentInput } = input;
       
       const { data: appointment, error } = await supabase
         .from("appointments")
         .insert({
-          ...input,
-          status: input.status || "scheduled",
+          ...appointmentInput,
+          status: appointmentInput.status || "scheduled",
           organization_id: currentOrganization.id,
         })
         .select()
@@ -117,8 +118,8 @@ export function useCreateAppointment() {
       if (error) throw error;
 
       // Se tem lead_id, atualizar o lead para marcá-lo como agendado
-      if (input.lead_id && input.status !== 'cancelled' && input.status !== 'attended' && input.status !== 'no_show') {
-        const appointmentDate = input.appointment_date?.split('T')[0] || null;
+      if (appointmentInput.lead_id && appointmentInput.status !== 'cancelled' && appointmentInput.status !== 'attended' && appointmentInput.status !== 'no_show') {
+        const appointmentDate = appointmentInput.appointment_date?.split('T')[0] || null;
         await supabase
           .from("leads")
           .update({
@@ -126,7 +127,7 @@ export function useCreateAppointment() {
             appointment_date: appointmentDate,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", input.lead_id)
+          .eq("id", appointmentInput.lead_id)
           .select("id")
           .single();
       }
@@ -150,9 +151,10 @@ export function useUpdateAppointment() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateAppointmentInput) => {
+      const { professional_id: _professionalId, ...appointmentInput } = input;
       const { data, error } = await supabase
         .from("appointments")
-        .update(input)
+        .update(appointmentInput)
         .eq("id", id)
         .select("*, lead_id")
         .single();
@@ -160,7 +162,26 @@ export function useUpdateAppointment() {
       if (error) throw error;
 
       if (data.lead_id) {
-        if (data.status === "scheduled" || data.status === "rescheduled") {
+        const scheduledStatuses = new Set([
+          "scheduled",
+          "rescheduled",
+          "confirmed",
+          "agendado",
+          "confirmado",
+          "remarcado",
+          "reagendado",
+          "reprogramado",
+        ]);
+        const closedStatuses = new Set([
+          "attended",
+          "cancelled",
+          "no_show",
+          "atendido",
+          "cancelado",
+          "faltou",
+          "falta",
+        ]);
+        if (scheduledStatuses.has(data.status)) {
           await supabase
             .from("leads")
             .update({
@@ -173,7 +194,7 @@ export function useUpdateAppointment() {
             .single();
         }
 
-        if (data.status === "attended" || data.status === "cancelled" || data.status === "no_show") {
+        if (closedStatuses.has(data.status)) {
           // Buscar próximo agendamento ativo para o lead
           const { data: nextAppointment } = await supabase
             .from("appointments")

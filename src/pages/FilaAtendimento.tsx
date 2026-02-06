@@ -31,6 +31,23 @@ const appointmentStatusBadge: Record<string, string> = {
   cancelled: "bg-purple-100 text-purple-800",
 };
 
+const normalizeAppointmentStatus = (status: string | null | undefined) => {
+  if (!status) return "scheduled";
+  const normalized = status.toLowerCase();
+  const map: Record<string, string> = {
+    agendado: "scheduled",
+    confirmado: "confirmed",
+    remarcado: "rescheduled",
+    reagendado: "rescheduled",
+    reprogramado: "rescheduled",
+    falta: "no_show",
+    faltou: "no_show",
+    cancelado: "cancelled",
+    atendido: "attended",
+  };
+  return map[normalized] || normalized;
+};
+
 const getQueueContact = (entry: AttendanceQueueEntry) =>
   entry.appointment?.patient ||
   entry.appointment?.lead ||
@@ -88,7 +105,7 @@ export default function FilaAtendimento() {
   const pendingCheckInAppointments = useMemo(() => {
     const queueEligibleStatuses = new Set(["scheduled", "confirmed", "rescheduled"]);
     return (appointments || [])
-      .filter((appointment) => queueEligibleStatuses.has(appointment.status))
+      .filter((appointment) => queueEligibleStatuses.has(normalizeAppointmentStatus(appointment.status)))
       .filter((appointment) => !appointmentQueueIds.has(appointment.id))
       .filter((appointment) => {
         if (!normalizedSearch) return true;
@@ -190,8 +207,9 @@ export default function FilaAtendimento() {
             {pendingCheckInAppointments.map((appointment) => {
               const contact = appointment.patient || appointment.lead;
               const professionalName = appointment.professional?.name;
+              const normalizedStatus = normalizeAppointmentStatus(appointment.status);
               const badgeClass =
-                appointmentStatusBadge[appointment.status] || "bg-gray-100 text-gray-700";
+                appointmentStatusBadge[normalizedStatus] || "bg-gray-100 text-gray-700";
 
               return (
                 <Card key={appointment.id} className="p-4">
@@ -200,7 +218,7 @@ export default function FilaAtendimento() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold">{contact?.name || "Sem nome"}</h3>
                         <Badge className={badgeClass}>
-                          {appointmentStatusLabel[appointment.status] || appointment.status}
+                          {appointmentStatusLabel[normalizedStatus] || appointment.status}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{contact?.phone}</p>
