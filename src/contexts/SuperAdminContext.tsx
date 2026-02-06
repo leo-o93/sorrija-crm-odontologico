@@ -103,9 +103,25 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const callAdminFunction = async (path: string, method: string, body?: Record<string, unknown>) => {
+  const getSessionToken = async () => {
     const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
+    const accessToken = session.data.session?.access_token;
+    const expiresAt = session.data.session?.expires_at;
+    if (!accessToken) {
+      return null;
+    }
+    if (expiresAt && Date.now() / 1000 > expiresAt) {
+      return null;
+    }
+    return accessToken;
+  };
+
+  const callAdminFunction = async (path: string, method: string, body?: Record<string, unknown>) => {
+    const token = await getSessionToken();
+
+    if (!token) {
+      throw new Error("Sessão expirada");
+    }
 
     if (!token) {
       throw new Error("Sessão expirada");
@@ -129,6 +145,9 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       const errorMessage =
         (payload && typeof payload === 'object' && 'error' in payload && payload.error) ||
         'Erro na operação';
+      if (String(errorMessage).toLowerCase().includes("invalid jwt")) {
+        throw new Error("Sessão expirada");
+      }
       throw new Error(String(errorMessage));
     }
 
@@ -149,6 +168,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     } catch (error) {
       console.error('Error loading organizations:', error);
       handleAdminError(error);
+      setOrganizations([]);
     }
   };
 
