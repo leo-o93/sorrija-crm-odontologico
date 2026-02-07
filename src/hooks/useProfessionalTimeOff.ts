@@ -32,13 +32,13 @@ export function useProfessionalTimeOff(professionalId?: string) {
     queryFn: async () => {
       if (!professionalId) return [];
       const { data, error } = await supabase
-        .from("professional_time_off" as any)
+        .from("professional_time_off")
         .select("*")
         .eq("professional_id", professionalId)
         .order("date", { ascending: true })
         .order("start_time", { ascending: true });
       if (error) throw error;
-      return (data as any[]) as ProfessionalTimeOff[];
+      return (data || []) as ProfessionalTimeOff[];
     },
     enabled: !!professionalId,
   });
@@ -50,12 +50,12 @@ export function useCreateProfessionalTimeOff() {
   return useMutation({
     mutationFn: async (input: ProfessionalTimeOffInsert) => {
       const { data, error } = await supabase
-        .from("professional_time_off" as any)
+        .from("professional_time_off")
         .insert(input)
         .select()
         .single();
       if (error) throw error;
-      return data as unknown as ProfessionalTimeOff;
+      return data as ProfessionalTimeOff;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({
@@ -71,7 +71,7 @@ export function useDeleteProfessionalTimeOff() {
   return useMutation({
     mutationFn: async (input: { id: string; professionalId: string }) => {
       const { error } = await supabase
-        .from("professional_time_off" as any)
+        .from("professional_time_off")
         .delete()
         .eq("id", input.id);
       if (error) throw error;

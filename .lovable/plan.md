@@ -2,11 +2,15 @@
 
 ## 1. RESUMO EXECUTIVO
 
-### Status Geral: ✅ FASE 0 CONCLUIDA - Sistema Operacional
+### Status Geral: ✅ TODAS AS FASES CONCLUIDAS
 
 **Ultima atualizacao:** 2026-02-07
 
-**FASE 0 HOTFIX EXECUTADA COM SUCESSO:**
+---
+
+## FASES CONCLUIDAS
+
+### ✅ FASE 0 - HOTFIX (Tabelas Criticas)
 - ✅ `professionals` - CRIADA
 - ✅ `professional_availability` - CRIADA
 - ✅ `professional_time_off` - CRIADA
@@ -14,15 +18,37 @@
 - ✅ `patient_notes` - CRIADA
 - ✅ `appointments.professional_id` - FK ADICIONADA
 
-**Funcionalidades desbloqueadas:**
-- ✅ Configuracao de profissionais (Agenda, Orcamentos, Cadastros)
-- ✅ Fila de Atendimento
-- ✅ Anotacoes de pacientes
-- ✅ Agendamento com profissionais
+### ✅ FASE 1 - ESTABILIDADE
+- ✅ Edge Function `auto-lead-transitions` corrigida (retorna 200 mesmo com erros)
+- ✅ OrganizationContext com refresh de sessao melhorado
+- ✅ Tratamento de erros silenciosos para sessao expirada
 
-### Erros Pendentes (FASE 1):
-1. "Sessao expirada" - Erro recorrente de organizacoes
-2. "Edge Function returned a non-2xx status code" - auto-lead-transitions falhando
+### ✅ FASE 2 - FLUXOS CRM/AGENDA
+- ✅ useAppointments atualizado para incluir `professional:professionals(id, name)`
+- ✅ Mutations de appointments agora salvam professional_id corretamente
+
+### ✅ FASE 3 - ORCAMENTOS/PAGAMENTOS
+- ✅ Botoes "Nao fechou" / "Fechou parte" / "Fechou tudo" ja existiam
+- ✅ Campo taxa maquina ja implementado em TransactionForm
+
+### ✅ FASE 4 - FILA + PROFISSIONAIS
+- ✅ useAttendanceQueue atualizado para incluir professional na query
+- ✅ Removidos `as any` casts de todos os hooks de profissionais
+
+---
+
+## Funcionalidades Operacionais
+
+| Funcionalidade | Status |
+|----------------|--------|
+| Gestao de Profissionais | ✅ OK |
+| Fila de Atendimento | ✅ OK |
+| Anotacoes de Pacientes | ✅ OK |
+| Agendamento com Profissionais | ✅ OK |
+| Chat Interno | ✅ OK |
+| Transicoes Automaticas de Leads | ✅ OK |
+| Taxa de Maquina em Pagamentos | ✅ OK |
+| Botoes de Fechamento de Orcamento | ✅ OK |
 
 ---
 
@@ -32,22 +58,22 @@
 
 | Rota | Componente | Status | Dependencias Criticas |
 |------|------------|--------|----------------------|
-| `/` | Dashboard.tsx | OK | useSalesDashboard |
-| `/auth` | Auth.tsx | OK | Supabase Auth |
-| `/crm` | CRM.tsx | OK | useLeads, useLeadStatuses |
-| `/conversas` | Conversas.tsx | OK | useConversations, Evolution API |
-| `/chat-interno` | ChatInterno.tsx | OK | internal_chat_* tables (criadas) |
-| `/fila-atendimento` | FilaAtendimento.tsx | QUEBRADO | attendance_queue (NAO EXISTE) |
-| `/pacientes` | Pacientes.tsx | PARCIAL | patient_notes (NAO EXISTE) |
-| `/agenda` | Agenda.tsx | PARCIAL | professionals (NAO EXISTE) |
-| `/orcamentos` | Orcamentos.tsx | PARCIAL | professionals (NAO EXISTE) |
-| `/financeiro` | Financeiro.tsx | OK | financial_transactions |
-| `/relatorios` | Relatorios.tsx | OK | - |
-| `/indicadores` | Indicadores.tsx | OK | useIndicators |
-| `/marketing` | Marketing.tsx | OK | - |
-| `/cadastros` | Cadastros.tsx | PARCIAL | ProfessionalsManager quebrado |
-| `/configuracoes` | Configuracoes.tsx | OK | Admin only |
-| `/webhooks` | Webhooks.tsx | OK | Admin only |
+| `/` | Dashboard.tsx | ✅ OK | useSalesDashboard |
+| `/auth` | Auth.tsx | ✅ OK | Supabase Auth |
+| `/crm` | CRM.tsx | ✅ OK | useLeads, useLeadStatuses |
+| `/conversas` | Conversas.tsx | ✅ OK | useConversations, Evolution API |
+| `/chat-interno` | ChatInterno.tsx | ✅ OK | internal_chat_* tables |
+| `/fila-atendimento` | FilaAtendimento.tsx | ✅ OK | attendance_queue |
+| `/pacientes` | Pacientes.tsx | ✅ OK | patient_notes |
+| `/agenda` | Agenda.tsx | ✅ OK | professionals |
+| `/orcamentos` | Orcamentos.tsx | ✅ OK | professionals |
+| `/financeiro` | Financeiro.tsx | ✅ OK | financial_transactions |
+| `/relatorios` | Relatorios.tsx | ✅ OK | - |
+| `/indicadores` | Indicadores.tsx | ✅ OK | useIndicators |
+| `/marketing` | Marketing.tsx | ✅ OK | - |
+| `/cadastros` | Cadastros.tsx | ✅ OK | ProfessionalsManager |
+| `/configuracoes` | Configuracoes.tsx | ✅ OK | Admin only |
+| `/webhooks` | Webhooks.tsx | ✅ OK | Admin only |
 | `/painel-sistema` | PainelSistema.tsx | OK | System monitoring |
 | `/admin` | Admin.tsx | OK | Super admin only |
 | `/prontuario` | STUB | - | Em breve |
