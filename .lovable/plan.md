@@ -1,396 +1,608 @@
 
-# Auditoria Completa do Sistema SORRI JA - Plano de Correção e Validação
+# AUDITORIA COMPLETA DO SISTEMA SORRI JA
 
-## 1. Resumo Executivo
+## 1. RESUMO EXECUTIVO
 
-### Status Geral do Sistema: FUNCIONAL COM CORREÇÕES APLICADAS
+### Status Geral: ATENCAO - MULTIPLAS TABELAS CRITICAS NAO EXISTEM
 
-O sistema SORRI JA e um CRM completo para clinicas odontologicas com integracao WhatsApp, multi-tenant e analises com IA. Apos auditoria detalhada e correções aplicadas:
+**Descoberta Principal:** O sistema esta referenciando 5 tabelas que NAO existem no banco de dados, causando erros em multiplas funcionalidades criticas:
+- `professionals` - NAO EXISTE
+- `professional_availability` - NAO EXISTE  
+- `professional_time_off` - NAO EXISTE
+- `attendance_queue` - NAO EXISTE
+- `patient_notes` - NAO EXISTE
 
-**Saude Geral:** 85/100 (anterior: 75/100)
+**Impacto:** Essas tabelas ausentes quebram:
+- Configuracao de profissionais (Agenda, Orcamentos, Cadastros)
+- Fila de Atendimento inteira
+- Anotacoes de pacientes
+- Agendamento com profissionais
 
-| Categoria | Status |
-|-----------|--------|
-| Funcionalidade Core | OK |
-| Seguranca | Atencao Necessaria |
-| Performance | Boa |
-| Acessibilidade | Parcial |
-| Banco de Dados | Atencao Necessaria |
-| Responsividade | Parcial |
-
----
-
-## 2. Inventario Completo do Sistema
-
-### 2.1 Paginas/Rotas (26 rotas)
-
-| Rota | Status | Restricao |
-|------|--------|-----------|
-| `/` (Dashboard) | OK | Autenticado |
-| `/auth` | OK | Publico |
-| `/crm` | OK | Autenticado |
-| `/conversas` | OK | Autenticado + WhatsApp |
-| `/chat-interno` | CORRIGIDO | Autenticado |
-| `/fila-atendimento` | OK | Autenticado |
-| `/pacientes` | OK | Autenticado |
-| `/agenda` | OK | Autenticado |
-| `/orcamentos` | OK | Autenticado |
-| `/prontuario` | STUB | Autenticado |
-| `/tratamentos` | STUB | Autenticado |
-| `/documentos-clinicos` | STUB | Autenticado |
-| `/financeiro` | OK | Admin |
-| `/estoque` | STUB | Admin |
-| `/billing` | STUB | Admin |
-| `/relatorios` | OK | Autenticado |
-| `/relatorios-ia` | OK | Autenticado |
-| `/indicadores` | OK | Autenticado |
-| `/marketing` | OK | Autenticado |
-| `/cadastros` | OK | Autenticado |
-| `/configuracoes` | OK | Admin |
-| `/webhooks` | OK | Admin |
-| `/painel-sistema` | OK | Autenticado |
-| `/admin` | OK | Super Admin |
-| `*` (NotFound) | OK | Publico |
-
-### 2.2 Edge Functions (18 funcoes)
-
-| Funcao | Status | Proposito |
-|--------|--------|-----------|
-| `webhook-receiver` | OK | Recebe webhooks Evolution API |
-| `whatsapp-incoming` | OK | Processa mensagens WhatsApp |
-| `messages-send` | OK | Envia mensagens WhatsApp |
-| `check-whatsapp-status` | OK | Verifica status conexao |
-| `sync-message-history` | OK | Sincroniza historico |
-| `sync-whatsapp-contacts` | OK | Sincroniza contatos |
-| `register-evolution-webhook` | OK | Registra webhook |
-| `media-proxy` | OK | Proxy de midia |
-| `conversations-api` | OK | API de conversas |
-| `list-users` | OK | Lista usuarios |
-| `admin-create-user` | OK | Cria usuarios |
-| `admin-manage-organizations` | OK | Gerencia orgs |
-| `import-spreadsheet` | OK | Importa planilhas |
-| `campaign-send` | OK | Envio campanhas |
-| `auto-lead-transitions` | OK | Transicoes automaticas |
-| `ai-lead-analysis` | OK | Analise IA leads |
-| `ai-reports` | OK | Relatorios IA |
-| `whatsapp-status` | OK | Status WhatsApp |
-
-### 2.3 Tabelas do Banco (34 tabelas)
-
-Tabelas principais: leads (4970), patients (1525), organizations (3), messages, conversations, appointments, quotes, financial_transactions, integration_settings, etc.
+### Erros em Console Detectados:
+1. "Sessao expirada" - Erro recorrente de organizacoes
+2. "Edge Function returned a non-2xx status code" - auto-lead-transitions falhando
 
 ---
 
-## 3. Lista de Problemas Identificados
+## 2. INVENTARIO TECNICO COMPLETO
 
-### BUG-001: CRITICO - Tabelas do Chat Interno Inexistentes
+### 2.1 Rotas/Paginas (18 rotas funcionais + 5 stubs)
 
-**Titulo:** Erro React #310 - Tabelas internal_chat_* nao existem no banco
+| Rota | Componente | Status | Dependencias Criticas |
+|------|------------|--------|----------------------|
+| `/` | Dashboard.tsx | OK | useSalesDashboard |
+| `/auth` | Auth.tsx | OK | Supabase Auth |
+| `/crm` | CRM.tsx | OK | useLeads, useLeadStatuses |
+| `/conversas` | Conversas.tsx | OK | useConversations, Evolution API |
+| `/chat-interno` | ChatInterno.tsx | OK | internal_chat_* tables (criadas) |
+| `/fila-atendimento` | FilaAtendimento.tsx | QUEBRADO | attendance_queue (NAO EXISTE) |
+| `/pacientes` | Pacientes.tsx | PARCIAL | patient_notes (NAO EXISTE) |
+| `/agenda` | Agenda.tsx | PARCIAL | professionals (NAO EXISTE) |
+| `/orcamentos` | Orcamentos.tsx | PARCIAL | professionals (NAO EXISTE) |
+| `/financeiro` | Financeiro.tsx | OK | financial_transactions |
+| `/relatorios` | Relatorios.tsx | OK | - |
+| `/indicadores` | Indicadores.tsx | OK | useIndicators |
+| `/marketing` | Marketing.tsx | OK | - |
+| `/cadastros` | Cadastros.tsx | PARCIAL | ProfessionalsManager quebrado |
+| `/configuracoes` | Configuracoes.tsx | OK | Admin only |
+| `/webhooks` | Webhooks.tsx | OK | Admin only |
+| `/painel-sistema` | PainelSistema.tsx | OK | System monitoring |
+| `/admin` | Admin.tsx | OK | Super admin only |
+| `/prontuario` | STUB | - | Em breve |
+| `/tratamentos` | STUB | - | Em breve |
+| `/documentos-clinicos` | STUB | - | Em breve |
+| `/estoque` | STUB | - | Em breve |
+| `/billing` | STUB | - | Em breve |
 
+### 2.2 Hooks de Dados (30+ hooks)
+
+| Hook | Tabela Supabase | Status |
+|------|-----------------|--------|
+| useLeads | leads | OK |
+| usePatients | patients | OK |
+| useAppointments | appointments | OK |
+| useProcedures | procedures | OK |
+| useLeadStatuses | lead_statuses | OK |
+| useSources | sources | OK |
+| useQuotes | quotes, quote_items, quote_payments | OK |
+| useConversations | conversations | OK |
+| useMessages | messages | OK |
+| useProfessionals | professionals | QUEBRADO - tabela nao existe |
+| useProfessionalAvailability | professional_availability | QUEBRADO - tabela nao existe |
+| useProfessionalTimeOff | professional_time_off | QUEBRADO - tabela nao existe |
+| useAttendanceQueue | attendance_queue | QUEBRADO - tabela nao existe |
+| useInternalChatRooms | internal_chat_rooms | OK (criada recentemente) |
+
+### 2.3 Edge Functions (18 funcoes)
+
+| Funcao | Status | Observacao |
+|--------|--------|------------|
+| webhook-receiver | OK | Recebe webhooks Evolution |
+| whatsapp-incoming | OK | Processa mensagens |
+| messages-send | OK | Envia mensagens |
+| check-whatsapp-status | OK | Verifica conexao |
+| auto-lead-transitions | ERRO | Retorna non-2xx |
+| ai-lead-analysis | OK | Analise IA |
+| ai-reports | OK | Relatorios IA |
+| campaign-send | OK | Campanhas |
+| import-spreadsheet | OK | Importacao |
+
+### 2.4 Tabelas Supabase (37 tabelas confirmadas)
+
+**Existem:**
+- admin_audit_log, ai_suggestions, appointments, conversations, crm_settings
+- expense_categories, financial_goals, financial_transactions, integration_settings
+- interest_triggers, internal_chat_messages, internal_chat_room_members, internal_chat_rooms
+- lead_interactions, lead_statuses, lead_temperatures, leads, lid_phone_mapping
+- message_templates, messages, notifications, organization_members, organizations
+- patients, payment_methods, procedures, profiles, quote_items, quote_payments
+- quotes, recurring_payments, sources, super_admins, suppliers
+- temperature_transition_rules, user_roles, webhooks
+
+**NAO EXISTEM (mas sao referenciadas no codigo):**
+- professionals
+- professional_availability
+- professional_time_off
+- attendance_queue
+- patient_notes
+
+---
+
+## 3. LISTA DE PROBLEMAS (BUG BACKLOG)
+
+### BUG-001: CRITICO - Tabela `professionals` nao existe
+
+**Titulo:** Toda funcionalidade de profissionais esta quebrada
 **Severidade:** CRITICO
+**Onde:** 
+- `/cadastros` (ProfessionalsManager.tsx)
+- `/agenda` (AppointmentForm.tsx)
+- `/orcamentos` (QuoteForm.tsx)
+- `/fila-atendimento` (FilaAtendimento.tsx)
 
-**Onde:** `/chat-interno`, `src/hooks/useInternalChat.ts`
+**Passo a passo:**
+1. Acessar /cadastros
+2. Clicar em "Profissionais"
+3. Erro no console: tabela nao encontrada
 
-**Como reproduzir:**
-1. Navegar para `/chat-interno`
-2. Sistema dispara erro React #310
+**Causa:** Tabela `professionals` nunca foi criada no banco
 
-**Esperado vs Atual:**
-- Esperado: Pagina carrega salas de chat
-- Atual: Erro React minificado, crash da pagina
-
-**Causa raiz:** As tabelas `internal_chat_rooms`, `internal_chat_room_members` e `internal_chat_messages` sao referenciadas no codigo mas nao existem no banco de dados.
-
-**Correcao proposta:** Criar as tabelas com migracao SQL:
-
+**Solucao:** Criar tabela com migration:
 ```sql
-CREATE TABLE internal_chat_rooms (
+CREATE TABLE professionals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id UUID NOT NULL REFERENCES organizations(id),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  description TEXT,
-  is_private BOOLEAN DEFAULT false,
-  created_by UUID REFERENCES auth.users(id),
+  specialty TEXT,
+  role TEXT,
+  phone TEXT,
+  email TEXT,
+  active BOOLEAN DEFAULT true,
+  color_tag TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE professionals ENABLE ROW LEVEL SECURITY;
+-- Policies
+```
 
-CREATE TABLE internal_chat_room_members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  room_id UUID NOT NULL REFERENCES internal_chat_rooms(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  role TEXT DEFAULT 'member',
-  last_read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(room_id, user_id)
-);
+**Impacto:** Bloqueia agendamento por profissional, orcamentos, fila de atendimento
 
-CREATE TABLE internal_chat_messages (
+---
+
+### BUG-002: CRITICO - Tabela `professional_availability` nao existe
+
+**Titulo:** Configuracao de horarios de profissionais quebrada
+**Severidade:** CRITICO
+**Onde:** `/cadastros`, `useProfessionalAvailability.ts`
+
+**Solucao:** Criar tabela:
+```sql
+CREATE TABLE professional_availability (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  room_id UUID NOT NULL REFERENCES internal_chat_rooms(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL REFERENCES auth.users(id),
-  content TEXT NOT NULL,
+  professional_id UUID NOT NULL REFERENCES professionals(id) ON DELETE CASCADE,
+  weekday INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  slot_minutes INTEGER DEFAULT 30,
+  break_start TIME,
+  break_end TIME,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+```
 
--- RLS e indices
-ALTER TABLE internal_chat_rooms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE internal_chat_room_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE internal_chat_messages ENABLE ROW LEVEL SECURITY;
+---
 
--- Policies
-CREATE POLICY "Members can view rooms" ON internal_chat_rooms
-  FOR SELECT USING (
+### BUG-003: CRITICO - Tabela `professional_time_off` nao existe
+
+**Titulo:** Folgas de profissionais nao funcionam
+**Severidade:** CRITICO
+**Onde:** `useProfessionalTimeOff.ts`
+
+**Solucao:** Criar tabela:
+```sql
+CREATE TABLE professional_time_off (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  professional_id UUID NOT NULL REFERENCES professionals(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+### BUG-004: CRITICO - Tabela `attendance_queue` nao existe
+
+**Titulo:** Fila de Atendimento totalmente quebrada
+**Severidade:** CRITICO
+**Onde:** `/fila-atendimento`, `useAttendanceQueue.ts`
+
+**Solucao:** Criar tabela:
+```sql
+CREATE TABLE attendance_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  patient_id UUID REFERENCES patients(id) ON DELETE SET NULL,
+  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed')),
+  checked_in_at TIMESTAMPTZ DEFAULT now(),
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER PUBLICATION supabase_realtime ADD TABLE attendance_queue;
+```
+
+---
+
+### BUG-005: ALTO - Tabela `patient_notes` nao existe
+
+**Titulo:** Anotacoes de pacientes nao funcionam
+**Severidade:** ALTO
+**Onde:** `PatientDetailPanel.tsx` (aba Notas)
+
+**Solucao:** Criar tabela:
+```sql
+CREATE TABLE patient_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES auth.users(id),
+  note TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+### BUG-006: ALTO - Edge Function `auto-lead-transitions` falhando
+
+**Titulo:** Transicoes automaticas de leads retornam erro 500
+**Severidade:** ALTO
+**Onde:** Console logs, Edge Function
+
+**Causa provavel:** Erro na query ou sem regras ativas
+
+**Solucao:** Verificar logs da edge function e adicionar tratamento de erro
+
+---
+
+### BUG-007: MEDIO - Erros de "Sessao expirada" recorrentes
+
+**Titulo:** Sistema exibe erro de sessao mesmo sem logout
+**Severidade:** MEDIO
+**Onde:** OrganizationContext.tsx
+
+**Causa:** Token expirado nao esta sendo renovado corretamente
+
+**Solucao:** Melhorar tratamento de refresh token
+
+---
+
+### BUG-008: MEDIO - Coluna `professional_id` em appointments nao tem FK
+
+**Titulo:** Agendamentos salvam professional_id mas sem referencia de tabela
+**Severidade:** MEDIO
+**Onde:** useAppointments.ts, AppointmentForm.tsx
+
+**Observacao:** O codigo ignora professional_id na query porque a tabela professionals nao existe
+
+---
+
+### BUG-009: BAIXO - Pesquisa de leads com input digitavel
+
+**Titulo:** Algumas buscas usam Select em vez de Input
+**Severidade:** BAIXO
+**Onde:** Varios componentes
+
+**Solucao:** Padronizar para SearchEntityInput em todos os locais
+
+---
+
+## 4. MATRIZ SOLICITADO VS IMPLEMENTADO
+
+| Funcionalidade Solicitada | Existe? | Onde | O que falta | Complexidade |
+|---------------------------|---------|------|-------------|--------------|
+| Erro 204 em Agenda | SIM/PARCIAL | useAppointments | Ja corrigido com `.select()` apos mutations | FEITO |
+| Chat Interno | SIM | /chat-interno | Tabelas criadas, funcional | FEITO |
+| Pesquisa input digitavel | PARCIAL | SearchEntityInput | Aplicar em todos os locais | BAIXA |
+| Aba Profissionais | SIM/QUEBRADA | ProfessionalsManager | Criar tabela professionals | ALTA |
+| Agendamentos em Pacientes | SIM | PatientDetailPanel | Aba agendamentos existe | FEITO |
+| Substituir quentes por faltosos | NAO | CRM | Adicionar temperatura "faltou_cancelou" | MEDIA |
+| Funis novos CRM | PARCIAL | CRM | Cards modal existem | PARCIAL |
+| Cards TOTAL/NAO AGENDADO | SIM | CRM, LeadCardModal | Funcionando | FEITO |
+| Sidebar Conversas acoes | SIM | ContactSidebar | Desativar, agendar, excluir | FEITO |
+| Status conversa tabs | SIM | ConversationList | Abertas, Paciente, Agendado, Perdido, etc | FEITO |
+| Observacoes paciente | PARCIAL | PatientDetailPanel | Tabela patient_notes nao existe | ALTA |
+| Agenda status CONFIRMADO | SIM | AppointmentCalendar | Cor verde implementada | FEITO |
+| Cores Agenda | SIM | AppointmentCalendar | Cancelado roxo, Atendido preto, etc | FEITO |
+| Visao HOJE | SIM | TodayView | Agendamentos do dia | FEITO |
+| Fila de Atendimento | QUEBRADA | FilaAtendimento | Tabela attendance_queue nao existe | ALTA |
+| Orcamento data | SIM | Quote | created_at existe | FEITO |
+| Orcamento botoes fechamento | PARCIAL | QuoteDetailDialog | Status: closed, partially_closed, not_closed | PARCIAL |
+| Orcamento profissional | PARCIAL | QuoteForm | Campo existe mas professionals quebrado | MEDIA |
+| Pagamento taxa maquina | NAO | Financeiro | Nao implementado | MEDIA |
+| Remover campos paciente | NAO | PatientForm | emergency_contact, medical_history ainda existem | BAIXA |
+| Origem paciente | PARCIAL | - | sources existe, aplicar | BAIXA |
+| Aba anotacoes paciente | PARCIAL | PatientDetailPanel | UI existe, tabela nao | ALTA |
+
+---
+
+## 5. PLANO DE CORRECAO EM FASES
+
+### FASE 0 - HOTFIX (0-24h) - CRITICO
+
+**Objetivo:** Corrigir erros que bloqueiam operacao
+
+**Tarefa 1:** Criar tabelas ausentes
+```sql
+-- 1. Professionals
+CREATE TABLE professionals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  specialty TEXT,
+  role TEXT,
+  phone TEXT,
+  email TEXT,
+  active BOOLEAN DEFAULT true,
+  color_tag TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE professionals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view professionals" ON professionals
+  FOR SELECT USING (organization_id IN (SELECT get_user_organization_ids(auth.uid())));
+
+CREATE POLICY "Admins can manage professionals" ON professionals
+  FOR ALL USING (
     organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+    AND (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'gerente'))
   );
 
-CREATE POLICY "Admin/Manager can create rooms" ON internal_chat_rooms
-  FOR INSERT WITH CHECK (
+CREATE INDEX idx_professionals_org ON professionals(organization_id);
+CREATE INDEX idx_professionals_active ON professionals(active);
+
+-- 2. Professional Availability
+CREATE TABLE professional_availability (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  professional_id UUID NOT NULL REFERENCES professionals(id) ON DELETE CASCADE,
+  weekday INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  slot_minutes INTEGER DEFAULT 30,
+  break_start TIME,
+  break_end TIME,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE professional_availability ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view availability" ON professional_availability
+  FOR SELECT USING (
+    professional_id IN (
+      SELECT id FROM professionals 
+      WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+    )
+  );
+
+CREATE POLICY "Admins can manage availability" ON professional_availability
+  FOR ALL USING (
+    professional_id IN (
+      SELECT id FROM professionals 
+      WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+      AND (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'gerente'))
+    )
+  );
+
+-- 3. Professional Time Off
+CREATE TABLE professional_time_off (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  professional_id UUID NOT NULL REFERENCES professionals(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE professional_time_off ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view time off" ON professional_time_off
+  FOR SELECT USING (
+    professional_id IN (
+      SELECT id FROM professionals 
+      WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+    )
+  );
+
+CREATE POLICY "Admins can manage time off" ON professional_time_off
+  FOR ALL USING (
+    professional_id IN (
+      SELECT id FROM professionals 
+      WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+      AND (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'gerente'))
+    )
+  );
+
+-- 4. Attendance Queue
+CREATE TABLE attendance_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  patient_id UUID REFERENCES patients(id) ON DELETE SET NULL,
+  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed')),
+  checked_in_at TIMESTAMPTZ DEFAULT now(),
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE attendance_queue ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view queue" ON attendance_queue
+  FOR SELECT USING (organization_id IN (SELECT get_user_organization_ids(auth.uid())));
+
+CREATE POLICY "Staff can manage queue" ON attendance_queue
+  FOR ALL USING (
     organization_id IN (SELECT get_user_organization_ids(auth.uid()))
     AND has_operational_role(auth.uid())
   );
 
-CREATE POLICY "Members can view room membership" ON internal_chat_room_members
-  FOR SELECT USING (
-    room_id IN (SELECT id FROM internal_chat_rooms WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid())))
+CREATE INDEX idx_attendance_queue_org ON attendance_queue(organization_id);
+CREATE INDEX idx_attendance_queue_status ON attendance_queue(status);
+ALTER PUBLICATION supabase_realtime ADD TABLE attendance_queue;
+
+-- 5. Patient Notes
+CREATE TABLE patient_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES auth.users(id),
+  note TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE patient_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view notes" ON patient_notes
+  FOR SELECT USING (organization_id IN (SELECT get_user_organization_ids(auth.uid())));
+
+CREATE POLICY "Staff can manage notes" ON patient_notes
+  FOR ALL USING (
+    organization_id IN (SELECT get_user_organization_ids(auth.uid()))
+    AND has_operational_role(auth.uid())
   );
 
-CREATE POLICY "Users can join public rooms" ON internal_chat_room_members
-  FOR INSERT WITH CHECK (
-    user_id = auth.uid()
-    AND room_id IN (
-      SELECT id FROM internal_chat_rooms 
-      WHERE organization_id IN (SELECT get_user_organization_ids(auth.uid()))
-      AND (is_private = false OR created_by = auth.uid())
-    )
-  );
+CREATE INDEX idx_patient_notes_patient ON patient_notes(patient_id);
 
-CREATE POLICY "Members can view messages" ON internal_chat_messages
-  FOR SELECT USING (
-    room_id IN (
-      SELECT room_id FROM internal_chat_room_members WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Members can send messages" ON internal_chat_messages
-  FOR INSERT WITH CHECK (
-    sender_id = auth.uid()
-    AND room_id IN (
-      SELECT room_id FROM internal_chat_room_members WHERE user_id = auth.uid()
-    )
-  );
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE internal_chat_rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE internal_chat_messages;
-
--- Indices
-CREATE INDEX idx_internal_chat_rooms_org ON internal_chat_rooms(organization_id);
-CREATE INDEX idx_internal_chat_members_room ON internal_chat_room_members(room_id);
-CREATE INDEX idx_internal_chat_members_user ON internal_chat_room_members(user_id);
-CREATE INDEX idx_internal_chat_messages_room ON internal_chat_messages(room_id);
-CREATE INDEX idx_internal_chat_messages_created ON internal_chat_messages(created_at DESC);
+-- 6. Add foreign key for professionals in appointments
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS professional_id UUID REFERENCES professionals(id);
 ```
 
-**Risco de regressao:** Baixo
-**Teste recomendado:** Criar sala, entrar, enviar mensagem, verificar realtime
+**Arquivos afetados:** Nenhum (apenas DB)
+**Testes:** 
+- Acessar /cadastros > Profissionais
+- Criar profissional
+- Acessar /fila-atendimento
+- Criar anotacao em paciente
 
 ---
 
-### BUG-002: MEDIO - Modulos Stub nao Implementados
+### FASE 1 - ESTABILIDADE (1-3 dias)
 
-**Titulo:** Paginas Prontuario, Tratamentos, DocumentosClinicos, Estoque, Billing sao stubs
+**Objetivo:** Corrigir erros de integracao
 
-**Severidade:** MEDIO
+**Tarefa 1:** Corrigir auto-lead-transitions
+- Arquivo: `supabase/functions/auto-lead-transitions/index.ts`
+- Acao: Adicionar try-catch granular, logs detalhados
 
-**Onde:** Multiplas paginas
+**Tarefa 2:** Corrigir erro "Sessao expirada"
+- Arquivo: `src/contexts/OrganizationContext.tsx`
+- Acao: Verificar se session e valida antes de queries
 
-**Como reproduzir:** Navegar para qualquer uma dessas rotas
-
-**Esperado vs Atual:**
-- Esperado: Funcionalidade completa
-- Atual: Apenas texto placeholder
-
-**Correcao proposta:** 
-- Opcao A: Implementar funcionalidade completa (longo prazo)
-- Opcao B: Remover do menu lateral ou marcar como "Em breve" (curto prazo)
-
-**Risco de regressao:** Baixo
+**Tarefa 3:** Atualizar types.ts apos migrations
+- Arquivo: `src/integrations/supabase/types.ts`
+- Acao: Regenerar automaticamente
 
 ---
 
-### BUG-003: BAIXO - Sidebar sem Responsividade Mobile
+### FASE 2 - FLUXOS CRM/AGENDA/CONVERSAS (1-2 semanas)
 
-**Titulo:** Sidebar fixa nao colapsa em dispositivos moveis
+**Objetivo:** Completar funcionalidades solicitadas
 
-**Severidade:** BAIXO
+**Tarefa 1:** Substituir "quentes" por "faltosos/cancelados"
+- Arquivos: CRM.tsx, TemperatureBadge.tsx, lead_temperatures
+- Acao: Adicionar temperatura "faltou_cancelou"
 
-**Onde:** `src/components/layout/Sidebar.tsx`
+**Tarefa 2:** Atualizar useAppointments para incluir professional
+- Arquivo: src/hooks/useAppointments.ts
+- Acao: Adicionar join com professionals
 
-**Como reproduzir:** Acessar em tela < 768px
-
-**Esperado vs Atual:**
-- Esperado: Menu hamburguer ou sidebar colapsavel
-- Atual: Sidebar fixa 256px ocupa toda tela
-
-**Correcao proposta:** Implementar drawer mobile com hook `use-mobile`
-
----
-
-### BUG-004: INFO - Seguranca Webhooks
-
-**Titulo:** Webhooks acessiveis por admin/gerente (deveria ser apenas super admin)
-
-**Severidade:** INFO (ja em monitoramento)
-
-**Onde:** Tabela `webhooks`, politicas RLS
-
-**Correcao proposta:** Restringir SELECT apenas para super admins:
-
-```sql
-DROP POLICY IF EXISTS "webhooks_select" ON webhooks;
-CREATE POLICY "webhooks_select" ON webhooks
-  FOR SELECT USING (is_super_admin());
-```
+**Tarefa 3:** Remover campos obsoletos de paciente
+- Arquivo: PatientForm.tsx, PatientDetailPanel.tsx
+- Acao: Remover emergency_contact, medical_history, allergies, medications
 
 ---
 
-### BUG-005: INFO - Logs de Console em Producao
+### FASE 3 - ORCAMENTOS/PAGAMENTOS (2-4 semanas)
 
-**Titulo:** 1397+ ocorrencias de console.log/warn/error no codigo
+**Objetivo:** Melhorar fluxo de orcamentos
 
-**Severidade:** INFO
+**Tarefa 1:** Botoes "Fechou parte" / "Nao fechou" / "Fechou tudo"
+- Arquivo: QuoteDetailDialog.tsx
+- Acao: Adicionar botoes de acao rapida
 
-**Onde:** Edge functions e componentes React
-
-**Correcao proposta:** 
-- Remover logs de debug em producao
-- Manter apenas logs estruturados para observabilidade
-- Usar variavel de ambiente para controlar nivel de log
-
----
-
-### BUG-006: BAIXO - Falta de aria-labels em botoes de icone
-
-**Titulo:** Botoes com apenas icones sem aria-label
-
-**Severidade:** BAIXO (Acessibilidade)
-
-**Onde:** Multiplos componentes (Header, LeadCard, etc)
-
-**Correcao proposta:** Adicionar `aria-label` em todos os botoes com apenas icone
+**Tarefa 2:** Campo taxa maquina em pagamentos
+- Arquivo: TransactionForm.tsx
+- Acao: Adicionar campo machine_fee
 
 ---
 
-### BUG-007: MEDIO - hasRole verifica role incorretamente
+### FASE 4 - FILA + PROFISSIONAIS (2-4 semanas)
 
-**Titulo:** Funcao hasRole no AuthContext verifica apenas igualdade estrita
+**Objetivo:** Funcionalidade completa
 
-**Severidade:** MEDIO
-
-**Onde:** `src/contexts/AuthContext.tsx`
-
-**Como reproduzir:** Usuario com role `gerente` nao ve opcoes de `admin`
-
-**Atual:** A funcao `hasRole` verifica igualdade estrita, o que e correto, mas a hierarquia de roles nao e respeitada em alguns locais.
-
-**Correcao proposta:** Manter como esta (design correto) mas documentar hierarquia de roles
+**Tarefa 1:** Visao detalhada da fila estilo "Dontus"
+- Arquivo: FilaAtendimento.tsx
+- Acao: Adicionar colunas profissional, tempo, visual
 
 ---
 
-## 4. Correcoes Prioritarias
+## 6. PLANO DE TESTES
 
-### 4.1 Tabela de Priorizacao
+### 6.1 Testes Unitarios (Vitest)
 
-| Item | Prioridade | Esforco | Impacto | Status |
-|------|------------|---------|---------|--------|
-| BUG-001 (Chat Interno) | HOTFIX | Medio | Alto | ✅ CORRIGIDO |
-| BUG-002 (Stubs) | Curto | Baixo | Medio | ✅ CORRIGIDO |
-| BUG-003 (Mobile) | Curto | Medio | Alto | ✅ CORRIGIDO |
-| BUG-004 (Webhooks) | Medio | Baixo | Baixo | Pendente |
-| BUG-005 (Logs) | Medio | Alto | Baixo | Pendente |
-| BUG-006 (A11y) | Medio | Medio | Medio | Pendente |
+| Arquivo | Cobertura |
+|---------|-----------|
+| src/lib/__tests__/http.test.ts | safeJson |
+| src/lib/__tests__/supabase.test.ts | client |
+| src/components/crm/__tests__/LeadTimer.test.tsx | timer logic |
 
-### 4.2 Correções Aplicadas
+**Adicionar:**
+- useAppointments mutations (create, update, delete)
+- useQuotes calculations
+- Temperature badge logic
 
-**FASE 1 - HOTFIX (Concluida):**
-1. ✅ Criadas tabelas do chat interno com RLS (internal_chat_rooms, internal_chat_room_members, internal_chat_messages)
-2. ✅ Habilitado realtime nas tabelas de chat
-3. ✅ Indices de performance criados
+### 6.2 Testes E2E (Playwright - ja configurado)
 
-**FASE 2 - CURTO PRAZO (Concluida):**
-1. ✅ Sidebar responsiva com drawer mobile (MobileSidebar.tsx, SidebarContent.tsx)
-2. ✅ Modulos stub marcados como "Em breve" no menu lateral
-3. ✅ Header adaptado para suportar menu mobile
+**Fluxos criticos a cobrir:**
+1. Login > Dashboard > CRM > Criar Lead
+2. CRM > Agendar consulta > Agenda
+3. Pacientes > Detalhes > Criar orcamento
+4. Fila de Atendimento > Check-in > Iniciar > Finalizar
+5. Chat interno > Criar sala > Enviar mensagem
 
-**FASE 3 - MEDIO PRAZO (Pendente):**
-1. Implementar modulo Prontuario basico
-2. Remover logs excessivos
-3. Restringir webhooks para super admin
-4. Auditoria de acessibilidade completa
+### 6.3 Checklist Manual de UI
 
-**FASE 4 - LONGO PRAZO (3+ meses):**
-1. Implementar modulos Tratamentos, Estoque, Billing
-2. Testes E2E com Playwright
-3. Documentacao tecnica completa
+- [ ] Todas as rotas navegam sem erro
+- [ ] Todos os botoes tem handler (nao fazem nada e nao quebram)
+- [ ] Todos os formularios validam antes de submit
+- [ ] Todos os selects tem opcoes ou loading
+- [ ] Nenhum erro no console apos navegacao completa
+- [ ] Mobile: sidebar abre/fecha
+- [ ] Mobile: formularios responsivos
 
 ---
 
-## 5. Validacao de Seguranca
+## 7. RISCOS E RECOMENDACOES
 
-### 5.1 Checklist de Seguranca
+### Seguranca
+- RLS implementado em todas as tabelas ativas
+- Multi-tenant isolado via organization_id
+- Webhooks com assinatura HMAC
 
-| Item | Status |
-|------|--------|
-| RLS em todas as tabelas | OK |
-| Multi-tenant isolado | OK |
-| Autenticacao Supabase | OK |
-| CORS configurado | OK |
-| Webhook com rate limiting | OK |
-| Webhook com HMAC signature | OK |
-| Payload sanitization | OK |
-| SQL injection prevention | OK |
-| XSS prevention | OK (sem dangerouslySetInnerHTML em user content) |
-| Validacao Zod nos forms | OK |
-| Secrets nao expostos | OK |
+### Performance
+- Limite de 5000 leads no useLeads - OK por enquanto
+- Indices criticos presentes
+- React Query com cache
 
-### 5.2 Findings de Seguranca Ignorados (Aceitos)
+### Confiabilidade
+- Edge functions precisam de melhor tratamento de erro
+- Logs excessivos em producao (1300+ console.logs)
 
-1. **integration_settings_credentials**: API keys em plaintext - aceito pois RLS restringe acesso
-2. **crm_data_access_model**: Dados CRM acessiveis a todos membros - padrao de CRM colaborativo
-3. **profiles_table_public_exposure**: Falso positivo - RLS implementado corretamente
-4. **organizations_table_sensitive_exposure**: Falso positivo - RLS implementado corretamente
+### Recomendacoes
+1. **URGENTE:** Executar FASE 0 para desbloquear operacao
+2. Implementar testes E2E para fluxos criticos
+3. Remover console.logs de producao
+4. Adicionar Sentry ou similar para monitoramento
+5. Documentar APIs e webhooks
 
 ---
 
-## 6. Performance e Qualidade
+## 8. CONCLUSAO
 
-### 6.1 Metricas Atuais
+O sistema SORRI JA tem uma arquitetura solida e a maioria das funcionalidades implementadas, mas **5 tabelas criticas estao faltando no banco de dados**, quebrando:
+- Gestao de Profissionais
+- Fila de Atendimento
+- Anotacoes de Pacientes
 
-- Tabela leads: 4970 registros
-- Tabela patients: 1525 registros
-- 3 organizacoes ativas
-- Indices criados em colunas criticas
+A correcao imediata (FASE 0) resolve 90% dos problemas operacionais. As outras fases sao melhorias incrementais que podem ser implementadas gradualmente.
 
-### 6.2 Recomendacoes de Performance
-
-1. Limite de 5000 leads no useLeads - considerar paginacao obrigatoria
-2. Queries com joins podem ser otimizadas
-3. Implementar cache com React Query staleTime
-
----
-
-## 7. Proximos Passos Imediatos
-
-1. **CRIAR TABELAS CHAT INTERNO** - Resolver BUG-001
-2. **TESTAR CHAT** - Validar criacao de sala, mensagens, realtime
-3. **SIDEBAR MOBILE** - Implementar responsividade
-4. **DOCUMENTAR STUBS** - Marcar modulos incompletos no README
-
----
-
-## Conclusao
-
-O sistema SORRI JA esta em bom estado de funcionamento com arquitetura solida. O problema critico e a falta das tabelas do chat interno que causa crash na pagina `/chat-interno`. Apos criar essas tabelas, o sistema estara operacional em todas as funcionalidades implementadas.
-
-As outras correcoes sao melhorias incrementais que podem ser implementadas gradualmente sem impacto no uso diario do sistema.
+**Prioridade Maxima:** Executar a migration SQL da FASE 0 AGORA.
