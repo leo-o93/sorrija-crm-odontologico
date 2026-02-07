@@ -46,7 +46,7 @@ export function useProfessionals(includeInactive = false) {
     queryFn: async () => {
       if (!currentOrganization?.id) return [];
       let query = supabase
-        .from("professionals" as any)
+        .from("professionals")
         .select("*")
         .eq("organization_id", currentOrganization.id)
         .order("name", { ascending: true });
@@ -57,7 +57,7 @@ export function useProfessionals(includeInactive = false) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data as any[]) as Professional[];
+      return (data || []) as Professional[];
     },
     enabled: !!currentOrganization?.id,
   });
@@ -74,7 +74,7 @@ export function useCreateProfessional() {
       }
 
       const { data, error } = await supabase
-        .from("professionals" as any)
+        .from("professionals")
         .insert({
           organization_id: currentOrganization.id,
           ...input,
@@ -83,7 +83,7 @@ export function useCreateProfessional() {
         .single();
 
       if (error) throw error;
-      return data as unknown as Professional;
+      return data as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });
@@ -103,14 +103,14 @@ export function useUpdateProfessional() {
     mutationFn: async (input: ProfessionalUpdate & { id: string }) => {
       const { id, ...updates } = input;
       const { data, error } = await supabase
-        .from("professionals" as any)
+        .from("professionals")
         .update(updates)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as unknown as Professional;
+      return data as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });
@@ -129,14 +129,14 @@ export function useDeactivateProfessional() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("professionals" as any)
+        .from("professionals")
         .update({ active: false })
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as unknown as Professional;
+      return data as Professional;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals"] });

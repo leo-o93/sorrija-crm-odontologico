@@ -43,14 +43,14 @@ export function useProfessionalAvailability(professionalId?: string) {
     queryFn: async () => {
       if (!professionalId) return [];
       const { data, error } = await supabase
-        .from("professional_availability" as any)
+        .from("professional_availability")
         .select("*")
         .eq("professional_id", professionalId)
         .order("weekday", { ascending: true })
         .order("start_time", { ascending: true });
 
       if (error) throw error;
-      return (data as any[]) as ProfessionalAvailability[];
+      return (data || []) as ProfessionalAvailability[];
     },
     enabled: !!professionalId,
   });
@@ -62,13 +62,13 @@ export function useCreateProfessionalAvailability() {
   return useMutation({
     mutationFn: async (input: ProfessionalAvailabilityInsert) => {
       const { data, error } = await supabase
-        .from("professional_availability" as any)
+        .from("professional_availability")
         .insert(input)
         .select()
         .single();
 
       if (error) throw error;
-      return data as unknown as ProfessionalAvailability;
+      return data as ProfessionalAvailability;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -88,14 +88,14 @@ export function useUpdateProfessionalAvailability() {
   return useMutation({
     mutationFn: async ({ id, professional_id, ...input }: ProfessionalAvailabilityUpdate & { id: string; professional_id?: string }) => {
       const { data, error } = await supabase
-        .from("professional_availability" as any)
+        .from("professional_availability")
         .update(input)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      const result = data as any;
+      const result = data as ProfessionalAvailability;
       return { ...result, professional_id: professional_id ?? result.professional_id } as ProfessionalAvailability;
     },
     onSuccess: (data) => {
@@ -116,7 +116,7 @@ export function useDeleteProfessionalAvailability() {
   return useMutation({
     mutationFn: async ({ id, professional_id }: { id: string; professional_id: string }) => {
       const { error } = await supabase
-        .from("professional_availability" as any)
+        .from("professional_availability")
         .delete()
         .eq("id", id);
 

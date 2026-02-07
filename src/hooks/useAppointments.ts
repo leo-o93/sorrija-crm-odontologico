@@ -67,7 +67,8 @@ export function useAppointments(filters?: {
           *,
           patient:patients(id, name, phone),
           lead:leads(id, name, phone),
-          procedure:procedures(id, name, category)
+          procedure:procedures(id, name, category),
+          professional:professionals(id, name)
         `)
         .eq("organization_id", currentOrganization.id)
         .order("appointment_date", { ascending: true });
@@ -86,11 +87,10 @@ export function useAppointments(filters?: {
 
       if (error) throw error;
       
-      // Map data and add professional_id as null since relation may not exist
       return (data || []).map((item: any) => ({
         ...item,
         professional_id: item.professional_id || null,
-        professional: null, // Relation may not exist in schema
+        professional: item.professional || null,
       })) as Appointment[];
     },
   });
@@ -103,13 +103,12 @@ export function useCreateAppointment() {
   return useMutation({
     mutationFn: async (input: CreateAppointmentInput) => {
       if (!currentOrganization?.id) throw new Error("No organization selected");
-      const { professional_id: _professionalId, ...appointmentInput } = input;
       
       const { data: appointment, error } = await supabase
         .from("appointments")
         .insert({
-          ...appointmentInput,
-          status: appointmentInput.status || "scheduled",
+          ...input,
+          status: input.status || "scheduled",
           organization_id: currentOrganization.id,
         })
         .select()
@@ -118,8 +117,8 @@ export function useCreateAppointment() {
       if (error) throw error;
 
       // Se tem lead_id, atualizar o lead para marcá-lo como agendado
-      if (appointmentInput.lead_id && appointmentInput.status !== 'cancelled' && appointmentInput.status !== 'attended' && appointmentInput.status !== 'no_show') {
-        const appointmentDate = appointmentInput.appointment_date?.split('T')[0] || null;
+      if (input.lead_id && input.status !== 'cancelled' && input.status !== 'attended' && input.status !== 'no_show') {
+        const appointmentDate = input.appointment_date?.split('T')[0] || null;
         await supabase
           .from("leads")
           .update({
@@ -127,7 +126,7 @@ export function useCreateAppointment() {
             appointment_date: appointmentDate,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", appointmentInput.lead_id)
+          .eq("id", input.lead_id)
           .select("id")
           .single();
       }
@@ -151,10 +150,9 @@ export function useUpdateAppointment() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateAppointmentInput) => {
-      const { professional_id: _professionalId, ...appointmentInput } = input;
       const { data, error } = await supabase
         .from("appointments")
-        .update(appointmentInput)
+        .update(input)
         .eq("id", id)
         .select("*, lead_id")
         .single();

@@ -34,6 +34,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      // Refresh session before making queries to avoid "session expired" errors
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        console.warn('Session refresh failed, attempting to continue...');
+      }
+
       const { data: preferenceData } = await supabase
         .from('user_preferences' as any)
         .select('last_organization_id')
@@ -43,7 +49,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         (preferenceData as { last_organization_id?: string | null } | null)?.last_organization_id ?? null;
 
       // Verificar se é Super Admin
-      const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
+      const { data: isSuperAdmin, error: superAdminError } = await supabase.rpc('is_super_admin');
+      
+      if (superAdminError) {
+        console.warn('Error checking super admin status:', superAdminError);
+      }
 
       if (isSuperAdmin) {
         // Super Admin vê TODAS as organizações ativas
@@ -79,8 +89,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         if (!memberships || memberships.length === 0) {
           setAvailableOrganizations([]);
           setCurrentOrganization(null);
-          toast.error('Nenhuma organização vinculada ao seu usuário.');
-          toast.message('Solicite ao administrador o acesso ou crie uma organização.');
+          // Only show error if not a new user (give time for setup)
+          if (user.created_at && new Date(user.created_at) < new Date(Date.now() - 60000)) {
+            toast.error('Nenhuma organização vinculada ao seu usuário.');
+            toast.message('Solicite ao administrador o acesso ou crie uma organização.');
+          }
         } else {
           // Extrair organizações dos memberships
           const orgs = memberships
@@ -101,7 +114,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
-      toast.error('Erro ao carregar organizações');
+      // Only show toast for actual errors, not session refresh issues
+      if (error instanceof Error && !error.message.includes('session')) {
+        toast.error('Erro ao carregar organizações');
+      }
     } finally {
       setIsLoading(false);
     }
