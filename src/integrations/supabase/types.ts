@@ -111,6 +111,7 @@ export type Database = {
           organization_id: string | null
           patient_id: string | null
           procedure_id: string | null
+          professional_id: string | null
           status: string
           updated_at: string
         }
@@ -123,6 +124,7 @@ export type Database = {
           organization_id?: string | null
           patient_id?: string | null
           procedure_id?: string | null
+          professional_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -135,6 +137,7 @@ export type Database = {
           organization_id?: string | null
           patient_id?: string | null
           procedure_id?: string | null
+          professional_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -165,6 +168,84 @@ export type Database = {
             columns: ["procedure_id"]
             isOneToOne: false
             referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_queue: {
+        Row: {
+          appointment_id: string | null
+          checked_in_at: string | null
+          created_at: string | null
+          finished_at: string | null
+          id: string
+          lead_id: string | null
+          organization_id: string
+          patient_id: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          checked_in_at?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          checked_in_at?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id?: string
+          patient_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_queue_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_queue_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -1394,6 +1475,48 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_notes: {
+        Row: {
+          author_id: string | null
+          created_at: string | null
+          id: string
+          note: string
+          organization_id: string
+          patient_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string | null
+          id?: string
+          note: string
+          organization_id: string
+          patient_id: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string | null
+          id?: string
+          note?: string
+          organization_id?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           active: boolean
@@ -1610,6 +1733,141 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "procedures_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_availability: {
+        Row: {
+          break_end: string | null
+          break_start: string | null
+          created_at: string | null
+          end_time: string
+          id: string
+          is_active: boolean | null
+          professional_id: string
+          slot_minutes: number | null
+          start_time: string
+          weekday: number
+        }
+        Insert: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string | null
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          professional_id: string
+          slot_minutes?: number | null
+          start_time: string
+          weekday: number
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          professional_id?: string
+          slot_minutes?: number | null
+          start_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_time_off: {
+        Row: {
+          created_at: string | null
+          date: string
+          end_time: string | null
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          end_time?: string | null
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          end_time?: string | null
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_time_off_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          active: boolean | null
+          color_tag: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          phone: string | null
+          role: string | null
+          specialty: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          color_tag?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          phone?: string | null
+          role?: string | null
+          specialty?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          color_tag?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          role?: string | null
+          specialty?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
